@@ -16,6 +16,9 @@ en:
       troubleshoot: Troubleshoot
       enable: Enable account
       disable: Disable account
+      exclude_from_reports: Exclude from all reports
+      include_in_reports: Include in reports
+      excluded_from_reports_indicator: Excluded from reports
       set_default: Set as default
       remove_default: Unset default
       default_label: Default
@@ -49,6 +52,7 @@ en:
       notes_placeholder: Store additional information like account numbers, sort codes, IBAN, routing numbers, etc.
       balance_adjustment_label: Balance Adjustment
       balance_adjustment_description: Correct for items your bank provider omits from the reported balance (e.g. a Buy Now Pay Later balance not reflected in your cash balance). Use a negative value for liabilities.
+      exclude_from_reports: Exclude from all reports
     index:
       accounts: Accounts
       manual_accounts:
@@ -126,6 +130,8 @@ en:
         manage: Manage accounts
         sharing: Sharing
         statements: Statements
+        exclude_from_reports: Exclude from all reports
+        include_in_reports: Include in reports
     update:
       success: "%{type} account updated"
     sidebar:
