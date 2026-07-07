@@ -39,6 +39,15 @@ jobs:
         run: |
           if git merge upstream/main --no-edit; then
             echo "merged=true" >> $GITHUB_OUTPUT
+          elif [ "$(git diff --name-only --diff-filter=U)" = ".sure-version" ]; then
+            echo "Only .sure-version conflicts — auto-resolving to the higher version"
+            OURS=$(git show :2:.sure-version | tr -d '[:space:]')
+            THEIRS=$(git show :3:.sure-version | tr -d '[:space:]')
+            HIGHER=$(printf '%s\n%s\n' "$OURS" "$THEIRS" | sort -V | tail -1)
+            printf '%s\n' "$HIGHER" > .sure-version
+            git add .sure-version
+            git commit --no-edit
+            echo "merged=true" >> $GITHUB_OUTPUT
           else
             git merge --abort
             echo "merged=false" >> $GITHUB_OUTPUT
