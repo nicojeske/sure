@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_07_29_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1493,6 +1493,22 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.string "subtype"
   end
 
+  create_table "paperless_connections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.text "base_url", null: false
+    t.text "api_token"
+    t.boolean "verify_ssl", default: true, null: false
+    t.boolean "auto_link_enabled", default: true, null: false
+    t.integer "match_window_days", default: 3, null: false
+    t.decimal "min_auto_link_score", precision: 4, scale: 3, default: "0.9", null: false
+    t.datetime "last_connected_at"
+    t.datetime "last_error_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_paperless_connections_on_family_id", unique: true
+  end
+
   create_table "plaid_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "plaid_item_id", null: false
     t.string "plaid_id", null: false
@@ -1606,6 +1622,26 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.datetime "updated_at", null: false
     t.index ["family_id"], name: "index_questrade_items_on_family_id"
     t.index ["status"], name: "index_questrade_items_on_status"
+  end
+
+  create_table "receipt_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "transaction_id", null: false
+    t.uuid "paperless_connection_id", null: false
+    t.integer "document_id", null: false
+    t.string "status", default: "suggested", null: false
+    t.string "source", default: "auto", null: false
+    t.decimal "score", precision: 4, scale: 3
+    t.jsonb "match_reasons", default: {}, null: false
+    t.string "document_title"
+    t.date "document_created_on"
+    t.string "document_correspondent"
+    t.string "document_mime_type"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["paperless_connection_id"], name: "index_receipt_links_on_paperless_connection_id"
+    t.index ["transaction_id", "document_id"], name: "index_receipt_links_on_transaction_id_and_document_id", unique: true
+    t.index ["transaction_id", "status"], name: "index_receipt_links_on_transaction_id_and_status"
+    t.check_constraint "status::text = ANY (ARRAY['linked'::character varying, 'suggested'::character varying, 'dismissed'::character varying]::text[])", name: "chk_receipt_links_status"
   end
 
   create_table "recurring_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2140,6 +2176,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.jsonb "extra", default: {}, null: false
     t.string "investment_activity_label"
     t.uuid "transfer_id"
+    t.datetime "receipt_scanned_at"
     t.index "(((extra -> 'goal'::text) ->> 'pledge_id'::text))", name: "ix_transactions_extra_goal_pledge_id", unique: true, where: "(((extra -> 'goal'::text) ->> 'pledge_id'::text) IS NOT NULL)"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["external_id"], name: "index_transactions_on_external_id"
@@ -2147,6 +2184,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
     t.index ["investment_activity_label"], name: "index_transactions_on_investment_activity_label"
     t.index ["kind"], name: "index_transactions_on_kind"
     t.index ["merchant_id"], name: "index_transactions_on_merchant_id"
+    t.index ["receipt_scanned_at"], name: "index_transactions_unscanned_receipts", where: "(receipt_scanned_at IS NULL)"
     t.index ["transfer_id"], name: "index_transactions_on_transfer_id"
   end
 
@@ -2407,10 +2445,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_25_000000) do
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oidc_identities", "users"
+  add_foreign_key "paperless_connections", "families"
   add_foreign_key "plaid_accounts", "plaid_items"
   add_foreign_key "plaid_items", "families"
   add_foreign_key "questrade_accounts", "questrade_items"
   add_foreign_key "questrade_items", "families"
+  add_foreign_key "receipt_links", "paperless_connections"
+  add_foreign_key "receipt_links", "transactions"
   add_foreign_key "recurring_transactions", "accounts", column: "destination_account_id", on_delete: :cascade
   add_foreign_key "recurring_transactions", "accounts", on_delete: :cascade
   add_foreign_key "recurring_transactions", "families"

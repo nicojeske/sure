@@ -1,0 +1,41 @@
+linked_one:
+  transaction_record: one
+  paperless_connection: one
+  document_id: 101
+  status: linked
+  source: auto
+  score: 0.95
+  match_reasons:
+    amount: true
+    date: true
+  document_title: "Starbucks Receipt"
+  document_created_on: <%= 1.day.ago.to_date %>
+  document_correspondent: "Starbucks"
+  document_mime_type: "application/pdf"
+
+suggested_transfer_out:
+  transaction_record: transfer_out
+  paperless_connection: one
+  document_id: 102
+  status: suggested
+  source: auto
+  score: 0.55
+  match_reasons:
+    amount: true
+  document_title: "Unknown Invoice"
+  document_created_on: <%= 3.days.ago.to_date %>
+  document_correspondent: "Unknown Vendor"
+  document_mime_type: "application/pdf"
+
+dismissed_transfer_in:
+  transaction_record: transfer_in
+  paperless_connection: one
+  document_id: 103
+  status: dismissed
+  source: manual
+  score: 0.42
+  match_reasons: {}
+  document_title: "Irrelevant Document"
+  document_created_on: <%= 3.days.ago.to_date %>
+  document_correspondent: "Some Correspondent"
+  document_mime_type: "image/png"

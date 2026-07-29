@@ -8,6 +8,9 @@ class Transaction < ApplicationRecord
   has_many :taggings, as: :taggable, dependent: :destroy
   has_many :tags, through: :taggings
 
+  has_many :receipt_links, dependent: :destroy
+  has_one :linked_receipt, -> { linked }, class_name: "ReceiptLink"
+
   # File attachments (receipts, invoices, etc.) using Active Storage
   # Supports images (JPEG, PNG, GIF, WebP) and PDFs up to 10MB each
   # Maximum 10 attachments per transaction, family-scoped access
@@ -151,6 +154,10 @@ class Transaction < ApplicationRecord
     end
   rescue StandardError
     false
+  end
+
+  def receipt_linked?
+    receipt_links.linked.exists?
   end
 
   def activity_security_id

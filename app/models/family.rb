@@ -7,6 +7,7 @@ class Family < ApplicationRecord
   include Trading212Connectable
   include QuestradeConnectable
   include RedbarkConnectable
+  include PaperlessConnectable
 
   DATE_FORMATS = [
     [ "MM-DD-YYYY", "%m-%d-%Y" ],
