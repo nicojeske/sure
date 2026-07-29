@@ -347,6 +347,16 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :paperless do
+    resources :documents, only: [] do
+      member do
+        get :thumbnail
+        get :preview
+        get :download
+      end
+    end
+  end
+
   resource :subscription, only: %i[new show create] do
     collection do
       get :upgrade
