@@ -5,7 +5,7 @@ en:
       search_paperless: Search Paperless
     new:
       title: Search Paperless
-      search_placeholder: Search by vendor or receipt content...
+      search_placeholder: Search by title, vendor, or content...
       errors:
         unauthorized: Paperless rejected the API token.
         not_found: Paperless resource not found.

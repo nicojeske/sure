@@ -27,19 +27,13 @@ class Provider::Paperless
     get("/api/documents/", page_size: 1)["count"].to_i
   end
 
-  # `query:` is sent as `content__icontains`, not Paperless's own `query=` full-text search.
-  # `query=` was found to reliably return zero results on a real, healthy v3.0.4 instance
-  # (`/api/status/` reported `index_status: "OK"`, so this isn't a stale/unbuilt index) for terms
-  # confirmed present in `content` — root cause unconfirmed, but not worth depending on across
-  # self-hosted instances either way. `content__icontains` is a plain substring filter against the
-  # already-OCR'd body with no dependency on the full-text search subsystem at all.
   def search_documents(query: nil, created_from: nil, created_to: nil, page: 1, page_size: DEFAULT_PAGE_SIZE, ordering: "-created")
     get(
       "/api/documents/",
       page: page,
       page_size: page_size,
       ordering: ordering,
-      content__icontains: query,
+      query: query,
       created__date__gte: created_from&.to_s,
       created__date__lte: created_to&.to_s
     )
