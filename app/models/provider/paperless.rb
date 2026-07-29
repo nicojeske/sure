@@ -27,13 +27,18 @@ class Provider::Paperless
     get("/api/documents/", page_size: 1)["count"].to_i
   end
 
+  # `query:` is sent as `content__icontains`, not Paperless's own `query=` full-text search.
+  # `query=` depends on the instance's Whoosh search index being built/enabled, which is
+  # inconsistent across self-hosted setups (confirmed on a real instance where `query=` returned
+  # zero hits for a term that plainly appears in `content`) — `content__icontains` is a plain
+  # substring filter against the already-OCR'd body and has no such dependency.
   def search_documents(query: nil, created_from: nil, created_to: nil, page: 1, page_size: DEFAULT_PAGE_SIZE, ordering: "-created")
     get(
       "/api/documents/",
       page: page,
       page_size: page_size,
       ordering: ordering,
-      query: query,
+      content__icontains: query,
       created__date__gte: created_from&.to_s,
       created__date__lte: created_to&.to_s
     )
