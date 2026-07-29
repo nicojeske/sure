@@ -71,10 +71,6 @@ class EnableBankingAccount::Processor
 
       currency = parse_currency(enable_banking_account.currency) || account.currency || "EUR"
 
-      # Apply any user-configured balance correction (e.g. BNPL liabilities that the
-      # provider does not include in its reported cash balance).
-      effective_balance = balance + account.balance_adjustment
-
       # Wrap both writes in a transaction so a failure on either rolls back both.
       ActiveRecord::Base.transaction do
         if account.accountable.present? && account.accountable.respond_to?(:available_credit=)
@@ -84,6 +80,10 @@ class EnableBankingAccount::Processor
         if skip_balance_update
           account.update!(currency: currency)
         else
+          # Apply any user-configured balance correction (e.g. BNPL liabilities that the
+          # provider does not include in its reported cash balance).
+          effective_balance = balance + account.balance_adjustment
+
           account.update!(currency: currency, cash_balance: effective_balance)
 
           # Use set_current_balance to create a current_anchor valuation entry.
