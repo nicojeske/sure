@@ -1,0 +1,99 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<%= settings_section title: t(".connection_title"), subtitle: t(".connection_subtitle") do %>
+  <%= styled_form_with model: @paperless_connection,
+                       url: settings_receipts_path,
+                       method: :patch,
+                       data: {
+                         controller: "auto-submit-form"
+                       } do |form| %>
+    <%= form.text_field :base_url,
+                        label: t(".base_url_label"),
+                        placeholder: t(".base_url_placeholder"),
+                        data: { "auto-submit-form-target": "auto" } %>
+
+    <%= form.text_field :api_token,
+                        label: t(".api_token_label"),
+                        type: "password",
+                        placeholder: t(".api_token_placeholder"),
+                        value: @paperless_connection.api_token.present? ? "********" : "",
+                        data: { "auto-submit-form-target": "auto" } %>
+
+    <div class="flex cursor-pointer items-center gap-4 justify-between py-2">
+      <div class="text-sm space-y-1">
+        <p class="text-primary font-medium"><%= t(".verify_ssl_title") %></p>
+        <p class="text-secondary"><%= t(".verify_ssl_description") %></p>
+      </div>
+      <%= form.toggle :verify_ssl, data: { "auto-submit-form-target": "auto" } %>
+    </div>
+  <% end %>
+
+  <div class="flex items-center gap-3 pt-2">
+    <div data-controller="paperless-test-connection" data-paperless-test-connection-url-value="<%= test_connection_settings_receipts_path %>">
+      <%= render DS::Button.new(
+            text: t(".test_connection"),
+            variant: "outline",
+            type: "button",
+            data: {
+              paperless_test_connection_target: "button",
+              action: "click->paperless-test-connection#test",
+              testing_text: t(".testing")
+            }
+          ) %>
+      <span class="text-sm ml-2" data-paperless-test-connection-target="result"></span>
+    </div>
+  </div>
+
+  <% if @paperless_connection.last_connected_at.present? %>
+    <p class="text-secondary text-sm"><%= t(".last_connected_at", time: l(@paperless_connection.last_connected_at, format: :long)) %></p>
+  <% end %>
+
+  <% if @paperless_connection.last_error.present? %>
+    <%= render DS::Alert.new(message: t(".last_error", time: l(@paperless_connection.last_error_at, format: :long), error: @paperless_connection.last_error), variant: :error) %>
+  <% end %>
+<% end %>
+
+<%= settings_section title: t(".matching_title"), subtitle: t(".matching_subtitle") do %>
+  <%= styled_form_with model: @paperless_connection,
+                       url: settings_receipts_path,
+                       method: :patch,
+                       data: {
+                         controller: "auto-submit-form"
+                       } do |form| %>
+    <div class="flex cursor-pointer items-center gap-4 justify-between py-2">
+      <div class="text-sm space-y-1">
+        <p class="text-primary font-medium"><%= t(".auto_link_enabled_title") %></p>
+        <p class="text-secondary"><%= t(".auto_link_enabled_description") %></p>
+      </div>
+      <%= form.toggle :auto_link_enabled, data: { "auto-submit-form-target": "auto" } %>
+    </div>
+
+    <%= form.number_field :match_window_days,
+                         label: t(".match_window_days_label"),
+                         min: 0,
+                         max: 30,
+                         data: { "auto-submit-form-target": "auto" } %>
+
+    <%= form.number_field :min_auto_link_score,
+                         label: t(".min_auto_link_score_label"),
+                         min: 0,
+                         max: 1,
+                         step: 0.01,
+                         data: { "auto-submit-form-target": "auto" } %>
+  <% end %>
+<% end %>
+
+<% if @paperless_connection.persisted? %>
+  <%= settings_section title: t(".danger_zone_title") do %>
+    <div class="flex items-center justify-between">
+      <p class="text-secondary text-sm"><%= t(".disconnect_description") %></p>
+      <%= render DS::Button.new(
+            text: t(".disconnect"),
+            href: settings_receipts_path,
+            method: :delete,
+            variant: "destructive",
+            data: { turbo_confirm: t(".disconnect_confirm") }
+          ) %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,47 @@
+---
+en:
+  settings:
+    receipts:
+      not_authorized: You are not authorized to perform this action
+      show:
+        page_title: Receipts
+        connection_title: Paperless-ngx connection
+        connection_subtitle: Link transactions to receipts and invoices stored in your Paperless-ngx instance.
+        base_url_label: Paperless URL
+        base_url_placeholder: "https://paperless.example.com"
+        api_token_label: API token
+        api_token_placeholder: Paste your Paperless-ngx API token
+        verify_ssl_title: Verify SSL certificate
+        verify_ssl_description: Turn off only if your Paperless-ngx instance uses a self-signed certificate.
+        test_connection: Test connection
+        testing: Testing...
+        last_connected_at: "Last connected %{time}"
+        last_error: "Last error (%{time}): %{error}"
+        matching_title: Receipt matching
+        matching_subtitle: Control how transactions are automatically matched to receipts.
+        auto_link_enabled_title: Auto-link receipts
+        auto_link_enabled_description: Automatically link a transaction to a receipt when exactly one confident match is found.
+        match_window_days_label: Match window (days)
+        min_auto_link_score_label: Minimum auto-link score
+        danger_zone_title: Danger zone
+        disconnect_description: Remove your Paperless-ngx connection. Existing receipt links are kept, but no new matching will occur.
+        disconnect: Disconnect
+        disconnect_confirm: Disconnect Paperless-ngx? Existing receipt links will be kept, but no new matching will occur.
+      update:
+        success: Receipt settings updated
+      destroy:
+        disconnected: Paperless-ngx connection removed
+      test_connection:
+        not_configured: Add a Paperless URL and API token, then save before testing the connection.
+        success:
+          one: "Connected — found 1 document."
+          other: "Connected — found %{count} documents."
+        errors:
+          unauthorized: Paperless rejected the API token.
+          not_found: Paperless resource not found.
+          rate_limited: Paperless rate limit exceeded. Try again shortly.
+          server_error: Paperless returned a server error.
+          unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+          parse_error: Could not parse the response from Paperless.
+          untrusted_host: Paperless returned a link to an unexpected host.
+          unknown: Unexpected response from Paperless.

@@ -334,6 +334,9 @@ Rails.application.routes.draw do
     resource :ai_prompts, only: :show
     resource :llm_usage, only: :show
     resource :guides, only: :show
+    resource :receipts, controller: "receipts", only: %i[show update destroy] do
+      post :test_connection
+    end
     get "bank_sync", to: redirect("/settings/providers", status: 301)
     resource :providers, only: %i[show update] do
       collection do
