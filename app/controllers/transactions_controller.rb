@@ -377,6 +377,23 @@ class TransactionsController < ApplicationController
     end
   end
 
+  def match_receipt
+    transaction = accessible_transactions.includes(entry: :account).find(params[:id])
+
+    return unless require_account_permission!(transaction.entry.account, :annotate)
+
+    PaperlessAutoLinkJob.perform_later(transaction.id)
+
+    @entry = transaction.entry
+    @receipt_links = transaction.receipt_links.ordered
+    @scanning = true
+
+    render turbo_stream: turbo_stream.replace(
+      dom_id(transaction, :receipt_links),
+      partial: "receipt_links/index"
+    )
+  end
+
   def update_preferences
     Current.user.update_transactions_preferences(preferences_params)
     head :ok

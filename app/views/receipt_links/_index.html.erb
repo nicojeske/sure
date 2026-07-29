@@ -21,7 +21,14 @@
     <% end %>
 
     <% if linked_links.empty? && suggested_links.empty? %>
-      <%= render "receipt_links/empty", transaction: @entry.transaction %>
+      <% if @scanning %>
+        <p class="text-sm text-secondary px-1 py-2 flex items-center gap-2">
+          <%= icon "loader", size: "sm", class: "animate-spin" %>
+          <%= t(".searching") %>
+        </p>
+      <% else %>
+        <%= render "receipt_links/empty", transaction: @entry.transaction %>
+      <% end %>
     <% end %>
 
     <%= render DS::Link.new(

@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
+  include EntriesTestHelper
+
   setup do
     @user = users(:family_admin)
     @connection = paperless_connections(:one)
@@ -12,6 +14,35 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "#" + ActionView::RecordIdentifier.dom_id(transactions(:one), :receipt_links)
+  end
+
+  test "index auto-triggers a scan and renders a searching state for a never-scanned transaction" do
+    entry = create_transaction(date: 1.day.ago.to_date, kind: "standard")
+
+    assert_enqueued_with(job: PaperlessAutoLinkJob, args: [ entry.transaction.id ]) do
+      get transaction_receipt_links_path(entry)
+    end
+
+    assert_response :success
+    assert_select "p", text: /Searching Paperless/
+  end
+
+  test "index does not auto-trigger a scan for an already-scanned transaction" do
+    entry = create_transaction(date: 1.day.ago.to_date, kind: "standard")
+    entry.transaction.update_column(:receipt_scanned_at, Time.current)
+
+    assert_no_enqueued_jobs(only: PaperlessAutoLinkJob) do
+      get transaction_receipt_links_path(entry)
+    end
+  end
+
+  test "index does not auto-trigger a scan when auto_link_enabled is false" do
+    @connection.update!(auto_link_enabled: false)
+    entry = create_transaction(date: 1.day.ago.to_date, kind: "standard")
+
+    assert_no_enqueued_jobs(only: PaperlessAutoLinkJob) do
+      get transaction_receipt_links_path(entry)
+    end
   end
 
   test "new renders the search modal with stubbed results" do

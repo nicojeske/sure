@@ -442,6 +442,30 @@ end
     assert_equal "An unexpected error occurred while creating the recurring transaction", flash[:alert]
   end
 
+  test "match_receipt enqueues an auto-link scan and renders a searching state" do
+    entry = create_transaction(date: 1.day.ago.to_date, kind: "standard")
+    transaction = entry.transaction
+
+    assert_enqueued_with(job: PaperlessAutoLinkJob, args: [ transaction.id ]) do
+      post match_receipt_transaction_path(transaction)
+    end
+
+    assert_response :success
+    assert_select "p", text: /Searching Paperless/
+  end
+
+  test "match_receipt is refused without annotate permission on the account" do
+    sign_in users(:family_member)
+    entry = entries(:transfer_in) # credit_card account, shared read_only with family_member
+    transaction = entry.transaction
+
+    assert_no_enqueued_jobs(only: PaperlessAutoLinkJob) do
+      post match_receipt_transaction_path(transaction)
+    end
+
+    assert_redirected_to account_path(entry.account)
+  end
+
   test "unlock clears protection flags on user-modified entry" do
     family = families(:empty)
     sign_in users(:empty)

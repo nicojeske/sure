@@ -20,6 +20,7 @@ class ReceiptLinksController < ApplicationController
 
   def index
     load_receipt_links
+    trigger_auto_link_scan
   end
 
   def new
@@ -77,6 +78,16 @@ class ReceiptLinksController < ApplicationController
 
     def load_receipt_links
       @receipt_links = @entry.transaction.receipt_links.ordered
+    end
+
+    def trigger_auto_link_scan
+      return if @entry.transaction.receipt_scanned_at.present?
+
+      connection = Current.family.paperless_connection
+      return unless connection&.configured? && connection.auto_link_enabled?
+
+      @scanning = true
+      PaperlessAutoLinkJob.perform_later(@entry.transaction.id)
     end
 
     def render_receipt_links

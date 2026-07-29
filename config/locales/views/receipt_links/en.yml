@@ -3,6 +3,7 @@ en:
     index:
       suggestions_title: Suggestions
       search_paperless: Search Paperless
+      searching: Searching Paperless for a matching receipt...
     new:
       title: Search Paperless
       search_placeholder: Search by title, vendor, or content...
@@ -23,6 +24,7 @@ en:
     empty:
       not_scanned_yet: Not scanned for receipts yet.
       no_matches_found: No matching receipts found.
+      find_receipt_again: Find receipt again
     receipt_link:
       preview: Preview
       open_in_paperless: Open in Paperless

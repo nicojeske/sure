@@ -500,6 +500,7 @@ Rails.application.routes.draw do
       post :merge_duplicate
       post :dismiss_duplicate
       post :unlock
+      post :match_receipt
       patch :tags, action: :update_tags
     end
   end

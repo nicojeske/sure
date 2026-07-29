@@ -3,3 +3,14 @@
 <p class="text-sm text-secondary px-1 py-2">
   <%= transaction.receipt_scanned_at.present? ? t(".no_matches_found") : t(".not_scanned_yet") %>
 </p>
+
+<% if transaction.receipt_scanned_at.present? %>
+  <%= render DS::Link.new(
+        text: t(".find_receipt_again"),
+        icon: "refresh-cw",
+        variant: :outline,
+        size: :sm,
+        href: match_receipt_transaction_path(transaction),
+        data: { turbo_method: :post }
+      ) %>
+<% end %>

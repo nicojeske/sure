@@ -66,3 +66,9 @@ sweep_expired_goal_pledges:
   class: "SweepExpiredGoalPledgesJob"
   queue: "scheduled"
   description: "Marks goal pledges that passed their 7-day window as expired"
+
+paperless_receipt_scan:
+  cron: "40 3 * * *" # daily at 3:40 AM
+  class: "PaperlessScanAllJob"
+  queue: "scheduled"
+  description: "Auto-links Paperless receipts to unmatched transactions"
