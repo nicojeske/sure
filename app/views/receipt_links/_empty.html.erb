@@ -1,0 +1,5 @@
+<%# locals: (transaction:) %>
+
+<p class="text-sm text-secondary px-1 py-2">
+  <%= transaction.receipt_scanned_at.present? ? t(".no_matches_found") : t(".not_scanned_yet") %>
+</p>

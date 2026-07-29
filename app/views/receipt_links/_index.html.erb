@@ -1,0 +1,27 @@
+<%= turbo_frame_tag dom_id(@entry.transaction, :receipt_links) do %>
+  <div class="space-y-3">
+    <% linked_links = @receipt_links.linked.to_a %>
+    <% suggested_links = @receipt_links.suggested.to_a %>
+
+    <% if linked_links.any? %>
+      <div class="space-y-2">
+        <% linked_links.each do |receipt_link| %>
+          <%= render "receipt_links/receipt_link", entry: @entry, receipt_link: receipt_link %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if suggested_links.any? %>
+      <div class="space-y-2">
+        <h4 class="text-sm font-medium text-primary"><%= t(".suggestions_title") %></h4>
+        <% suggested_links.each do |receipt_link| %>
+          <%= render "receipt_links/suggestion", entry: @entry, receipt_link: receipt_link %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if linked_links.empty? && suggested_links.empty? %>
+      <%= render "receipt_links/empty", transaction: @entry.transaction %>
+    <% end %>
+  </div>
+<% end %>

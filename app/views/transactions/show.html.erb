@@ -137,6 +137,16 @@
       <%= render "transactions/attachments", transaction: @entry.transaction, can_upload: can_annotate_entry?, can_delete: can_edit_entry? %>
     <% end %>
 
+    <% if Current.family.paperless_configured? %>
+      <% dialog.with_section(title: t(".receipt")) do %>
+        <%= turbo_frame_tag dom_id(@entry.transaction, :receipt_links),
+              src: transaction_receipt_links_path(@entry), loading: :lazy,
+              data: { controller: "turbo-frame-timeout", turbo_frame_timeout_timeout_value: 10000 } do %>
+          <%= render "entries/loading" %>
+        <% end %>
+      <% end %>
+    <% end %>
+
     <% if (details = build_transaction_extra_details(@entry)) %>
       <% dialog.with_section(title: t(".additional_details"), open: false) do %>
         <div class="px-3 py-2 space-y-3">

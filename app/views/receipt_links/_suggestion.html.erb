@@ -1,0 +1,43 @@
+<%# locals: (entry:, receipt_link:) %>
+
+<% reason_labels = {
+     "amount" => t(".reason_amount"),
+     "date" => t(".reason_date"),
+     "correspondent" => t(".reason_correspondent")
+   } %>
+
+<div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
+  <div class="min-w-0 flex-1 space-y-1">
+    <%= render "receipt_links/document_summary", receipt_link: receipt_link %>
+    <% matched_reasons = receipt_link.match_reasons.keys.filter_map { |key| reason_labels[key] } %>
+    <p class="text-xs text-subdued truncate"><%= matched_reasons.join(" · ") %></p>
+  </div>
+
+  <div class="flex items-center gap-2 flex-shrink-0">
+    <%= render DS::Link.new(
+          href: preview_paperless_document_path(receipt_link.document_id),
+          variant: :outline,
+          size: :sm,
+          icon: "eye",
+          text: "",
+          target: "_blank",
+          aria: { label: t(".preview") }
+        ) %>
+    <%= render DS::Button.new(
+          href: confirm_transaction_receipt_link_path(entry, receipt_link),
+          method: :patch,
+          variant: :outline,
+          size: :sm,
+          icon: "check",
+          text: t(".confirm")
+        ) %>
+    <%= render DS::Button.new(
+          href: dismiss_transaction_receipt_link_path(entry, receipt_link),
+          method: :patch,
+          variant: :ghost,
+          size: :sm,
+          icon: "x",
+          text: t(".dismiss")
+        ) %>
+  </div>
+</div>

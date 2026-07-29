@@ -1,0 +1,36 @@
+<%# locals: (entry:, receipt_link:) %>
+
+<div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
+  <%= render "receipt_links/document_summary", receipt_link: receipt_link %>
+
+  <div class="flex items-center gap-2 flex-shrink-0">
+    <%= render DS::Link.new(
+          href: preview_paperless_document_path(receipt_link.document_id),
+          variant: :outline,
+          size: :sm,
+          icon: "eye",
+          text: "",
+          target: "_blank",
+          aria: { label: t(".preview") }
+        ) %>
+    <%= render DS::Link.new(
+          href: receipt_link.paperless_connection.document_url(receipt_link.document_id),
+          variant: :outline,
+          size: :sm,
+          icon: "external-link",
+          text: "",
+          target: "_blank",
+          aria: { label: t(".open_in_paperless") }
+        ) %>
+    <%= render DS::Button.new(
+          href: transaction_receipt_link_path(entry, receipt_link),
+          method: :delete,
+          variant: :outline_destructive,
+          size: :sm,
+          icon: "unlink",
+          text: "",
+          aria_label: t(".unlink"),
+          confirm: CustomConfirm.for_resource_deletion("receipt link")
+        ) %>
+  </div>
+</div>

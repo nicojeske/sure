@@ -11,4 +11,8 @@ class ReceiptLink < ApplicationRecord
   scope :suggested, -> { where(status: "suggested") }
   scope :dismissed, -> { where(status: "dismissed") }
   scope :ordered, -> { order(score: :desc, created_at: :desc) }
+
+  def linked? = status == "linked"
+  def suggested? = status == "suggested"
+  def dismissed? = status == "dismissed"
 end
