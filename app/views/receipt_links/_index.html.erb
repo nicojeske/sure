@@ -23,5 +23,14 @@
     <% if linked_links.empty? && suggested_links.empty? %>
       <%= render "receipt_links/empty", transaction: @entry.transaction %>
     <% end %>
+
+    <%= render DS::Link.new(
+          text: t(".search_paperless"),
+          icon: "search",
+          variant: :outline,
+          size: :sm,
+          href: new_transaction_receipt_link_path(@entry),
+          frame: :modal
+        ) %>
   </div>
 <% end %>

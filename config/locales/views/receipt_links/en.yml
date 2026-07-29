@@ -2,6 +2,24 @@ en:
   receipt_links:
     index:
       suggestions_title: Suggestions
+      search_paperless: Search Paperless
+    new:
+      title: Search Paperless
+      search_placeholder: Search by title, vendor, or content...
+      errors:
+        unauthorized: Paperless rejected the API token.
+        not_found: Paperless resource not found.
+        rate_limited: Paperless rate limit exceeded. Try again shortly.
+        server_error: Paperless returned a server error.
+        unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+        parse_error: Could not parse the response from Paperless.
+        untrusted_host: Paperless returned a link to an unexpected host.
+        unknown: Unexpected response from Paperless.
+    search_results:
+      no_results: No documents found.
+      load_more: Load more
+    search_result:
+      link: Link
     empty:
       not_scanned_yet: Not scanned for receipts yet.
       no_matches_found: No matching receipts found.

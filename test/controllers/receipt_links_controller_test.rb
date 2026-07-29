@@ -3,6 +3,7 @@ require "test_helper"
 class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
   setup do
     @user = users(:family_admin)
+    @connection = paperless_connections(:one)
     sign_in @user
   end
 
@@ -11,6 +12,72 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "#" + ActionView::RecordIdentifier.dom_id(transactions(:one), :receipt_links)
+  end
+
+  test "new renders the search modal with stubbed results" do
+    Provider::Paperless.any_instance.expects(:search_documents).returns(
+      "results" => [ { "id" => 501, "title" => "Coffee Receipt", "created" => "2026-07-01", "correspondent" => 7 } ],
+      "next" => nil
+    )
+    Provider::Paperless.any_instance.expects(:correspondents).returns(7 => "Cafe")
+
+    get new_transaction_receipt_link_path(entries(:transaction))
+
+    assert_response :success
+    assert_select "turbo-frame#paperless_search_results"
+    assert_select "p", text: "Coffee Receipt"
+  end
+
+  test "new renders an error state when Paperless is unreachable" do
+    Provider::Paperless.any_instance.expects(:search_documents).raises(Provider::Paperless::Error.new("down", :unreachable))
+
+    get new_transaction_receipt_link_path(entries(:transaction))
+
+    assert_response :success
+    assert_select "turbo-frame#paperless_search_results" do
+      assert_select "p", text: /Could not reach Paperless/
+    end
+  end
+
+  test "new 404s when the family has no configured connection" do
+    @connection.destroy
+
+    get new_transaction_receipt_link_path(entries(:transaction))
+
+    assert_response :not_found
+  end
+
+  test "create links a document and caches its metadata" do
+    Provider::Paperless.any_instance.expects(:document).with("501").returns(
+      "id" => 501, "title" => "Coffee Receipt", "created" => "2026-07-01", "correspondent" => 7, "mime_type" => "application/pdf"
+    )
+    Provider::Paperless.any_instance.expects(:correspondents).returns(7 => "Cafe")
+
+    assert_difference "ReceiptLink.count", 1 do
+      post transaction_receipt_links_path(entries(:transaction), document_id: "501")
+    end
+
+    assert_response :success
+    link = ReceiptLink.find_by(document_id: 501)
+    assert_equal "linked", link.status
+    assert_equal "manual", link.source
+    assert_equal "Coffee Receipt", link.document_title
+    assert_equal "Cafe", link.document_correspondent
+  end
+
+  test "create with an already linked document_id is idempotent" do
+    existing = receipt_links(:linked_one)
+    Provider::Paperless.any_instance.expects(:document).with(existing.document_id.to_s).returns(
+      "id" => existing.document_id, "title" => "Starbucks Receipt", "created" => "2026-07-01", "correspondent" => nil, "mime_type" => "application/pdf"
+    )
+    Provider::Paperless.any_instance.expects(:correspondents).returns({})
+
+    assert_no_difference "ReceiptLink.count" do
+      post transaction_receipt_links_path(entries(:transaction), document_id: existing.document_id.to_s)
+    end
+
+    assert_response :success
+    assert_equal "linked", existing.reload.status
   end
 
   test "confirm promotes a suggestion to linked" do

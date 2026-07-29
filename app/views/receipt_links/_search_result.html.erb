@@ -1,0 +1,24 @@
+<%# locals: (entry:, document:, correspondent:) %>
+
+<div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-surface-inset">
+      <%= image_tag thumbnail_paperless_document_path(document["id"]), class: "w-full h-full object-cover" %>
+    </div>
+    <div class="min-w-0 flex-1">
+      <p class="text-sm font-medium text-primary truncate"><%= document["title"] %></p>
+      <p class="text-xs text-secondary truncate">
+        <%= [ correspondent, (Date.parse(document["created"].to_s).strftime("%b %d, %Y") rescue nil) ].compact.join(" · ") %>
+      </p>
+    </div>
+  </div>
+
+  <%= render DS::Button.new(
+        text: t(".link"),
+        icon: "link",
+        variant: :outline,
+        size: :sm,
+        href: transaction_receipt_links_path(entry, document_id: document["id"]),
+        method: :post
+      ) %>
+</div>

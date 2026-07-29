@@ -1,0 +1,21 @@
+<%= render DS::Dialog.new(variant: "modal") do |dialog| %>
+  <% dialog.with_header(title: t(".title")) %>
+
+  <% dialog.with_body do %>
+    <%= form_with url: new_transaction_receipt_link_path(@entry), method: :get,
+          data: { turbo_frame: "paperless_search_results" },
+          class: "mb-4" do %>
+      <%= render DS::SearchInput.new(name: "q", value: @query, placeholder: t(".search_placeholder")) %>
+    <% end %>
+
+    <%= turbo_frame_tag "paperless_search_results", class: "block max-h-[420px] overflow-y-auto -mx-1 px-1" do %>
+      <%= render "receipt_links/search_results",
+            entry: @entry,
+            query: @query,
+            documents: @documents,
+            correspondents: @correspondents,
+            next_page: @next_page,
+            error_message: @search_error_message %>
+    <% end %>
+  <% end %>
+<% end %>

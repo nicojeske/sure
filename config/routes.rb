@@ -481,7 +481,7 @@ Rails.application.routes.draw do
     resource :pending_duplicate_merges, only: %i[new create]
     resource :category, only: :update, controller: :transaction_categories
     resources :attachments, only: %i[show create destroy], controller: :transaction_attachments
-    resources :receipt_links, only: %i[index destroy] do
+    resources :receipt_links, only: %i[index new create destroy] do
       member do
         patch :confirm
         patch :dismiss

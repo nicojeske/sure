@@ -1,0 +1,25 @@
+<%# locals: (entry:, query:, documents:, correspondents:, next_page:, error_message:) %>
+
+<% if error_message %>
+  <p class="text-sm text-destructive px-1 py-2"><%= error_message %></p>
+<% elsif documents.empty? %>
+  <p class="text-sm text-secondary px-1 py-2"><%= t(".no_results") %></p>
+<% else %>
+  <div class="space-y-2">
+    <% documents.each do |document| %>
+      <%= render "receipt_links/search_result", entry: entry, document: document, correspondent: correspondents[document["correspondent"]] %>
+    <% end %>
+  </div>
+
+  <% if next_page %>
+    <div class="pt-3 text-center">
+      <%= render DS::Link.new(
+            text: t(".load_more"),
+            variant: :outline,
+            size: :sm,
+            href: new_transaction_receipt_link_path(entry, q: query, page: next_page),
+            data: { turbo_frame: "paperless_search_results" }
+          ) %>
+    </div>
+  <% end %>
+<% end %>
