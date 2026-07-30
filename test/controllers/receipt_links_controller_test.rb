@@ -70,6 +70,30 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "new shows the amount and same-amount pill for a document with custom fields, and still shows a Link button for one without" do
+    @connection.update!(total_amount_field_id: 2)
+    Provider::Paperless.any_instance.expects(:search_documents).returns(
+      "results" => [
+        { "id" => 501, "title" => "Coffee Receipt", "created" => "2026-07-01", "correspondent" => 7,
+          "custom_fields" => [ { "field" => 2, "value" => "USD10.00" } ] },
+        { "id" => 502, "title" => "Plain Receipt", "created" => "2026-07-01", "correspondent" => nil, "custom_fields" => [] }
+      ],
+      "next" => nil
+    )
+    Provider::Paperless.any_instance.expects(:correspondents).returns(7 => "Cafe")
+    Provider::Paperless.any_instance.expects(:custom_fields).returns(
+      2 => { "name" => "Betrag", "data_type" => "monetary", "currency" => "USD" }
+    )
+
+    get new_transaction_receipt_link_path(entries(:transaction))
+
+    assert_response :success
+    assert_select "p", text: "Coffee Receipt"
+    assert_select "span", text: "$10.00"
+    assert_select "p", text: "Plain Receipt"
+    assert_select "button", text: /Link/, count: 2
+  end
+
   test "new 404s when the family has no configured connection" do
     @connection.destroy
 

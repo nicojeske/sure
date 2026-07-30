@@ -1,0 +1,21 @@
+<%# locals: (total:, reference:, entry:) %>
+
+<% if total.present? || reference.present? %>
+  <div class="flex items-center gap-2 flex-wrap">
+    <% if total.present? %>
+      <span class="text-xs text-secondary font-medium"><%= total.format %></span>
+    <% end %>
+
+    <% if reference.present? %>
+      <span class="text-xs text-subdued truncate">#<%= reference %></span>
+    <% end %>
+
+    <% if total.present? %>
+      <% if total.currency.iso_code == entry.currency && total.amount.round(2) == entry.amount.abs.round(2) %>
+        <%= render DS::Pill.new(label: t(".same_amount"), tone: :success, icon: "check", marker: false, size: :sm) %>
+      <% else %>
+        <%= render DS::Pill.new(label: t(".amount_differs"), tone: :warning, icon: "triangle-alert", marker: false, size: :sm) %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

@@ -112,12 +112,26 @@ class ReceiptLinksController < ApplicationController
       @documents = response["results"] || []
       @next_page = response["next"].present? ? @page + 1 : nil
       @correspondents = provider.correspondents
+      @document_facts = @documents.index_by { |document| document["id"] }.transform_values { |document| facts_builder.for(document) }
+      @documents = sort_by_amount_match(@documents)
     rescue Provider::Paperless::Error => e
       capture_paperless_error(e, source: "ReceiptLinksController#new")
       @documents = []
       @next_page = nil
       @correspondents = {}
+      @document_facts = {}
       @search_error_message = t(".errors.#{ERROR_TYPE_MESSAGE_KEYS.fetch(e.error_type, :unknown)}")
+    end
+
+    # Stable-sorts documents whose mapped total matches the transaction amount to the front,
+    # without removing anything from the list — a document with no custom fields keeps its place.
+    def sort_by_amount_match(documents)
+      documents.sort_by.with_index { |document, index| [ same_amount_match?(document) ? 0 : 1, index ] }
+    end
+
+    def same_amount_match?(document)
+      total = @document_facts[document["id"]]&.total
+      total.present? && total.currency.iso_code == @entry.currency && total.amount.round(2) == @entry.amount.abs.round(2)
     end
 
     def link_document(document_id)
@@ -135,15 +149,18 @@ class ReceiptLinksController < ApplicationController
       link.apply_document_metadata(
         document,
         correspondent_name: provider.correspondents[document["correspondent"]],
-        facts: document_facts.for(document)
+        facts: facts_builder.for(document)
       )
       link.save!
     rescue Provider::Paperless::Error => e
       capture_paperless_error(e, source: "ReceiptLinksController#create")
     end
 
-    def document_facts
-      @document_facts ||= PaperlessConnection::DocumentFacts.new(@paperless_connection, custom_fields)
+    # Named distinctly from the `@document_facts` ivar `new`/`load_search_results` builds (a
+    # { document_id => Facts } hash for the view) — this is the PaperlessConnection::DocumentFacts
+    # service object itself, memoized so `link_document` only builds/looks up custom_fields once.
+    def facts_builder
+      @facts_builder ||= PaperlessConnection::DocumentFacts.new(@paperless_connection, custom_fields)
     end
 
     # Skipped entirely when the connection has no field mapped, so linking a document never pays

@@ -2,13 +2,15 @@
 
 <% reason_labels = {
      "amount" => t(".reason_amount"),
+     "amount_secondary" => t(".reason_amount_secondary"),
+     "amount_conflict" => t(".reason_amount_conflict"),
      "date" => t(".reason_date"),
      "correspondent" => t(".reason_correspondent")
    } %>
 
 <div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
   <div class="min-w-0 flex-1 space-y-1">
-    <%= render "receipt_links/document_summary", receipt_link: receipt_link %>
+    <%= render "receipt_links/document_summary", receipt_link: receipt_link, entry: entry %>
     <% matched_reasons = receipt_link.match_reasons.keys.filter_map { |key| reason_labels[key] } %>
     <p class="text-xs text-subdued truncate"><%= matched_reasons.join(" · ") %></p>
   </div>

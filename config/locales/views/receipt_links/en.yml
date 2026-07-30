@@ -34,5 +34,10 @@ en:
       confirm: Confirm
       dismiss: Dismiss
       reason_amount: amount matched
+      reason_amount_secondary: net/tax amount matched
+      reason_amount_conflict: total amount differs
       reason_date: date matched
       reason_correspondent: correspondent matched
+    document_amount:
+      same_amount: Same amount
+      amount_differs: Total differs

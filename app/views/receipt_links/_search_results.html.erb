@@ -1,4 +1,4 @@
-<%# locals: (entry:, query:, documents:, correspondents:, next_page:, error_message:) %>
+<%# locals: (entry:, query:, documents:, correspondents:, document_facts:, next_page:, error_message:) %>
 
 <% if error_message %>
   <p class="text-sm text-destructive px-1 py-2"><%= error_message %></p>
@@ -7,7 +7,8 @@
 <% else %>
   <div class="space-y-2">
     <% documents.each do |document| %>
-      <%= render "receipt_links/search_result", entry: entry, document: document, correspondent: correspondents[document["correspondent"]] %>
+      <%= render "receipt_links/search_result", entry: entry, document: document,
+            correspondent: correspondents[document["correspondent"]], facts: document_facts[document["id"]] %>
     <% end %>
   </div>
 

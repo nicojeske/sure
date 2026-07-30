@@ -1,7 +1,7 @@
 <%# locals: (entry:, receipt_link:) %>
 
 <div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
-  <%= render "receipt_links/document_summary", receipt_link: receipt_link %>
+  <%= render "receipt_links/document_summary", receipt_link: receipt_link, entry: entry %>
 
   <div class="flex items-center gap-2 flex-shrink-0">
     <%= render DS::Link.new(

@@ -1,13 +1,17 @@
-<%# locals: (receipt_link:) %>
+<%# locals: (receipt_link:, entry:) %>
 
 <div class="flex items-center gap-3 min-w-0">
   <div class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-surface-inset">
     <%= image_tag thumbnail_paperless_document_path(receipt_link.document_id), class: "w-full h-full object-cover" %>
   </div>
-  <div class="min-w-0 flex-1">
+  <div class="min-w-0 flex-1 space-y-0.5">
     <p class="text-sm font-medium text-primary truncate"><%= receipt_link.document_title %></p>
     <p class="text-xs text-secondary truncate">
       <%= [ receipt_link.document_correspondent, receipt_link.document_created_on&.strftime("%b %d, %Y") ].compact.join(" · ") %>
     </p>
+    <%= render "receipt_links/document_amount",
+          total: receipt_link.document_amount.present? ? Money.new(receipt_link.document_amount, receipt_link.document_currency) : nil,
+          reference: receipt_link.document_reference,
+          entry: entry %>
   </div>
 </div>
