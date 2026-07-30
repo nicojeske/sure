@@ -144,16 +144,21 @@
                       </span>
                     <% end %>
 
-                    <%# Receipt-linked indicator %>
-                    <% if @linked_receipt_transaction_ids ? @linked_receipt_transaction_ids.include?(transaction.id) : transaction.receipt_linked? %>
+                    <%# Receipt-linked indicator — clicking it previews the document in a modal %>
+                    <% receipt_link = @primary_receipt_links ? @primary_receipt_links[transaction.id] : transaction.linked_receipt %>
+                    <% if receipt_link %>
                       <% receipt_conflict = @conflicting_receipt_transaction_ids&.include?(transaction.id) %>
-                      <%= render DS::Pill.new(
+                      <% receipt_pill = render DS::Pill.new(
                         label: t("transactions.transaction.receipt"),
                         tone: receipt_conflict ? :warning : :neutral,
                         marker: false,
                         icon: "receipt",
                         title: receipt_conflict ? t("transactions.transaction.receipt_amount_conflict_tooltip") : t("transactions.transaction.receipt_tooltip")
                       ) %>
+                      <%= link_to receipt_pill, paperless_document_path(receipt_link.document_id),
+                            data: { turbo_frame: "modal" },
+                            class: "focus-ring rounded-full",
+                            aria: { label: t("transactions.transaction.receipt_preview") } %>
                     <% end %>
 
                     <% if transaction.transfer.present? %>

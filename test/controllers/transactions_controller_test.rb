@@ -364,6 +364,14 @@ end
     assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_amount_conflict_tooltip"), count: 1
   end
 
+  test "index wraps the receipt pill in a link that opens the preview modal" do
+    # receipt_links(:linked_one) is already linked to entries(:transaction)'s transaction.
+    get transactions_url
+
+    assert_response :success
+    assert_select "a[href=?][data-turbo-frame=modal]", paperless_document_path(receipt_links(:linked_one).document_id)
+  end
+
   test "index does not offer the receipt filter for a family with no configured Paperless connection" do
     sign_in users(:empty)
 

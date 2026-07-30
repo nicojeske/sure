@@ -9,7 +9,9 @@ class Transaction < ApplicationRecord
   has_many :tags, through: :taggings
 
   has_many :receipt_links, dependent: :destroy
-  has_one :linked_receipt, -> { linked }, class_name: "ReceiptLink"
+  # `.ordered` (score desc) picks the same "best" receipt as PaperlessConnection::Matcher when a
+  # transaction has more than one linked document (e.g. an invoice and a receipt).
+  has_one :linked_receipt, -> { linked.ordered }, class_name: "ReceiptLink"
 
   # File attachments (receipts, invoices, etc.) using Active Storage
   # Supports images (JPEG, PNG, GIF, WebP) and PDFs up to 10MB each

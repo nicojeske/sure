@@ -429,20 +429,22 @@ class TransactionsController < ApplicationController
   end
 
   private
-    # Populates @linked_receipt_transaction_ids (rendered as the receipt pill) and
-    # @conflicting_receipt_transaction_ids (rendered with a warning tone when the linked
-    # document's structured total, if any, differs from the transaction amount) for a page of
-    # already-loaded transactions, in one query instead of Transaction#receipt_linked? per row.
+    # Populates @primary_receipt_links (transaction_id => the "best" linked ReceiptLink, rendered
+    # as the receipt pill and its preview-modal link) and @conflicting_receipt_transaction_ids
+    # (rendered with a warning tone when the linked document's structured total, if any, differs
+    # from the transaction amount) for a page of already-loaded transactions, in one query instead
+    # of Transaction#linked_receipt per row.
     def load_receipt_link_indicators(transactions)
       transaction_ids = transactions.map(&:id)
-      @linked_receipt_transaction_ids = Set.new
+      @primary_receipt_links = {}
       @conflicting_receipt_transaction_ids = Set.new
       return if transaction_ids.empty?
 
       transactions_by_id = transactions.index_by(&:id)
 
-      ReceiptLink.linked.where(transaction_id: transaction_ids).each do |link|
-        @linked_receipt_transaction_ids << link.transaction_id
+      ReceiptLink.linked.where(transaction_id: transaction_ids).ordered.each do |link|
+        # `.ordered` (score desc) means the first link seen per transaction is the "best" one.
+        @primary_receipt_links[link.transaction_id] ||= link
         next if link.document_amount.blank?
 
         entry = transactions_by_id[link.transaction_id]&.entry

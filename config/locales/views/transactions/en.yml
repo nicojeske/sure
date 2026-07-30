@@ -151,6 +151,7 @@ en:
       receipt: Receipt
       receipt_tooltip: Linked to a receipt in Paperless-ngx
       receipt_amount_conflict_tooltip: Linked receipt's amount differs from this transaction
+      receipt_preview: Preview receipt
     merge_duplicate:
       success: Transactions merged successfully
       failure: Could not merge transactions
