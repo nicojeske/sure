@@ -118,6 +118,9 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
     assert_equal "manual", link.source
     assert_equal "Coffee Receipt", link.document_title
     assert_equal "Cafe", link.document_correspondent
+    # The pill lives in the transactions list, outside the drawer's receipt_links frame replaced
+    # above — assert it's refreshed too, so linking from the drawer shows the pill without a reload.
+    assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(transactions(:one), :receipt_pill)
   end
 
   test "create with an already linked document_id is idempotent" do
@@ -142,6 +145,7 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "linked", receipt_link.reload.status
+    assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(transactions(:transfer_out), :receipt_pill)
   end
 
   test "dismiss sets the status to dismissed" do
@@ -161,6 +165,7 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
+    assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(transactions(:one), :receipt_pill)
   end
 
   test "a user without annotate permission on the account is refused" do

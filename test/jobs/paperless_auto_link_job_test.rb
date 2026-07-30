@@ -14,6 +14,13 @@ class PaperlessAutoLinkJobTest < ActiveJob::TestCase
       target: ActionView::RecordIdentifier.dom_id(@transaction, :receipt_links),
       html: anything
     )
+    # The row's receipt pill lives outside the drawer's receipt_links frame above, in the
+    # transactions list — broadcast a second replace so a background match shows up there live.
+    Turbo::StreamsChannel.expects(:broadcast_replace_to).with(
+      @connection.family,
+      target: ActionView::RecordIdentifier.dom_id(@transaction, :receipt_pill),
+      html: anything
+    )
 
     PaperlessAutoLinkJob.perform_now(@transaction.id)
   end
@@ -23,7 +30,7 @@ class PaperlessAutoLinkJobTest < ActiveJob::TestCase
       .raises(Provider::Paperless::Error.new("down", :unreachable))
 
     DebugLogEntry.expects(:capture).with(has_entries(provider_key: "paperless"))
-    Turbo::StreamsChannel.expects(:broadcast_replace_to)
+    Turbo::StreamsChannel.expects(:broadcast_replace_to).twice
 
     assert_nothing_raised do
       PaperlessAutoLinkJob.perform_now(@transaction.id)

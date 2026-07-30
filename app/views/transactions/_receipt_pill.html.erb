@@ -1,0 +1,21 @@
+<%# locals: (transaction:, receipt_link: nil, conflict: nil) %>
+<%# Wrapper always renders (even with no link) so turbo_stream.replace has a stable target —
+    see ReceiptLinksController and PaperlessAutoLinkJob, which replace this node whenever
+    linked-receipt state changes without re-rendering the whole transaction row. %>
+<% link = local_assigns.key?(:receipt_link) ? receipt_link : transaction.linked_receipt %>
+<% has_conflict = local_assigns.key?(:conflict) ? conflict : link&.amount_conflicts_with?(transaction.entry) %>
+<span id="<%= dom_id(transaction, :receipt_pill) %>" class="contents">
+  <% if link %>
+    <% receipt_pill = render DS::Pill.new(
+      label: t("transactions.transaction.receipt"),
+      tone: has_conflict ? :warning : :neutral,
+      marker: false,
+      icon: "receipt",
+      title: has_conflict ? t("transactions.transaction.receipt_amount_conflict_tooltip") : t("transactions.transaction.receipt_tooltip")
+    ) %>
+    <%= link_to receipt_pill, paperless_document_path(link.document_id),
+          data: { turbo_frame: "modal" },
+          class: "focus-ring rounded-full",
+          aria: { label: t("transactions.transaction.receipt_preview") } %>
+  <% end %>
+</span>

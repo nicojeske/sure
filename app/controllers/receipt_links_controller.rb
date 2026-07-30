@@ -37,7 +37,8 @@ class ReceiptLinksController < ApplicationController
 
     render turbo_stream: [
       turbo_stream.replace(dom_id(@entry.transaction, :receipt_links), partial: "receipt_links/index"),
-      turbo_stream.replace("modal", view_context.turbo_frame_tag("modal"))
+      turbo_stream.replace("modal", view_context.turbo_frame_tag("modal")),
+      receipt_pill_stream
     ]
   end
 
@@ -93,9 +94,24 @@ class ReceiptLinksController < ApplicationController
     def render_receipt_links
       load_receipt_links
 
-      render turbo_stream: turbo_stream.replace(
-        dom_id(@entry.transaction, :receipt_links),
-        partial: "receipt_links/index"
+      render turbo_stream: [
+        turbo_stream.replace(dom_id(@entry.transaction, :receipt_links), partial: "receipt_links/index"),
+        receipt_pill_stream
+      ]
+    end
+
+    # Refreshes the row's receipt pill (see transactions/_receipt_pill) alongside the drawer's
+    # receipt_links frame — the pill lives outside that frame, in the transactions list, so it
+    # would otherwise stay stale until a full page reload. Harmless no-op when the mutation
+    # didn't touch linked state (e.g. dismissing a suggestion).
+    def receipt_pill_stream
+      transaction = @entry.transaction
+      link = @receipt_links.detect(&:linked?)
+
+      turbo_stream.replace(
+        dom_id(transaction, :receipt_pill),
+        partial: "transactions/receipt_pill",
+        locals: { transaction: transaction, receipt_link: link, conflict: link&.amount_conflicts_with?(@entry) }
       )
     end
 

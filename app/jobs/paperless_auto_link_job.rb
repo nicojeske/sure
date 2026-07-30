@@ -34,15 +34,32 @@ class PaperlessAutoLinkJob < ApplicationJob
 
   private
     def broadcast_receipt_links(transaction, entry)
+      transaction.receipt_links.reset
+      receipt_links = transaction.receipt_links.ordered
+
       html = ApplicationController.render(
         partial: "receipt_links/index",
-        assigns: { entry: entry, receipt_links: transaction.receipt_links.ordered }
+        assigns: { entry: entry, receipt_links: receipt_links }
       )
 
       Turbo::StreamsChannel.broadcast_replace_to(
         entry.account.family,
         target: dom_id(transaction, :receipt_links),
         html: html
+      )
+
+      # The row's receipt pill lives in the transactions list, outside the drawer's receipt_links
+      # frame above — broadcast a second replace so a background match shows up there too, live.
+      link = receipt_links.detect(&:linked?)
+      pill_html = ApplicationController.render(
+        partial: "transactions/receipt_pill",
+        locals: { transaction: transaction, receipt_link: link, conflict: link&.amount_conflicts_with?(entry) }
+      )
+
+      Turbo::StreamsChannel.broadcast_replace_to(
+        entry.account.family,
+        target: dom_id(transaction, :receipt_pill),
+        html: pill_html
       )
     end
 end

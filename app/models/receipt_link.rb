@@ -39,4 +39,13 @@ class ReceiptLink < ApplicationRecord
   rescue ArgumentError, TypeError
     nil
   end
+
+  # True when the document's structured total (if any) disagrees with the entry it's linked to —
+  # drives the warning-toned receipt pill. Shared by TransactionsController's per-page preload
+  # and the standalone rendering path so the two can't drift.
+  def amount_conflicts_with?(entry)
+    return false if document_amount.blank? || entry.nil?
+
+    document_currency != entry.currency || document_amount.round(2) != entry.amount.abs.round(2)
+  end
 end

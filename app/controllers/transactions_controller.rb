@@ -446,13 +446,9 @@ class TransactionsController < ApplicationController
       ReceiptLink.linked.where(transaction_id: transaction_ids).ordered.each do |link|
         # `.ordered` (score desc) means the first link seen per transaction is the "best" one.
         @primary_receipt_links[link.transaction_id] ||= link
-        next if link.document_amount.blank?
 
         entry = transactions_by_id[link.transaction_id]&.entry
-        next if entry.nil?
-
-        conflict = link.document_currency != entry.currency || link.document_amount.round(2) != entry.amount.abs.round(2)
-        @conflicting_receipt_transaction_ids << link.transaction_id if conflict
+        @conflicting_receipt_transaction_ids << link.transaction_id if link.amount_conflicts_with?(entry)
       end
     end
 
