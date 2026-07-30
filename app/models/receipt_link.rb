@@ -15,4 +15,27 @@ class ReceiptLink < ApplicationRecord
   def linked? = status == "linked"
   def suggested? = status == "suggested"
   def dismissed? = status == "dismissed"
+
+  # Shared by PaperlessConnection::Matcher and ReceiptLinksController#link_document, the two
+  # places a document gets attached to a transaction — keeps the cached document_* columns
+  # (used to render rows without a Paperless HTTP call) in sync in exactly one place.
+  def apply_document_metadata(document, correspondent_name:, facts: nil)
+    assign_attributes(
+      document_title: document["title"],
+      document_created_on: self.class.parse_document_date(document["created"]),
+      document_correspondent: correspondent_name,
+      document_mime_type: document["mime_type"],
+      document_amount: facts&.total&.amount,
+      document_currency: facts&.total&.currency&.iso_code,
+      document_reference: facts&.reference
+    )
+  end
+
+  def self.parse_document_date(value)
+    return nil if value.blank?
+
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
 end

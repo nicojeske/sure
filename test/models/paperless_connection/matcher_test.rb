@@ -106,21 +106,126 @@ class PaperlessConnection::MatcherTest < ActiveSupport::TestCase
     assert_equal "Original Title", link.document_title
   end
 
+  test "a structured total matching the transaction scores 0.55 and auto-links" do
+    map_amount_fields
+    transaction = build_transaction(amount: 23.42, name: "Netto", date: Date.current, currency: "EUR")
+
+    stub_search([
+      document(id: 1001, content: "", created: Date.current, correspondent: 1, title: "Netto receipt",
+               custom_fields: [ { "field" => 2, "value" => "EUR23.42" } ])
+    ])
+    stub_correspondents(1 => "Netto")
+    stub_custom_fields
+
+    candidates = @matcher.candidates_for(transaction)
+
+    # Same-day date match (0.25) + exact correspondent match (0.20) + structured amount (0.55) = 1.0
+    assert_equal 1.0, candidates.first.score
+    assert candidates.first.reasons["amount"]
+
+    @matcher.match!(transaction)
+    assert_equal "linked", transaction.receipt_links.sole.status
+  end
+
+  test "a structured total that conflicts with the transaction amount scores no amount points, is flagged, and only suggests" do
+    map_amount_fields
+    transaction = build_transaction(amount: 19.90, name: "Netto", date: Date.current, currency: "EUR")
+
+    stub_search([
+      document(id: 1002, content: "", created: Date.current, correspondent: 1, title: "Netto receipt",
+               custom_fields: [ { "field" => 2, "value" => "EUR23.42" } ])
+    ])
+    stub_correspondents(1 => "Netto")
+    stub_custom_fields
+
+    candidates = @matcher.candidates_for(transaction)
+    assert candidates.first.reasons["amount_conflict"]
+    assert_not candidates.first.reasons["amount"]
+
+    @matcher.match!(transaction)
+    link = transaction.receipt_links.sole
+    assert_equal "suggested", link.status
+    assert link.match_reasons["amount_conflict"]
+  end
+
+  test "the net field matching (while the total field does not) scores the weaker secondary weight" do
+    map_amount_fields
+    transaction = build_transaction(amount: 21.39, name: "Netto", date: Date.current, currency: "EUR")
+
+    stub_search([
+      document(id: 1003, content: "", created: Date.current, correspondent: nil,
+               custom_fields: [ { "field" => 2, "value" => "EUR23.42" }, { "field" => 3, "value" => "EUR21.39" } ])
+    ])
+    stub_correspondents({})
+    stub_custom_fields
+
+    candidates = @matcher.candidates_for(transaction)
+
+    assert candidates.first.reasons["amount_secondary"]
+    assert_not candidates.first.reasons["amount"]
+  end
+
+  test "a document with no custom fields still matches via OCR" do
+    map_amount_fields
+    transaction = build_transaction(amount: 10, name: "Cafe", date: Date.current)
+
+    stub_search([ document(id: 1004, content: "Total: 10.00", created: Date.current, correspondent: nil) ])
+    stub_correspondents({})
+    stub_custom_fields
+
+    candidates = @matcher.candidates_for(transaction)
+
+    assert candidates.first.reasons["amount"]
+  end
+
+  test "the second, amount-targeted search finds a document outside the date window and merges without duplicating" do
+    map_amount_fields
+    transaction = build_transaction(amount: 205.87, name: "JetBrains", date: Date.current, currency: "EUR")
+
+    outside_window_doc = document(id: 775, content: "", created: Date.current - 20.days, correspondent: nil,
+                                   custom_fields: [ { "field" => 2, "value" => "EUR205.87" } ])
+
+    Provider::Paperless.any_instance.stubs(:search_documents).with do |opts|
+      opts[:custom_field_query].nil?
+    end.returns({ "results" => [] })
+
+    Provider::Paperless.any_instance.stubs(:search_documents).with do |opts|
+      opts[:custom_field_query].present?
+    end.returns({ "results" => [ outside_window_doc ] })
+
+    stub_correspondents({})
+    stub_custom_fields
+
+    candidates = @matcher.candidates_for(transaction)
+
+    assert_equal 1, candidates.size
+    assert_equal 775, candidates.first.document["id"]
+  end
+
+  test "no second search is issued when no monetary field is mapped" do
+    transaction = build_transaction(amount: 10, name: "Cafe", date: Date.current)
+
+    Provider::Paperless.any_instance.expects(:search_documents).once.returns({ "results" => [] })
+
+    @matcher.candidates_for(transaction)
+  end
+
   private
-    def build_transaction(amount:, name:, date:)
+    def build_transaction(amount:, name:, date:, currency: "USD")
       transaction = Transaction.new
-      @account.entries.create!(name: name, date: date, amount: amount, currency: "USD", entryable: transaction)
+      @account.entries.create!(name: name, date: date, amount: amount, currency: currency, entryable: transaction)
       transaction
     end
 
-    def document(id:, content:, created:, correspondent:, title: "Document #{id}", mime_type: "application/pdf")
+    def document(id:, content:, created:, correspondent:, title: "Document #{id}", mime_type: "application/pdf", custom_fields: [])
       {
         "id" => id,
         "title" => title,
         "content" => content,
         "created" => created.iso8601,
         "correspondent" => correspondent,
-        "mime_type" => mime_type
+        "mime_type" => mime_type,
+        "custom_fields" => custom_fields
       }
     end
 
@@ -130,5 +235,17 @@ class PaperlessConnection::MatcherTest < ActiveSupport::TestCase
 
     def stub_correspondents(hash)
       Provider::Paperless.any_instance.stubs(:correspondents).returns(hash)
+    end
+
+    def stub_custom_fields
+      Provider::Paperless.any_instance.stubs(:custom_fields).returns(
+        2 => { "name" => "Betrag", "data_type" => "monetary", "currency" => "EUR" },
+        3 => { "name" => "Netto-Betrag", "data_type" => "monetary", "currency" => "EUR" },
+        4 => { "name" => "MwSt-Betrag", "data_type" => "monetary", "currency" => "EUR" }
+      )
+    end
+
+    def map_amount_fields
+      @connection.update!(total_amount_field_id: 2, net_amount_field_id: 3, tax_amount_field_id: 4)
     end
 end

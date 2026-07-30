@@ -7,9 +7,15 @@ class PaperlessConnection::Matcher
   MAX_SUGGESTIONS  = 5
   SEARCH_PAGE_SIZE = 50
 
-  AMOUNT_WEIGHT       = 0.55
-  DATE_WEIGHT         = 0.25
-  CORRESPONDENT_WEIGHT = 0.20
+  # A structured total from the document's mapped custom field is stronger evidence than an OCR
+  # regex hit; a match on the secondary (net/tax) field is weaker than either. A structured total
+  # that's present but matches nothing scores 0 for amount and is flagged as a conflict (see
+  # `#score_document`), which keeps it out of auto-linking without hiding it from suggestions.
+  STRUCTURED_AMOUNT_WEIGHT           = 0.55
+  OCR_AMOUNT_WEIGHT                  = 0.45
+  STRUCTURED_SECONDARY_AMOUNT_WEIGHT = 0.30
+  DATE_WEIGHT                        = 0.25
+  CORRESPONDENT_WEIGHT               = 0.20
 
   attr_reader :connection
 
@@ -17,7 +23,7 @@ class PaperlessConnection::Matcher
     @connection = connection
   end
 
-  # Pure — issues one search request, scores every result locally, no writes.
+  # Pure — issues one or two search requests, scores every result locally, no writes.
   def candidates_for(transaction)
     entry = transaction.entry
     return [] if entry.nil?
@@ -31,6 +37,8 @@ class PaperlessConnection::Matcher
       ordering: "-created"
     )["results"] || []
 
+    documents = merge_documents(documents, structured_amount_documents(entry))
+
     documents.filter_map do |document|
       score, reasons = score_document(document, transaction, entry, window)
       next if score <= 0
@@ -40,10 +48,14 @@ class PaperlessConnection::Matcher
   end
 
   # Persists links/suggestions per the decision table and always stamps receipt_scanned_at,
-  # including when zero candidates are found.
+  # including when zero candidates are found. A candidate whose mapped total conflicts with the
+  # transaction amount never auto-links, even if it otherwise clears the threshold on date +
+  # correspondent alone — it still competes for a suggestion slot below.
   def match!(transaction)
     candidates = candidates_for(transaction)
-    qualifying = candidates.select { |candidate| candidate.score >= connection.min_auto_link_score.to_f }
+    qualifying = candidates.select do |candidate|
+      candidate.score >= connection.min_auto_link_score.to_f && !candidate.reasons["amount_conflict"]
+    end
 
     case qualifying.size
     when 0
@@ -74,14 +86,68 @@ class PaperlessConnection::Matcher
       @correspondents ||= provider.correspondents
     end
 
+    # Skipped entirely when the connection has no field mapped — the common case for a family
+    # that hasn't set up Paperless custom fields — so the OCR-only path never pays for an extra
+    # request.
+    def custom_fields
+      @custom_fields ||= any_field_mapped? ? provider.custom_fields : {}
+    end
+
+    def any_field_mapped?
+      [
+        connection.total_amount_field_id, connection.net_amount_field_id,
+        connection.tax_amount_field_id, connection.reference_field_id
+      ].any?
+    end
+
+    def document_facts
+      @document_facts ||= PaperlessConnection::DocumentFacts.new(connection, custom_fields)
+    end
+
+    # Merges the date-window search with the amount-targeted one, first occurrence winning, keyed
+    # by document id.
+    def merge_documents(primary, secondary)
+      return primary if secondary.empty?
+
+      by_id = primary.index_by { |document| document["id"] }
+      secondary.each { |document| by_id[document["id"]] ||= document }
+      by_id.values
+    end
+
+    # A second search over a wider window, targeted at documents whose mapped total/net/tax field
+    # exactly matches the transaction amount — catches invoices dated away from their payment date,
+    # which the primary date-window search would otherwise miss entirely. Skipped when no monetary
+    # field is mapped, or the transaction has no amount to search for.
+    def structured_amount_documents(entry)
+      field_names = mapped_monetary_field_names
+      return [] if field_names.empty? || entry.amount.abs.zero?
+
+      window = connection.structured_match_window_days
+      value = "#{entry.currency}#{format('%.2f', entry.amount.abs)}"
+      query = [ "OR", field_names.map { |name| [ name, "exact", value ] } ]
+
+      provider.search_documents(
+        created_from: entry.date - window.days,
+        created_to: entry.date + window.days,
+        page_size: SEARCH_PAGE_SIZE,
+        ordering: "-created",
+        custom_field_query: query
+      )["results"] || []
+    end
+
+    def mapped_monetary_field_names
+      [ connection.total_amount_field_id, connection.net_amount_field_id, connection.tax_amount_field_id ]
+        .compact
+        .filter_map { |id| custom_fields.dig(id, "name") }
+    end
+
     def score_document(document, transaction, entry, window)
       reasons = {}
       score = 0.0
 
-      if amount_matches?(document, entry)
-        score += AMOUNT_WEIGHT
-        reasons["amount"] = true
-      end
+      amount_score, amount_reason = amount_score(document, entry)
+      score += amount_score
+      reasons[amount_reason] = true if amount_reason
 
       date_score = date_proximity_score(document, entry, window)
       if date_score > 0
@@ -96,6 +162,34 @@ class PaperlessConnection::Matcher
       end
 
       [ score.round(3), reasons ]
+    end
+
+    # Structured totals outrank the OCR guess when present. A mapped total that's present in the
+    # same currency but matches neither the transaction amount nor the secondary (net/tax) fields
+    # is treated as a conflict — explicit evidence *against* this being the right document — while
+    # net/tax alone matching is treated as weaker corroborating evidence.
+    def amount_score(document, entry)
+      facts = document_facts.for(document)
+
+      if same_amount?(facts.total, entry)
+        return [ STRUCTURED_AMOUNT_WEIGHT, "amount" ]
+      end
+
+      if facts.total.present? && facts.total.currency.iso_code == entry.currency
+        return [ 0.0, "amount_conflict" ] unless same_amount?(facts.net, entry) || same_amount?(facts.tax, entry)
+
+        return [ STRUCTURED_SECONDARY_AMOUNT_WEIGHT, "amount_secondary" ]
+      end
+
+      return [ OCR_AMOUNT_WEIGHT, "amount" ] if amount_matches?(document, entry)
+
+      [ 0.0, nil ]
+    end
+
+    def same_amount?(money, entry)
+      return false if money.nil?
+
+      money.currency.iso_code == entry.currency && money.amount.round(2) == entry.amount.abs.round(2)
     end
 
     # Vendor receipts render amounts however the vendor's locale dictates, not the family's
@@ -140,11 +234,7 @@ class PaperlessConnection::Matcher
     end
 
     def parse_document_date(value)
-      return nil if value.blank?
-
-      Date.parse(value.to_s)
-    rescue ArgumentError, TypeError
-      nil
+      ReceiptLink.parse_document_date(value)
     end
 
     def correspondent_similarity(document, transaction, entry)
@@ -183,15 +273,14 @@ class PaperlessConnection::Matcher
 
       return if link.persisted? && link.status.in?(%w[linked dismissed])
 
-      link.assign_attributes(
-        status: status,
-        source: source,
-        score: candidate.score,
-        match_reasons: candidate.reasons,
-        document_title: document["title"],
-        document_created_on: parse_document_date(document["created"]),
-        document_correspondent: correspondents[document["correspondent"]],
-        document_mime_type: document["mime_type"]
+      link.status = status
+      link.source = source
+      link.score = candidate.score
+      link.match_reasons = candidate.reasons
+      link.apply_document_metadata(
+        document,
+        correspondent_name: correspondents[document["correspondent"]],
+        facts: document_facts.for(document)
       )
       link.save!
     end

@@ -130,25 +130,35 @@ class ReceiptLinksController < ApplicationController
         paperless_connection: @paperless_connection,
         document_id: document["id"]
       )
-      link.assign_attributes(
-        status: "linked",
-        source: "manual",
-        document_title: document["title"],
-        document_created_on: parse_document_date(document["created"]),
-        document_correspondent: provider.correspondents[document["correspondent"]],
-        document_mime_type: document["mime_type"]
+      link.status = "linked"
+      link.source = "manual"
+      link.apply_document_metadata(
+        document,
+        correspondent_name: provider.correspondents[document["correspondent"]],
+        facts: document_facts.for(document)
       )
       link.save!
     rescue Provider::Paperless::Error => e
       capture_paperless_error(e, source: "ReceiptLinksController#create")
     end
 
-    def parse_document_date(value)
-      return nil if value.blank?
+    def document_facts
+      @document_facts ||= PaperlessConnection::DocumentFacts.new(@paperless_connection, custom_fields)
+    end
 
-      Date.parse(value.to_s)
-    rescue ArgumentError, TypeError
-      nil
+    # Skipped entirely when the connection has no field mapped, so linking a document never pays
+    # for an extra request in the common case where Paperless custom fields aren't configured.
+    def custom_fields
+      return {} unless any_field_mapped?
+
+      provider.custom_fields
+    end
+
+    def any_field_mapped?
+      [
+        @paperless_connection.total_amount_field_id, @paperless_connection.net_amount_field_id,
+        @paperless_connection.tax_amount_field_id, @paperless_connection.reference_field_id
+      ].any?
     end
 
     def capture_paperless_error(error, source:)
