@@ -112,7 +112,11 @@
                           rounded: true
                         ) %>
                       <% end %>
-                      <span class="text-primary font-medium"><%= recurring_transaction.merchant.name %></span>
+                      <%= link_to recurring_transaction.merchant.name,
+                          transactions_path_for_merchant(recurring_transaction.merchant),
+                          data: { turbo_frame: "_top" },
+                          title: t("shared.view_merchant_transactions", merchant: recurring_transaction.merchant.name),
+                          class: "text-primary font-medium hover:underline" %>
                     <% else %>
                       <%= render DS::FilledIcon.new(
                         variant: :text,

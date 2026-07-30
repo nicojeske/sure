@@ -180,7 +180,13 @@
                     </span>
                   <% else %>
                     <% if transaction.merchant&.present? %>
-                      <span class="hidden lg:inline truncate"><%= transaction.merchant.name %> • </span>
+                      <span class="hidden lg:inline truncate">
+                        <%= link_to transaction.merchant.name,
+                            transactions_path_for_merchant(transaction.merchant),
+                            data: { turbo_frame: "_top" },
+                            title: t("shared.view_merchant_transactions", merchant: transaction.merchant.name),
+                            class: "hover:underline" %> •
+                      </span>
                     <% end %>
                     <span class="text-secondary hidden lg:inline">
                       <%= link_to entry.account.name,
@@ -191,7 +197,13 @@
                     <div class="flex min-w-0 items-center gap-1">
                       <%= render "categories/category_name_mobile", transaction: transaction %>
                       <% if transaction.merchant&.present? %>
-                        <span class="lg:hidden min-w-0 truncate">• <%= transaction.merchant.name %></span>
+                        <span class="lg:hidden min-w-0 truncate">•
+                          <%= link_to transaction.merchant.name,
+                              transactions_path_for_merchant(transaction.merchant),
+                              data: { turbo_frame: "_top" },
+                              title: t("shared.view_merchant_transactions", merchant: transaction.merchant.name),
+                              class: "hover:underline" %>
+                        </span>
                       <% end %>
                     </div>
                   <% end %>

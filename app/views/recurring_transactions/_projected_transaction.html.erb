@@ -30,7 +30,15 @@
           <div class="space-y-0.5">
             <div class="flex items-center gap-1 min-w-0">
               <div class="truncate flex-shrink">
-                <%= recurring_transaction.merchant.present? ? recurring_transaction.merchant.name : recurring_transaction.name %>
+                <% if recurring_transaction.merchant.present? %>
+                  <%= link_to recurring_transaction.merchant.name,
+                      transactions_path_for_merchant(recurring_transaction.merchant),
+                      data: { turbo_frame: "_top" },
+                      title: t("shared.view_merchant_transactions", merchant: recurring_transaction.merchant.name),
+                      class: "hover:underline" %>
+                <% else %>
+                  <%= recurring_transaction.name %>
+                <% end %>
               </div>
 
               <div class="flex items-center gap-1 flex-shrink-0">

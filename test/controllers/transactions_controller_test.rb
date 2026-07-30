@@ -96,6 +96,25 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_dom "#total-transactions", count: 1, text: "1"
   end
 
+  test "merchant name links to transactions filtered by that merchant" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+
+    merchant = family.merchants.create! name: "Acme Coffee", type: "FamilyMerchant"
+    matching_transaction = create_transaction(account: account, name: "Coffee run", merchant: merchant)
+    other_transaction = create_transaction(account: account, name: "Other purchase")
+
+    get transactions_url
+
+    assert_select "a[href=?]", transactions_path(q: { merchants: [ merchant.name ] })
+
+    get transactions_url(q: { merchants: [ merchant.name ] })
+
+    assert_dom "#" + dom_id(matching_transaction), count: 1
+    assert_dom "#" + dom_id(other_transaction), count: 0
+  end
+
   test "can update notes on split child transaction" do
     parent = create_transaction(account: accounts(:depository), amount: 100)
     parent.split!([ { name: "Part 1", amount: 60, category_id: nil }, { name: "Part 2", amount: 40, category_id: nil } ])

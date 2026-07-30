@@ -41,6 +41,7 @@ en:
         actions: Actions
         source: Source
     family_merchant:
+      view_transactions: View transactions
       edit: Edit
       delete: Delete
     merchant:
@@ -70,6 +71,7 @@ en:
       target_not_found: Target merchant not found
       invalid_merchants: Invalid merchants selected
     provider_merchant:
+      view_transactions: View transactions
       edit: Edit
       remove: Remove
       remove_confirm_title: Remove merchant?

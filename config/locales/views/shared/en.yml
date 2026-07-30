@@ -36,6 +36,7 @@ en:
     trend_change:
       no_change: "no change"
     cancel: Cancel
+    view_merchant_transactions: "View all transactions from %{merchant}"
     transaction_tabs:
       expense: Expense
       income: Income

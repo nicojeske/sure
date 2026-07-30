@@ -25,6 +25,14 @@ module TransactionsHelper
     entry.split_child? && Current.user.show_split_grouped? && params_grouped == "true"
   end
 
+  # Links to the transactions index pre-filtered to a single merchant. Name-based
+  # because Transaction::Search#apply_merchant_filter matches on merchants.name —
+  # which also keeps the Merchant filter tab's checkbox in sync and the active-filter
+  # chip human-readable.
+  def transactions_path_for_merchant(merchant)
+    transactions_path(q: { merchants: [ merchant.name ] })
+  end
+
   # ---- Transaction extra details helpers ----
   # Returns a structured hash describing extra details for a transaction.
   # Input can be a Transaction or an Entry (responds_to :transaction).
