@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1504,6 +1504,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_000000) do
     t.datetime "last_error_at"
     t.integer "match_window_days", default: 3, null: false
     t.decimal "min_auto_link_score", precision: 4, scale: 3, default: "0.9", null: false
+    t.integer "net_amount_field_id"
+    t.integer "reference_field_id"
+    t.integer "structured_match_window_days", default: 30, null: false
+    t.integer "tax_amount_field_id"
+    t.integer "total_amount_field_id"
     t.datetime "updated_at", null: false
     t.boolean "verify_ssl", default: true, null: false
     t.index ["family_id"], name: "index_paperless_connections_on_family_id", unique: true
@@ -1626,10 +1631,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_000000) do
 
   create_table "receipt_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.decimal "document_amount", precision: 19, scale: 4
     t.string "document_correspondent"
     t.date "document_created_on"
+    t.string "document_currency"
     t.integer "document_id", null: false
     t.string "document_mime_type"
+    t.string "document_reference"
     t.string "document_title"
     t.jsonb "match_reasons", default: {}, null: false
     t.uuid "paperless_connection_id", null: false

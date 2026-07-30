@@ -4,6 +4,12 @@ class Settings::ReceiptsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @connection = paperless_connections(:one)
     sign_in users(:family_admin)
+
+    Provider::Paperless.any_instance.stubs(:custom_fields).returns(
+      2 => { "name" => "Betrag", "data_type" => "monetary", "currency" => "EUR" },
+      3 => { "name" => "Netto-Betrag", "data_type" => "monetary", "currency" => "EUR" },
+      5 => { "name" => "Rechnungsnummer", "data_type" => "string", "currency" => nil }
+    )
   end
 
   test "non-admin is redirected" do
@@ -44,6 +50,33 @@ class Settings::ReceiptsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "https://paperless.updated.com", @connection.base_url
     assert_equal 5, @connection.match_window_days
     assert_equal 0.75, @connection.min_auto_link_score.to_f
+  end
+
+  test "updates the custom field mapping and structured match window" do
+    patch settings_receipts_path, params: { paperless_connection: {
+      base_url: @connection.base_url,
+      total_amount_field_id: "2",
+      net_amount_field_id: "3",
+      reference_field_id: "5",
+      structured_match_window_days: "14"
+    } }
+
+    assert_redirected_to settings_receipts_path
+    @connection.reload
+    assert_equal 2, @connection.total_amount_field_id
+    assert_equal 3, @connection.net_amount_field_id
+    assert_equal 5, @connection.reference_field_id
+    assert_equal 14, @connection.structured_match_window_days
+  end
+
+  test "shows the settings page when fetching custom fields fails" do
+    Provider::Paperless.any_instance.stubs(:custom_fields).raises(
+      Provider::Paperless::Error.new("bad token", :unauthorized)
+    )
+
+    get settings_receipts_path
+
+    assert_response :success
   end
 
   test "does not clobber the token when the masked placeholder is submitted" do

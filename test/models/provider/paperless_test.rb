@@ -119,6 +119,62 @@ class Provider::PaperlessTest < ActiveSupport::TestCase
     assert_equal :untrusted_host, error.error_type
   end
 
+  test "custom_fields follows pagination and caches the result" do
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+
+    page1 = stub_request(:get, "https://paperless.example.com/api/custom_fields/")
+      .with(query: { "page_size" => "100" })
+      .to_return(
+        status: 200,
+        body: {
+          "next" => "https://paperless.example.com/api/custom_fields/?page=2&page_size=100",
+          "results" => [
+            { "id" => 2, "name" => "Betrag", "data_type" => "monetary", "extra_data" => { "default_currency" => "EUR" } }
+          ]
+        }.to_json
+      )
+
+    page2 = stub_request(:get, "https://paperless.example.com/api/custom_fields/")
+      .with(query: { "page" => "2", "page_size" => "100" })
+      .to_return(
+        status: 200,
+        body: {
+          "next" => nil,
+          "results" => [ { "id" => 5, "name" => "Rechnungsnummer", "data_type" => "string", "extra_data" => nil } ]
+        }.to_json
+      )
+
+    result = @provider.custom_fields
+
+    assert_equal(
+      {
+        2 => { "name" => "Betrag", "data_type" => "monetary", "currency" => "EUR" },
+        5 => { "name" => "Rechnungsnummer", "data_type" => "string", "currency" => nil }
+      },
+      result
+    )
+    assert_requested page1
+    assert_requested page2
+
+    @provider.custom_fields
+
+    assert_requested page1, times: 1
+    assert_requested page2, times: 1
+  ensure
+    Rails.cache = original_cache
+  end
+
+  test "search_documents sends custom_field_query as a JSON-encoded string" do
+    stub = stub_request(:get, "https://paperless.example.com/api/documents/")
+      .with(query: { "page" => "1", "page_size" => "25", "ordering" => "-created", "custom_field_query" => '["Betrag","exact","EUR23.42"]' })
+      .to_return(status: 200, body: documents_response_body)
+
+    @provider.search_documents(custom_field_query: [ "Betrag", "exact", "EUR23.42" ])
+
+    assert_requested stub
+  end
+
   test "file returns raw bytes and the upstream content type without JSON parsing" do
     stub_request(:get, "https://paperless.example.com/api/documents/7/thumb/")
       .to_return(status: 200, body: "\xFF\xD8\xFF".b, headers: { "Content-Type" => "image/webp" })

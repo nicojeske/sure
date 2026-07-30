@@ -20,12 +20,15 @@ class Settings::ReceiptsController < ApplicationController
       [ t("breadcrumbs.home"), root_path ],
       [ t("breadcrumbs.receipts"), nil ]
     ]
+
+    load_custom_fields
   end
 
   def update
     if @paperless_connection.update(paperless_connection_attributes)
       redirect_to settings_receipts_path, notice: t(".success")
     else
+      load_custom_fields
       render :show, status: :unprocessable_entity
     end
   end
@@ -39,12 +42,6 @@ class Settings::ReceiptsController < ApplicationController
     unless @paperless_connection.configured?
       return render json: { success: false, message: t(".not_configured") }
     end
-
-    provider = Provider::Paperless.new(
-      base_url: @paperless_connection.base_url,
-      api_token: @paperless_connection.api_token,
-      verify_ssl: @paperless_connection.verify_ssl
-    )
 
     document_count = provider.test_connection
     @paperless_connection.update_columns(last_connected_at: Time.current, last_error_at: nil, last_error: nil)
@@ -72,6 +69,24 @@ class Settings::ReceiptsController < ApplicationController
       @paperless_connection = Current.family.paperless_connection || Current.family.build_paperless_connection
     end
 
+    def load_custom_fields
+      @custom_fields = {}
+      return unless @paperless_connection.configured?
+
+      @custom_fields = provider.custom_fields
+    rescue Provider::Paperless::Error => e
+      message_key = ERROR_TYPE_MESSAGE_KEYS.fetch(e.error_type, :unknown)
+      @custom_fields_error = t("settings.receipts.show.errors.#{message_key}")
+    end
+
+    def provider
+      @provider ||= Provider::Paperless.new(
+        base_url: @paperless_connection.base_url,
+        api_token: @paperless_connection.api_token,
+        verify_ssl: @paperless_connection.verify_ssl
+      )
+    end
+
     def paperless_connection_attributes
       attrs = paperless_connection_params.to_h
 
@@ -89,7 +104,9 @@ class Settings::ReceiptsController < ApplicationController
 
     def paperless_connection_params
       params.require(:paperless_connection).permit(
-        :base_url, :api_token, :verify_ssl, :auto_link_enabled, :match_window_days, :min_auto_link_score
+        :base_url, :api_token, :verify_ssl, :auto_link_enabled, :match_window_days, :min_auto_link_score,
+        :total_amount_field_id, :net_amount_field_id, :tax_amount_field_id, :reference_field_id,
+        :structured_match_window_days
       )
     end
 

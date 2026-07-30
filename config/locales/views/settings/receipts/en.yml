@@ -23,6 +23,23 @@ en:
         auto_link_enabled_description: Automatically link a transaction to a receipt when exactly one confident match is found.
         match_window_days_label: Match window (days)
         min_auto_link_score_label: Minimum auto-link score
+        structured_match_window_days_label: Amount search window (days)
+        custom_fields_title: Custom fields
+        custom_fields_subtitle: Map Paperless-ngx custom fields so Sure can read structured receipt data instead of guessing from OCR text.
+        total_amount_field_id_label: Total amount field
+        net_amount_field_id_label: Net amount field
+        tax_amount_field_id_label: Tax amount field
+        reference_field_id_label: Reference number field
+        field_none: "— None —"
+        errors:
+          unauthorized: Paperless rejected the API token.
+          not_found: Paperless resource not found.
+          rate_limited: Paperless rate limit exceeded. Try again shortly.
+          server_error: Paperless returned a server error.
+          unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+          parse_error: Could not parse the response from Paperless.
+          untrusted_host: Paperless returned a link to an unexpected host.
+          unknown: Unexpected response from Paperless.
         danger_zone_title: Danger zone
         disconnect_description: Remove your Paperless-ngx connection. Existing receipt links are kept, but no new matching will occur.
         disconnect: Disconnect

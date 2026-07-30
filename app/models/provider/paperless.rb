@@ -15,6 +15,7 @@ class Provider::Paperless
   API_VERSION_HEADER = "application/json; version=10"
   DEFAULT_PAGE_SIZE = 25
   CORRESPONDENTS_PAGE_SIZE = 100
+  CUSTOM_FIELDS_PAGE_SIZE = 100
 
   def initialize(base_url:, api_token:, verify_ssl: true)
     @base_url = base_url.to_s.chomp("/")
@@ -27,7 +28,7 @@ class Provider::Paperless
     get("/api/documents/", page_size: 1)["count"].to_i
   end
 
-  def search_documents(query: nil, created_from: nil, created_to: nil, page: 1, page_size: DEFAULT_PAGE_SIZE, ordering: "-created")
+  def search_documents(query: nil, created_from: nil, created_to: nil, page: 1, page_size: DEFAULT_PAGE_SIZE, ordering: "-created", custom_field_query: nil)
     get(
       "/api/documents/",
       page: page,
@@ -35,7 +36,8 @@ class Provider::Paperless
       ordering: ordering,
       query: query,
       created__date__gte: created_from&.to_s,
-      created__date__lte: created_to&.to_s
+      created__date__lte: created_to&.to_s,
+      custom_field_query: custom_field_query&.to_json
     )
   end
 
@@ -47,6 +49,14 @@ class Provider::Paperless
   def correspondents
     Rails.cache.fetch([ "paperless/correspondents", Digest::SHA256.hexdigest(base_url) ], expires_in: 1.hour) do
       fetch_all_correspondents
+    end
+  end
+
+  # { id => { "name" =>, "data_type" =>, "currency" => } }, cached — used to resolve custom-field
+  # ids/names for the receipts settings mapping UI and for building custom_field_query clauses.
+  def custom_fields
+    Rails.cache.fetch([ "paperless/custom_fields", Digest::SHA256.hexdigest(base_url) ], expires_in: 1.hour) do
+      fetch_all_custom_fields
     end
   end
 
@@ -79,6 +89,31 @@ class Provider::Paperless
       loop do
         payload = get(path, params)
         Array(payload["results"]).each { |c| results[c["id"]] = c["name"] }
+
+        next_url = payload["next"]
+        break if next_url.blank?
+
+        path = relative_path_for(next_url)
+        params = {}
+      end
+
+      results
+    end
+
+    def fetch_all_custom_fields
+      results = {}
+      path = "/api/custom_fields/"
+      params = { page_size: CUSTOM_FIELDS_PAGE_SIZE }
+
+      loop do
+        payload = get(path, params)
+        Array(payload["results"]).each do |field|
+          results[field["id"]] = {
+            "name" => field["name"],
+            "data_type" => field["data_type"],
+            "currency" => field["extra_data"]&.dig("default_currency")
+          }
+        end
 
         next_url = payload["next"]
         break if next_url.blank?

@@ -53,6 +53,52 @@
   <% end %>
 <% end %>
 
+<% if @paperless_connection.persisted? && @paperless_connection.configured? %>
+  <%= settings_section title: t(".custom_fields_title"), subtitle: t(".custom_fields_subtitle") do %>
+    <% if @custom_fields_error.present? %>
+      <%= render DS::Alert.new(message: @custom_fields_error, variant: :error) %>
+    <% else %>
+      <% monetary_fields = @custom_fields.select { |_, meta| meta["data_type"] == "monetary" } %>
+      <% reference_fields = @custom_fields.select { |_, meta| %w[string url integer select].include?(meta["data_type"]) } %>
+      <% net_suggestion = @paperless_connection.suggested_field_id(:net_amount_field_id, monetary_fields) %>
+      <% tax_suggestion = @paperless_connection.suggested_field_id(:tax_amount_field_id, monetary_fields) %>
+      <% total_suggestion = @paperless_connection.suggested_field_id(:total_amount_field_id, monetary_fields, taken_ids: [ net_suggestion, tax_suggestion ].compact) %>
+      <% reference_suggestion = @paperless_connection.suggested_field_id(:reference_field_id, reference_fields) %>
+
+      <%= styled_form_with model: @paperless_connection,
+                           url: settings_receipts_path,
+                           method: :patch,
+                           data: {
+                             controller: "auto-submit-form"
+                           } do |form| %>
+        <%= form.select :total_amount_field_id,
+                        monetary_fields.map { |id, meta| [ meta["name"], id ] },
+                        label: t(".total_amount_field_id_label"),
+                        include_blank: t(".field_none"),
+                        selected: @paperless_connection.total_amount_field_id || total_suggestion %>
+
+        <%= form.select :net_amount_field_id,
+                        monetary_fields.map { |id, meta| [ meta["name"], id ] },
+                        label: t(".net_amount_field_id_label"),
+                        include_blank: t(".field_none"),
+                        selected: @paperless_connection.net_amount_field_id || net_suggestion %>
+
+        <%= form.select :tax_amount_field_id,
+                        monetary_fields.map { |id, meta| [ meta["name"], id ] },
+                        label: t(".tax_amount_field_id_label"),
+                        include_blank: t(".field_none"),
+                        selected: @paperless_connection.tax_amount_field_id || tax_suggestion %>
+
+        <%= form.select :reference_field_id,
+                        reference_fields.map { |id, meta| [ meta["name"], id ] },
+                        label: t(".reference_field_id_label"),
+                        include_blank: t(".field_none"),
+                        selected: @paperless_connection.reference_field_id || reference_suggestion %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>
+
 <%= settings_section title: t(".matching_title"), subtitle: t(".matching_subtitle") do %>
   <%= styled_form_with model: @paperless_connection,
                        url: settings_receipts_path,
@@ -72,6 +118,12 @@
                          label: t(".match_window_days_label"),
                          min: 0,
                          max: 30,
+                         data: { "auto-submit-form-target": "auto" } %>
+
+    <%= form.number_field :structured_match_window_days,
+                         label: t(".structured_match_window_days_label"),
+                         min: 0,
+                         max: 365,
                          data: { "auto-submit-form-target": "auto" } %>
 
     <%= form.number_field :min_auto_link_score,
