@@ -858,6 +858,17 @@ end
     assert_select "a[href=?]", expected_toggle_href
   end
 
+  test "the period picker reflects the actually selected period, not always 30D" do
+    get transactions_url(period: "last_90_days")
+    assert_response :success
+
+    # Regression: chart_period_for always rebuilt the period via Period.custom, which
+    # never carries a `key`, so UI::PeriodPicker's lookup silently fell back to
+    # displaying 30D no matter which period was actually picked.
+    assert_select "button[aria-label='Time period: 90D']"
+    assert_select "button[aria-label='Time period: 30D']", count: 0
+  end
+
   test "an explicit chart granularity survives the period picker and view toggle links" do
     family = families(:empty)
     sign_in users(:empty)

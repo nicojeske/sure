@@ -581,6 +581,12 @@ class TransactionsController < ApplicationController
       end_date = [ period.end_date, filter_end ].compact.min
       end_date = start_date if end_date < start_date
 
+      # Only rebuild as a keyless custom period when a date filter actually narrows
+      # the range. Rebuilding unconditionally would strip `period.key` even when
+      # nothing changed, which made UI::PeriodPicker's "selected" lookup fail and
+      # silently fall back to displaying 30D regardless of what was picked.
+      return period if start_date == period.start_date && end_date == period.end_date
+
       Period.custom(start_date: start_date, end_date: end_date)
     end
 

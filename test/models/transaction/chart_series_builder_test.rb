@@ -56,11 +56,47 @@ class Transaction::ChartSeriesBuilderTest < ActiveSupport::TestCase
 
     series = builder_for(Transaction::Search.new(@family)).cumulative_series
 
-    assert_equal (@period.end_date - @period.start_date).to_i + 1, series.values.size
+    # The period spans 10 days ago through today (11 days), but the leading 2 days
+    # before the only transaction are trimmed (see the leading-trim tests below), so
+    # only the 9 days from the transaction onward remain.
+    assert_equal (@period.end_date - txn_date).to_i + 1, series.values.size
 
     series.values.select { |v| v.date > txn_date }.each do |v|
       assert_equal Money.new(-40, "USD"), v.value, "expected a flat line after the only transaction"
     end
+  end
+
+  test "never shows data before the first matching transaction, even over a much wider period" do
+    first_match_date = 60.days.ago.to_date
+    create_transaction(account: @checking_account, amount: 12, date: first_match_date, kind: "standard")
+    create_transaction(account: @checking_account, amount: 8, date: 10.days.ago.to_date, kind: "standard")
+
+    wide_period = Period.custom(start_date: 200.days.ago.to_date, end_date: Date.current) # daily granularity
+    series = builder_for(Transaction::Search.new(@family), period: wide_period).cumulative_series
+
+    assert_equal first_match_date, series.values.first.date
+    assert_equal first_match_date, series.start_date
+  end
+
+  test "leading-trim only affects the front — a trailing flat run to today is kept" do
+    first_match_date = 60.days.ago.to_date
+    create_transaction(account: @checking_account, amount: 12, date: first_match_date, kind: "standard")
+
+    wide_period = Period.custom(start_date: 200.days.ago.to_date, end_date: Date.current)
+    series = builder_for(Transaction::Search.new(@family), period: wide_period).cumulative_series
+
+    assert_equal (wide_period.end_date - first_match_date).to_i + 1, series.values.size
+    assert_equal wide_period.end_date, series.values.last.date
+  end
+
+  test "periodic_totals also skip leading buckets before the first matching transaction" do
+    first_match_date = 60.days.ago.to_date
+    create_transaction(account: @checking_account, amount: 12, date: first_match_date, kind: "standard")
+
+    wide_period = Period.custom(start_date: 200.days.ago.to_date, end_date: Date.current)
+    bars = builder_for(Transaction::Search.new(@family), period: wide_period, granularity: "day").periodic_totals
+
+    assert_equal first_match_date, bars.first[:date]
   end
 
   test "empty result set returns an empty series instead of raising" do
@@ -113,15 +149,18 @@ class Transaction::ChartSeriesBuilderTest < ActiveSupport::TestCase
 
   test "periodic_totals buckets by month and labels with month/year when granularity is month" do
     period = Period.custom(start_date: 4.months.ago.to_date.beginning_of_month, end_date: Date.current)
+    earliest_txn_month = 2.months.ago.to_date.beginning_of_month
     create_transaction(account: @checking_account, amount: 50, date: 2.months.ago.to_date, kind: "standard")
-    create_transaction(account: @checking_account, amount: 30, date: 2.months.ago.to_date - 1.day, kind: "standard")
+    create_transaction(account: @checking_account, amount: 30, date: 2.months.ago.to_date.beginning_of_month, kind: "standard")
 
     bars = builder_for(Transaction::Search.new(@family), period: period, granularity: "month").periodic_totals
 
-    assert_equal 5, bars.size # 4 full months back through the current one, inclusive
+    # The 2 months before any transaction existed are trimmed, so the first bar is
+    # the month of the earliest transaction, not the period's nominal start.
+    assert_equal earliest_txn_month, bars.first[:date]
     assert_match(/\A[A-Z][a-z]{2} \d{4}\z/, bars.first[:label]) # e.g. "Mar 2026"
 
-    target_month_bucket = bars.find { |b| b[:date] == 2.months.ago.to_date.beginning_of_month }
+    target_month_bucket = bars.find { |b| b[:date] == earliest_txn_month }
     assert_equal 80.0, target_month_bucket[:expense]
   end
 

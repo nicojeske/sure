@@ -29,7 +29,7 @@ class Transaction::ChartSeriesBuilder
     return empty_series unless any_matching_entries?
 
     running = 0
-    values = bucketed_rows_for(cumulative_trunc_unit).map do |row|
+    values = trimmed_rows_for(cumulative_trunc_unit).map do |row|
       running += row["net"].to_d
       Series::Value.new(
         date: row["bucket"],
@@ -45,7 +45,7 @@ class Transaction::ChartSeriesBuilder
     end
 
     Series.new(
-      start_date: period.start_date,
+      start_date: values.first&.date || period.start_date,
       end_date: period.end_date,
       interval: period.interval,
       values: values,
@@ -56,7 +56,7 @@ class Transaction::ChartSeriesBuilder
   def periodic_totals
     return [] unless any_matching_entries?
 
-    bucketed_rows_for(granularity).map do |row|
+    trimmed_rows_for(granularity).map do |row|
       {
         date: row["bucket"],
         label: bucket_label(row["bucket"], granularity),
@@ -119,6 +119,15 @@ class Transaction::ChartSeriesBuilder
     def bucketed_rows_for(unit)
       @bucketed_rows_by_unit ||= {}
       @bucketed_rows_by_unit[unit] ||= ActiveRecord::Base.connection.select_all(sanitized_query_sql(unit)).to_a
+    end
+
+    # Drops the leading zero-activity buckets so a wide period (e.g. "All Time") or
+    # a filter with a late first match doesn't render a long, meaningless flat
+    # prefix before any matching transaction existed. Only the leading edge is
+    # trimmed — a flat *trailing* run up to today is real information ("nothing
+    # since the last transaction"), not noise.
+    def trimmed_rows_for(unit)
+      bucketed_rows_for(unit).drop_while { |row| row["entry_count"].to_i.zero? }
     end
 
     def sanitized_query_sql(unit)
