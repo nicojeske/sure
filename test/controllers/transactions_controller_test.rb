@@ -823,6 +823,41 @@ end
     assert_nil created_entry.transaction.extra["exchange_rate"]
   end
 
+  test "index renders a transactions chart" do
+    get transactions_url
+
+    assert_response :success
+    assert_select "[data-controller='time-series-chart']", minimum: 1
+  end
+
+  test "index renders the chart's no-data state without a filtered scope" do
+    family = families(:empty)
+    sign_in users(:empty)
+    family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+
+    get transactions_url
+
+    assert_response :success
+  end
+
+  test "chart period picker and view toggle links preserve active filters" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+    merchant = family.merchants.create! name: "Deutsche Bahn", type: "FamilyMerchant"
+    create_transaction(account: account, name: "Train ticket", merchant: merchant, amount: 42)
+
+    get transactions_url(q: { merchants: [ merchant.name ] })
+    assert_response :success
+
+    # Regression: TransactionsController's store_params! before_action persists whatever `q` the
+    # request carries as the new "current filters" on every index hit, so a chart link that only
+    # carried `?period=` or `?chart_view=` (forgetting `q`) would silently wipe the active filters
+    # on the next request.
+    expected_toggle_href = transactions_path(q: { merchants: [ merchant.name ] }, chart_view: "periodic")
+    assert_select "a[href=?]", expected_toggle_href
+  end
+
   private
     def rendered_entry_ids
       css_select("turbo-frame[id^='entry_']").map { |node| node["id"].delete_prefix("entry_") }

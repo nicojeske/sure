@@ -1,5 +1,5 @@
 class TransactionsController < ApplicationController
-  include EntryableResource
+  include EntryableResource, Periodable
 
   before_action :set_entry_for_unlock, only: :unlock
   before_action :set_entry_for_tags, only: :update_tags
@@ -16,6 +16,8 @@ class TransactionsController < ApplicationController
     @q = search_params
     @accessible_account_ids = Current.user.accessible_accounts.pluck(:id)
     @search = Transaction::Search.new(Current.family, filters: @q, accessible_account_ids: @accessible_account_ids)
+    @chart_view = params[:chart_view].presence_in(%w[cumulative periodic]) || "cumulative"
+    @chart_period = chart_period_for(@period, @q)
 
     base_scope = @search.transactions_scope
                        .reverse_chronological
@@ -563,6 +565,26 @@ class TransactionsController < ApplicationController
       else
         {} # read_only — no edits allowed
       end
+    end
+
+    # Clamps the chart's own ?period= picker to the intersection with any active
+    # q[start_date]/q[end_date] filters, so a narrow date filter under a wide period
+    # doesn't render a long flat zero tail.
+    def chart_period_for(period, q)
+      filter_start = parse_filter_date(q[:start_date])
+      filter_end = parse_filter_date(q[:end_date])
+
+      start_date = [ period.start_date, filter_start ].compact.max
+      end_date = [ period.end_date, filter_end ].compact.min
+      end_date = start_date if end_date < start_date
+
+      Period.custom(start_date: start_date, end_date: end_date)
+    end
+
+    def parse_filter_date(value)
+      Date.parse(value) if value.present?
+    rescue ArgumentError, TypeError
+      nil
     end
 
     def search_params

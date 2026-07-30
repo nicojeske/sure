@@ -80,6 +80,17 @@ en:
       activity_date:
         balance_tooltip: "The end of day balance, after all transactions and adjustments"
         no_balance_data: "No balance data available for this date"
+    transactions:
+      chart:
+        title: Net flow
+        no_data_available: No data available for this period
+        comparison_label: over this period
+        views_aria: "Chart view"
+        views:
+          cumulative: Cumulative
+          periodic: Per period
+        income: Income
+        expenses: Expenses
   ds:
     alert:
       variants:

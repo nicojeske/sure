@@ -46,6 +46,15 @@
     </div>
   </header>
 
+  <%= render UI::Transactions::Chart.new(
+    search: @search,
+    period: @chart_period,
+    view: @chart_view,
+    q: @q,
+    per_page: params[:per_page],
+    tab: params[:tab]
+  ) %>
+
   <%= render "summary", totals: @search.totals %>
   <% if Current.family.recurring_transactions_disabled? %>
     <%= render "transactions/list", transactions: @transactions, projected_recurring: @projected_recurring, q: params[:q], pagy: @pagy %>

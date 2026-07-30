@@ -1,0 +1,54 @@
+<div class="bg-container shadow-border-xs rounded-xl space-y-2">
+  <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
+    <div class="space-y-2 w-full">
+      <p class="text-sm font-medium text-secondary"><%= t(".title") %></p>
+      <p class="text-primary text-3xl font-medium truncate privacy-sensitive"><%= net_total_display %></p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <%= render DS::SegmentedControl.new(aria_label: t(".views_aria")) do |sc| %>
+        <% sc.with_segment(t(".views.cumulative"),
+             active: cumulative?,
+             href: transactions_path(link_params_for(chart_view: "cumulative")),
+             class: "whitespace-nowrap") %>
+        <% sc.with_segment(t(".views.periodic"),
+             active: !cumulative?,
+             href: transactions_path(link_params_for(chart_view: "periodic")),
+             class: "whitespace-nowrap") %>
+      <% end %>
+
+      <%= render UI::PeriodPicker.new(
+        selected: period,
+        url: transactions_path,
+        extra_params: link_params_for(chart_view: view)
+      ) %>
+    </div>
+  </div>
+
+  <% if has_data? %>
+    <div class="px-4">
+      <%= render "shared/trend_change", trend: trend, comparison_label: t(".comparison_label") %>
+    </div>
+  <% end %>
+
+  <div class="h-64 pb-4">
+    <% if has_data? %>
+      <% if cumulative? %>
+        <div class="w-full h-full px-4 privacy-sensitive"
+          data-controller="time-series-chart"
+          data-time-series-chart-data-value="<%= series.to_json %>"></div>
+      <% else %>
+        <div class="w-full h-full px-4 privacy-sensitive"
+          data-controller="bar-chart"
+          data-bar-chart-data-value="<%= bars.to_json %>"
+          data-bar-chart-currency-value="<%= currency %>"
+          data-bar-chart-income-label-value="<%= t(".income") %>"
+          data-bar-chart-expense-label-value="<%= t(".expenses") %>"></div>
+      <% end %>
+    <% else %>
+      <div class="w-full h-full flex items-center justify-center">
+        <p class="text-secondary text-sm"><%= t(".no_data_available") %></p>
+      </div>
+    <% end %>
+  </div>
+</div>
