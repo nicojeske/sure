@@ -348,7 +348,7 @@ Rails.application.routes.draw do
   end
 
   namespace :paperless do
-    resources :documents, only: [] do
+    resources :documents, only: %i[show] do
       member do
         get :thumbnail
         get :preview

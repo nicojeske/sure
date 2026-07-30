@@ -5,12 +5,12 @@
 
   <div class="flex items-center gap-2 flex-shrink-0">
     <%= render DS::Link.new(
-          href: preview_paperless_document_path(receipt_link.document_id),
+          href: paperless_document_path(receipt_link.document_id),
           variant: :outline,
           size: :sm,
           icon: "eye",
           text: "",
-          target: "_blank",
+          frame: :modal,
           aria: { label: t(".preview") }
         ) %>
     <%= render DS::Link.new(

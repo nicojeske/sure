@@ -15,6 +15,7 @@ class ReceiptLink < ApplicationRecord
   def linked? = status == "linked"
   def suggested? = status == "suggested"
   def dismissed? = status == "dismissed"
+  def image? = document_mime_type.to_s.start_with?("image/")
 
   # Shared by PaperlessConnection::Matcher and ReceiptLinksController#link_document, the two
   # places a document gets attached to a transaction — keeps the cached document_* columns

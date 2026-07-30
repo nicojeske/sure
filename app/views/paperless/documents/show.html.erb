@@ -1,0 +1,38 @@
+<%= render DS::Dialog.new(variant: "modal", width: "full", content_class: "lg:max-w-[900px]", scrollable: false) do |dialog| %>
+  <% dialog.with_header(title: @receipt_link&.document_title.presence || t(".fallback_title")) %>
+
+  <% dialog.with_body do %>
+    <div class="flex flex-col gap-3 h-full">
+      <div class="flex-1 min-h-[65vh] rounded-lg overflow-hidden bg-surface-inset">
+        <% if @receipt_link&.image? %>
+          <%= image_tag preview_paperless_document_path(@document_id),
+                class: "w-full h-full object-contain",
+                alt: t(".preview_alt", title: @receipt_link.document_title.presence || t(".fallback_title")) %>
+        <% else %>
+          <%= tag.iframe src: preview_paperless_document_path(@document_id),
+                class: "w-full h-full",
+                title: @receipt_link&.document_title.presence || t(".fallback_title") %>
+        <% end %>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 flex-shrink-0">
+        <%= render DS::Link.new(
+              href: download_paperless_document_path(@document_id),
+              variant: :outline,
+              size: :sm,
+              icon: "download",
+              text: t(".download"),
+              data: { turbo: false }
+            ) %>
+        <%= render DS::Link.new(
+              href: @paperless_connection.document_url(@document_id),
+              variant: :outline,
+              size: :sm,
+              icon: "external-link",
+              text: t(".open_in_paperless"),
+              target: "_blank"
+            ) %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

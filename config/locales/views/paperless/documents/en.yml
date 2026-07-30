@@ -1,0 +1,8 @@
+en:
+  paperless:
+    documents:
+      show:
+        fallback_title: Receipt
+        download: Download
+        open_in_paperless: Open in Paperless
+        preview_alt: "Preview of %{title}"

@@ -7,6 +7,37 @@ class Paperless::DocumentsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
+  test "show renders the preview modal with an iframe for a non-image document" do
+    get paperless_document_path(101)
+
+    assert_response :success
+    assert_select "turbo-frame#modal"
+    assert_select "iframe[src=?]", preview_paperless_document_path(101)
+    assert_select "h2", text: receipt_links(:linked_one).document_title
+  end
+
+  test "show renders an img for an image document" do
+    get paperless_document_path(103)
+
+    assert_response :success
+    assert_select "img[src=?]", preview_paperless_document_path(103)
+  end
+
+  test "show falls back to a generic title when no receipt link is cached" do
+    get paperless_document_path(999)
+
+    assert_response :success
+    assert_select "iframe[src=?]", preview_paperless_document_path(999)
+  end
+
+  test "show 404s when the family has no configured connection" do
+    @connection.destroy
+
+    get paperless_document_path(101)
+
+    assert_response :not_found
+  end
+
   test "thumbnail returns the upstream bytes and content type" do
     Provider::Paperless.any_instance.expects(:file).with("101", kind: :thumb).returns([ "bytes", "image/webp" ])
 
@@ -34,6 +65,24 @@ class Paperless::DocumentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_match(/attachment/, response.headers["Content-Disposition"])
+  end
+
+  test "download names the file after the cached document title" do
+    Provider::Paperless.any_instance.expects(:file).with("101", kind: :download).returns([ "pdf-bytes", "application/pdf" ])
+
+    get download_paperless_document_path(101)
+
+    assert_response :success
+    assert_match(/filename="starbucks-receipt\.pdf"/, response.headers["Content-Disposition"])
+  end
+
+  test "download falls back to no filename when there is no cached receipt link" do
+    Provider::Paperless.any_instance.expects(:file).with("999", kind: :download).returns([ "pdf-bytes", "application/pdf" ])
+
+    get download_paperless_document_path(999)
+
+    assert_response :success
+    assert_no_match(/filename=/, response.headers["Content-Disposition"])
   end
 
   test "returns 404 when the family has no configured connection" do

@@ -7,6 +7,13 @@ class Paperless::DocumentsController < ApplicationController
 
   CACHE_EXPIRY = 1.hour
 
+  # Renders the in-page preview modal (embeds `preview`/`thumbnail` as the source — no provider
+  # HTTP call happens here). Opened via the eye button as `frame: :modal`.
+  def show
+    @document_id = params[:id]
+    @receipt_link = receipt_link_for(@document_id)
+  end
+
   def thumbnail
     serve(:thumb, disposition: :inline, cacheable: true)
   end
@@ -29,9 +36,25 @@ class Paperless::DocumentsController < ApplicationController
     def serve(kind, disposition:, cacheable:)
       bytes, content_type = cacheable ? fetch_cached(kind) : fetch(kind)
 
-      send_data bytes, type: content_type, disposition: disposition
+      send_data bytes, type: content_type, disposition: disposition, filename: filename_for(kind, content_type)
     rescue Provider::Paperless::Error => e
       handle_provider_error(e)
+    end
+
+    # Falls back to `send_data`'s own default (no filename:) when we don't have a cached title
+    # or can't resolve an extension from the upstream content type.
+    def filename_for(kind, content_type)
+      return nil unless kind == :download
+
+      title = receipt_link_for(params[:id])&.document_title
+      extension = Mime::Type.lookup(content_type)&.symbol
+      return nil if title.blank? || extension.blank?
+
+      "#{title.parameterize}.#{extension}"
+    end
+
+    def receipt_link_for(document_id)
+      @paperless_connection.receipt_links.where(document_id: document_id).order(created_at: :desc).first
     end
 
     def fetch_cached(kind)
