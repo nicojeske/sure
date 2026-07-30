@@ -144,6 +144,18 @@
                       </span>
                     <% end %>
 
+                    <%# Receipt-linked indicator %>
+                    <% if @linked_receipt_transaction_ids ? @linked_receipt_transaction_ids.include?(transaction.id) : transaction.receipt_linked? %>
+                      <% receipt_conflict = @conflicting_receipt_transaction_ids&.include?(transaction.id) %>
+                      <%= render DS::Pill.new(
+                        label: t("transactions.transaction.receipt"),
+                        tone: receipt_conflict ? :warning : :neutral,
+                        marker: false,
+                        icon: "receipt",
+                        title: receipt_conflict ? t("transactions.transaction.receipt_amount_conflict_tooltip") : t("transactions.transaction.receipt_tooltip")
+                      ) %>
+                    <% end %>
+
                     <% if transaction.transfer.present? %>
                       <%= render "transactions/transfer_match", transaction: transaction %>
                     <% end %>

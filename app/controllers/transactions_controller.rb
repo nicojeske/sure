@@ -52,6 +52,9 @@ class TransactionsController < ApplicationController
       Set.new
     end
 
+    # Preload receipt-link status for this page's rows to avoid an N+1 from Transaction#receipt_linked?
+    load_receipt_link_indicators(@transactions)
+
     @uncategorized_count = Current.accessible_entries.uncategorized_transactions.count
 
     # Load projected recurring transactions for next 10 days
@@ -426,6 +429,30 @@ class TransactionsController < ApplicationController
   end
 
   private
+    # Populates @linked_receipt_transaction_ids (rendered as the receipt pill) and
+    # @conflicting_receipt_transaction_ids (rendered with a warning tone when the linked
+    # document's structured total, if any, differs from the transaction amount) for a page of
+    # already-loaded transactions, in one query instead of Transaction#receipt_linked? per row.
+    def load_receipt_link_indicators(transactions)
+      transaction_ids = transactions.map(&:id)
+      @linked_receipt_transaction_ids = Set.new
+      @conflicting_receipt_transaction_ids = Set.new
+      return if transaction_ids.empty?
+
+      transactions_by_id = transactions.index_by(&:id)
+
+      ReceiptLink.linked.where(transaction_id: transaction_ids).each do |link|
+        @linked_receipt_transaction_ids << link.transaction_id
+        next if link.document_amount.blank?
+
+        entry = transactions_by_id[link.transaction_id]&.entry
+        next if entry.nil?
+
+        conflict = link.document_currency != entry.currency || link.document_amount.round(2) != entry.amount.abs.round(2)
+        @conflicting_receipt_transaction_ids << link.transaction_id if conflict
+      end
+    end
+
     def accessible_transactions
       Current.family.transactions
         .joins(entry: :account)
@@ -545,7 +572,7 @@ class TransactionsController < ApplicationController
                 :start_date, :end_date, :search, :amount,
                 :amount_operator, :active_accounts_only,
                 accounts: [], account_ids: [],
-                categories: [], merchants: [], types: [], tags: [], status: []
+                categories: [], merchants: [], types: [], tags: [], status: [], receipt: []
               )
               .to_h
               .compact_blank

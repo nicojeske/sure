@@ -14,6 +14,7 @@ class Transaction::Search
   attribute :categories, array: true
   attribute :merchants, array: true
   attribute :tags, array: true
+  attribute :receipt, array: true
   attribute :active_accounts_only, :boolean, default: true
 
   attr_reader :family, :accessible_account_ids
@@ -36,6 +37,7 @@ class Transaction::Search
       query = apply_category_filter(query, categories)
       query = apply_type_filter(query, types)
       query = apply_status_filter(query, status)
+      query = apply_receipt_filter(query, receipt)
       query = apply_merchant_filter(query, merchants)
       query = apply_tag_filter(query, tags)
       query = EntrySearch.apply_search_filter(query, search)
@@ -180,6 +182,26 @@ class Transaction::Search
       else
         query
       end
+    end
+
+    # Composed as an OR of independent EXISTS/NOT-EXISTS clauses, one per selected checkbox, rather
+    # than a lookup table of the 7 possible combinations — "suggested" is a subset of "unmatched"
+    # (a suggestion only exists where nothing is linked yet), so e.g. selecting both reduces to
+    # exactly "unmatched" for free, and selecting all three degenerates into a tautology (every
+    # transaction matches), same as the early-return below but without building the SQL for it.
+    def apply_receipt_filter(query, receipt_statuses)
+      return query unless receipt_statuses.present?
+      return query if receipt_statuses.uniq.sort == %w[matched suggested unmatched]
+
+      linked_exists = "EXISTS (SELECT 1 FROM receipt_links rl WHERE rl.transaction_id = transactions.id AND rl.status = 'linked')"
+      suggested_only_exists = "(EXISTS (SELECT 1 FROM receipt_links rl WHERE rl.transaction_id = transactions.id AND rl.status = 'suggested') AND NOT #{linked_exists})"
+
+      conditions = []
+      conditions << linked_exists if receipt_statuses.include?("matched")
+      conditions << "NOT #{linked_exists}" if receipt_statuses.include?("unmatched")
+      conditions << suggested_only_exists if receipt_statuses.include?("suggested")
+
+      query.where(conditions.join(" OR "))
     end
 
     def apply_merchant_filter(query, merchants)

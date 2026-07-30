@@ -1,0 +1,37 @@
+<%# locals: (form:) %>
+
+<div class="p-2 space-y-3">
+  <div class="flex items-center gap-3" data-filter-name="matched">
+    <%= form.check_box :receipt,
+                           {
+                             multiple: true,
+                             checked: @q[:receipt]&.include?("matched"),
+                             class: "checkbox checkbox--light"
+                           },
+                           "matched",
+                           nil %>
+    <%= form.label :receipt, t(".matched"), value: "matched", class: "text-sm text-primary" %>
+  </div>
+  <div class="flex items-center gap-3" data-filter-name="suggested">
+    <%= form.check_box :receipt,
+                           {
+                             multiple: true,
+                             checked: @q[:receipt]&.include?("suggested"),
+                             class: "checkbox checkbox--light"
+                           },
+                           "suggested",
+                           nil %>
+    <%= form.label :receipt, t(".suggested"), value: "suggested", class: "text-sm text-primary" %>
+  </div>
+  <div class="flex items-center gap-3" data-filter-name="unmatched">
+    <%= form.check_box :receipt,
+                           {
+                             multiple: true,
+                             checked: @q[:receipt]&.include?("unmatched"),
+                             class: "checkbox checkbox--light"
+                           },
+                           "unmatched",
+                           nil %>
+    <%= form.label :receipt, t(".unmatched"), value: "unmatched", class: "text-sm text-primary" %>
+  </div>
+</div>

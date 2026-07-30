@@ -126,6 +126,26 @@ Provider support notes:
 - Plaid investments: investment transactions currently do not store pending metadata.
 - Lunchflow: does not currently store pending metadata.
 
+### Provider Integrations: Paperless-ngx Receipt Matching
+
+- **Naming trap**: the per-family connection model is `PaperlessConnection`, **not**
+  `PaperlessItem` — unlike every other provider integration in this codebase (`PlaidItem`,
+  `RedbarkItem`, `SimplefinItem`, etc.), which all follow the `*Item` convention.
+- **Model**: `ReceiptLink` links a `Transaction` (via `transaction_record`, not `transaction` —
+  `transaction` is already defined on `ActiveRecord::Base`) to a Paperless document id, with
+  `status` (`linked` / `suggested` / `dismissed`) and `source` (`auto` / `manual`). Multiple
+  `linked` rows per transaction are allowed (e.g. an invoice *and* a receipt).
+- **`Transaction#receipt_scanned_at`**: distinguishes "checked, nothing found" from "never
+  checked" — this is what lets the nightly `PaperlessScanAllJob` (`config/schedule.yml`) skip
+  already-scanned transactions cheaply, and what the drawer checks before auto-triggering a scan.
+- **Matching**: `PaperlessConnection::Matcher` scores candidates on amount (from a mapped Paperless
+  custom field when configured, else an OCR-content regex fallback — never both required),
+  date proximity, and correspondent similarity; a document is auto-linked only when exactly one
+  candidate clears `min_auto_link_score`, otherwise suggestions are shown.
+- **Settings**: `/settings/receipts` (admin only) — connection details, optional custom-field
+  mapping, and matching thresholds.
+- See `docs/hosting/paperless.md` for the end-user setup guide.
+
 ### Background Processing
 Sidekiq handles asynchronous tasks:
 - Account syncing (`SyncJob`)

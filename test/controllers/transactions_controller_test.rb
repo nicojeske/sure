@@ -323,6 +323,56 @@ end
     assert_response :success
   end
 
+  test "calls Transaction::Search totals method with the receipt filter parameter" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+
+    create_transaction(account: account, amount: 100)
+
+    search = Transaction::Search.new(family, filters: { "receipt" => [ "unmatched" ] })
+    totals = OpenStruct.new(
+      count: 1,
+      expense_money: Money.new(10000, "USD"),
+      income_money: Money.new(0, "USD"),
+      transfer_inflow_money: Money.new(0, "USD"),
+      transfer_outflow_money: Money.new(0, "USD")
+    )
+
+    Transaction::Search.expects(:new).with(family, filters: { "receipt" => [ "unmatched" ] }, accessible_account_ids: [ account.id ]).returns(search)
+    search.expects(:totals).once.returns(totals)
+
+    get transactions_url(q: { receipt: [ "unmatched" ] })
+    assert_response :success
+  end
+
+  test "index shows a receipt pill for a linked transaction and a warning tone when the amount conflicts" do
+    connection = paperless_connections(:one)
+    # receipt_links(:linked_one) is already linked to entries(:transaction)'s transaction with no
+    # document_amount set, giving a normal-tone pill; this second, conflicting link exercises the
+    # warning-tone path without an N+1 (both render off the same preloaded @conflicting_receipt_transaction_ids).
+    conflicting_entry = create_transaction(account: @entry.account, amount: 55)
+    ReceiptLink.create!(
+      transaction_record: conflicting_entry.entryable, paperless_connection: connection, document_id: 999,
+      status: "linked", source: "auto", document_amount: 12.34, document_currency: conflicting_entry.currency
+    )
+
+    get transactions_url
+
+    assert_response :success
+    assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_tooltip"), count: 1
+    assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_amount_conflict_tooltip"), count: 1
+  end
+
+  test "index does not offer the receipt filter for a family with no configured Paperless connection" do
+    sign_in users(:empty)
+
+    get transactions_url
+
+    assert_response :success
+    assert_select "#receipt_filter", count: 0
+  end
+
   test "shows inflow/outflow labels when filtering by transfers only" do
     family = families(:empty)
     sign_in users(:empty)

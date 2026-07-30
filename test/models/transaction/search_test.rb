@@ -670,4 +670,29 @@ class Transaction::SearchTest < ActiveSupport::TestCase
     assert_includes confirmed_ids, confirmed.entryable.id
     assert_not_includes pending_ids, confirmed.entryable.id
   end
+
+  test "receipt filter narrows by matched, suggested, and unmatched status" do
+    connection = paperless_connections(:one)
+
+    matched = create_transaction(account: @checking_account, amount: 10)
+    ReceiptLink.create!(transaction_record: matched.entryable, paperless_connection: connection, document_id: 1, status: "linked", source: "auto")
+
+    suggested = create_transaction(account: @checking_account, amount: 20)
+    ReceiptLink.create!(transaction_record: suggested.entryable, paperless_connection: connection, document_id: 2, status: "suggested", source: "auto")
+
+    dismissed = create_transaction(account: @checking_account, amount: 30)
+    ReceiptLink.create!(transaction_record: dismissed.entryable, paperless_connection: connection, document_id: 3, status: "dismissed", source: "manual")
+
+    untouched = create_transaction(account: @checking_account, amount: 40)
+
+    matched_ids = Transaction::Search.new(@family, filters: { receipt: [ "matched" ] }).transactions_scope.pluck(:id)
+    suggested_ids = Transaction::Search.new(@family, filters: { receipt: [ "suggested" ] }).transactions_scope.pluck(:id)
+    unmatched_ids = Transaction::Search.new(@family, filters: { receipt: [ "unmatched" ] }).transactions_scope.pluck(:id)
+    all_selected_ids = Transaction::Search.new(@family, filters: { receipt: [ "matched", "suggested", "unmatched" ] }).transactions_scope.pluck(:id)
+
+    assert_equal [ matched.entryable.id ], matched_ids
+    assert_equal [ suggested.entryable.id ], suggested_ids
+    assert_equal [ suggested.entryable.id, dismissed.entryable.id, untouched.entryable.id ].sort, unmatched_ids.sort
+    assert_equal [ matched.entryable.id, suggested.entryable.id, dismissed.entryable.id, untouched.entryable.id ].sort, all_selected_ids.sort
+  end
 end
