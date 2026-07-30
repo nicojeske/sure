@@ -2,8 +2,12 @@
   <% dialog.with_header(title: @receipt_link&.document_title.presence || t(".fallback_title")) %>
 
   <% dialog.with_body do %>
-    <div class="flex flex-col gap-3 h-full">
-      <div class="flex-1 min-h-[65vh] rounded-lg overflow-hidden bg-surface-inset">
+    <div class="flex flex-col gap-3">
+      <%# A flex-1/h-full chain here can't resolve to a real pixel height: the dialog centers
+          this card on its cross axis (items-center) rather than stretching it, so every
+          ancestor up to the dialog is auto/content-sized and there's no percentage height to
+          inherit. Give the embed box its own definite height instead. %>
+      <div class="h-[70vh] rounded-lg overflow-hidden bg-surface-inset">
         <% if @receipt_link&.image? %>
           <%= image_tag preview_paperless_document_path(@document_id),
                 class: "w-full h-full object-contain",
@@ -15,7 +19,7 @@
         <% end %>
       </div>
 
-      <div class="flex items-center justify-end gap-2 flex-shrink-0">
+      <div class="flex items-center justify-end gap-2">
         <%= render DS::Link.new(
               href: download_paperless_document_path(@document_id),
               variant: :outline,
