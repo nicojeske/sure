@@ -24,6 +24,16 @@ class Transaction::ChartSeriesBuilderTest < ActiveSupport::TestCase
     assert_equal Money.new(-80, "USD"), series.values.last.value
   end
 
+  test "marks only buckets with real activity, not every zero-filled bucket" do
+    active_date = 8.days.ago.to_date
+    create_transaction(account: @checking_account, amount: 40, date: active_date, kind: "standard")
+
+    series = builder_for(Transaction::Search.new(@family)).cumulative_series
+
+    active = series.values.select(&:has_activity)
+    assert_equal [ active_date ], active.map(&:date)
+  end
+
   test "multi-tag filter does not double count" do
     tag_a = tags(:one)
     tag_b = tags(:two)

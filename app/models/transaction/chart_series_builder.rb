@@ -39,7 +39,8 @@ class Transaction::ChartSeriesBuilder
           current: Money.new(running, currency),
           previous: Money.new(running - row["net"].to_d, currency),
           favorable_direction: "up"
-        )
+        ),
+        has_activity: row["entry_count"].to_i > 0
       )
     end
 
@@ -153,7 +154,8 @@ class Transaction::ChartSeriesBuilder
                          THEN ABS(e.entry_amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) AS income,
             COALESCE(SUM(CASE WHEN e.entry_amount >= 0 AND e.entry_kind NOT IN (:transfer_kinds)
                          THEN ABS(e.entry_amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) AS expense,
-            COALESCE(SUM(-e.entry_amount * COALESCE(er.rate, 1)), 0) AS net
+            COALESCE(SUM(-e.entry_amount * COALESCE(er.rate, 1)), 0) AS net,
+            COUNT(*) AS entry_count
           FROM dedup_entries e
           LEFT JOIN exchange_rates er ON (
             er.date = e.entry_date AND
@@ -166,7 +168,8 @@ class Transaction::ChartSeriesBuilder
           b.bucket,
           COALESCE(agg.income, 0) AS income,
           COALESCE(agg.expense, 0) AS expense,
-          COALESCE(agg.net, 0) AS net
+          COALESCE(agg.net, 0) AS net,
+          COALESCE(agg.entry_count, 0) AS entry_count
         FROM buckets b
         LEFT JOIN agg ON agg.bucket = b.bucket
         ORDER BY b.bucket

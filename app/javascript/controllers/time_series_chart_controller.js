@@ -10,6 +10,7 @@ export default class extends Controller {
     strokeWidth: { type: Number, default: 2 },
     useLabels: { type: Boolean, default: true },
     useTooltip: { type: Boolean, default: true },
+    useActivityMarkers: { type: Boolean, default: true },
   };
 
   _d3SvgMemo = null;
@@ -58,6 +59,7 @@ export default class extends Controller {
       date_formatted: d.date_formatted,
       value: d.value,
       trend: d.trend,
+      hasActivity: d.has_activity,
     }));
   }
 
@@ -123,10 +125,37 @@ export default class extends Controller {
       this._drawGradientBelowTrendline();
     }
 
+    if (this.useActivityMarkersValue) {
+      this._drawActivityMarkers();
+    }
+
     if (this.useTooltipValue) {
       this._drawTooltip();
       this._trackMouseForShowingTooltip();
     }
+  }
+
+  // Marks buckets that actually contain activity (e.g. a real transaction), as
+  // opposed to zero-filled gap buckets — otherwise a mostly-flat cumulative line
+  // gives no visual cue for where the underlying events actually happened.
+  // Points without a `has_activity` value (every other series type today) render
+  // nothing here, so this is a no-op everywhere except the transactions chart.
+  _drawActivityMarkers() {
+    const activePoints = this._normalDataPoints.filter((d) => d.hasActivity);
+    if (activePoints.length === 0) return;
+
+    this._d3Group
+      .selectAll(".activity-marker")
+      .data(activePoints)
+      .join("circle")
+      .attr("class", "activity-marker")
+      .attr("cx", (d) => this._d3XScale(d.date))
+      .attr("cy", (d) => this._d3YScale(this._getDatumValue(d)))
+      .attr("r", 3)
+      .attr("fill", this._trendColor)
+      .attr("stroke", "var(--color-container)")
+      .attr("stroke-width", 1.5)
+      .attr("pointer-events", "none");
   }
 
   _drawTrendline() {

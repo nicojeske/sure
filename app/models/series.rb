@@ -17,6 +17,7 @@ class Series
     :date_formatted,
     :value,
     :trend,
+    :has_activity,
     keyword_init: true
   )
 
@@ -71,7 +72,7 @@ class Series
       end_date: end_date,
       interval: interval,
       trend: trend,
-      values: values.map { |v| { date: v.date, date_formatted: v.date_formatted, value: v.value, trend: v.trend } }
+      values: values.map { |v| { date: v.date, date_formatted: v.date_formatted, value: v.value, trend: v.trend, has_activity: v.has_activity } }
     }
   end
 end
