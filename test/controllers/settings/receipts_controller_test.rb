@@ -24,6 +24,19 @@ class Settings::ReceiptsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "custom field mapping selects auto-submit on change" do
+    get settings_receipts_path
+
+    assert_response :success
+    # Regression: these selects previously rendered with no data-auto-submit-form-target
+    # attribute at all, so choosing a mapping in the browser silently submitted nothing —
+    # StyledFormBuilder#select only applies data/html attributes passed as the 4th
+    # (html_options) positional argument, not the 3rd (select-options) one.
+    %w[total_amount_field_id net_amount_field_id tax_amount_field_id reference_field_id].each do |field|
+      assert_select "select[name='paperless_connection[#{field}]'][data-auto-submit-form-target='auto']"
+    end
+  end
+
   test "creates a connection when none exists" do
     @connection.destroy
 
