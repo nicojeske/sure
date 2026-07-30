@@ -181,6 +181,20 @@ class Period
     end
   end
 
+  # A coarser cousin of `interval`, tuned for bar/periodic charts rather than lines.
+  # A dense line chart reads fine with a year of daily points; a bar chart with a
+  # year of daily bars is unreadable (every tick label renders, none of them thin
+  # out), so bar charts need to jump straight to month/year buckets much sooner.
+  def bar_interval
+    if days <= 60
+      "day"
+    elsif days <= 1095 # ~3 years
+      "month"
+    else
+      "year"
+    end
+  end
+
   def label
     if key
       I18n.t("period.#{key}.label", default: key_metadata&.fetch(:label) || "Custom Period")

@@ -89,6 +89,12 @@ en:
         views:
           cumulative: Cumulative
           periodic: Per period
+        granularity_aria: "Chart granularity"
+        granularity:
+          day: Day
+          week: Week
+          month: Month
+          year: Year
         income: Income
         expenses: Expenses
   ds:

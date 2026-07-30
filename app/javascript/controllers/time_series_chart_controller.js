@@ -297,7 +297,7 @@ export default class extends Controller {
 
   _drawTooltip() {
     this._d3Tooltip = d3
-      .select(`#${this.element.id}`)
+      .select(this.element)
       .append("div")
       // Shared visual contract + this chart's initial-hidden / positioning classes.
       .attr("class", `${CHART_TOOLTIP_CLASSES} opacity-0 top-0`);

@@ -104,4 +104,25 @@ class PeriodTest < ActiveSupport::TestCase
     assert_equal 5.years.ago.to_date, period.start_date
     assert_equal Date.current, period.end_date
   end
+
+  test "bar_interval buckets by day for short ranges" do
+    period = Period.custom(start_date: 30.days.ago.to_date, end_date: Date.current)
+    assert_equal "day", period.bar_interval
+  end
+
+  test "bar_interval buckets by month for multi-month to multi-year ranges" do
+    period = Period.custom(start_date: 18.months.ago.to_date, end_date: Date.current)
+    assert_equal "month", period.bar_interval
+  end
+
+  test "bar_interval buckets by year for long ranges" do
+    period = Period.custom(start_date: 6.years.ago.to_date, end_date: Date.current)
+    assert_equal "year", period.bar_interval
+  end
+
+  test "bar_interval is coarser than interval for the same long range" do
+    period = Period.custom(start_date: 6.years.ago.to_date, end_date: Date.current)
+    assert_equal "1 month", period.interval
+    assert_equal "year", period.bar_interval
+  end
 end

@@ -79,12 +79,60 @@ class Transaction::ChartSeriesBuilderTest < ActiveSupport::TestCase
     assert_equal Money.new(-50, "USD"), series.values.last.value
   end
 
+  test "periodic granularity defaults from the period's span when not explicit" do
+    short_period = Period.custom(start_date: 10.days.ago.to_date, end_date: Date.current)
+    long_period = Period.custom(start_date: 6.years.ago.to_date, end_date: Date.current)
+
+    assert_equal "day", builder_for(Transaction::Search.new(@family), period: short_period).granularity
+    assert_equal "year", builder_for(Transaction::Search.new(@family), period: long_period).granularity
+  end
+
+  test "an explicit granularity overrides the period-derived default" do
+    long_period = Period.custom(start_date: 6.years.ago.to_date, end_date: Date.current)
+
+    builder = builder_for(Transaction::Search.new(@family), period: long_period, granularity: "week")
+
+    assert_equal "week", builder.granularity
+  end
+
+  test "an invalid explicit granularity falls back to the default" do
+    builder = builder_for(Transaction::Search.new(@family), granularity: "fortnight")
+
+    assert_equal "day", builder.granularity
+  end
+
+  test "periodic_totals buckets by month and labels with month/year when granularity is month" do
+    period = Period.custom(start_date: 4.months.ago.to_date.beginning_of_month, end_date: Date.current)
+    create_transaction(account: @checking_account, amount: 50, date: 2.months.ago.to_date, kind: "standard")
+    create_transaction(account: @checking_account, amount: 30, date: 2.months.ago.to_date - 1.day, kind: "standard")
+
+    bars = builder_for(Transaction::Search.new(@family), period: period, granularity: "month").periodic_totals
+
+    assert_equal 5, bars.size # 4 full months back through the current one, inclusive
+    assert_match(/\A[A-Z][a-z]{2} \d{4}\z/, bars.first[:label]) # e.g. "Mar 2026"
+
+    target_month_bucket = bars.find { |b| b[:date] == 2.months.ago.to_date.beginning_of_month }
+    assert_equal 80.0, target_month_bucket[:expense]
+  end
+
+  test "periodic_totals labels a year bucket with just the year" do
+    period = Period.custom(start_date: 6.years.ago.to_date, end_date: Date.current)
+    create_transaction(account: @checking_account, amount: 100, date: 3.years.ago.to_date, kind: "standard")
+
+    bars = builder_for(Transaction::Search.new(@family), period: period, granularity: "year").periodic_totals
+
+    target_year_bucket = bars.find { |b| b[:date] == 3.years.ago.to_date.beginning_of_year }
+    assert_equal 3.years.ago.to_date.year.to_s, target_year_bucket[:label]
+    assert_equal 100.0, target_year_bucket[:expense]
+  end
+
   private
-    def builder_for(search)
+    def builder_for(search, period: @period, granularity: nil)
       Transaction::ChartSeriesBuilder.new(
         transactions_scope: search.transactions_scope,
         family: @family,
-        period: @period
+        period: period,
+        granularity: granularity
       )
     end
 end

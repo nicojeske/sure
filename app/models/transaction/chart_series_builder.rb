@@ -6,17 +6,30 @@ class Transaction::ChartSeriesBuilder
   # a transaction carries more than one selected tag. Aggregating over that relation
   # directly would double-count, so we first collapse it to one row per entry via
   # SELECT DISTINCT before summing.
-  def initialize(transactions_scope:, family:, period:)
+  #
+  # The cumulative line and the periodic bars intentionally use different bucket
+  # sizes: a line reads fine with a year of daily points, but a bar chart with a
+  # year of daily bars is unreadable (see Period#bar_interval). `granularity:` only
+  # affects `periodic_totals`; pass an explicit day/week/month/year to override the
+  # default derived from `period`, or leave it nil to auto-derive.
+  GRANULARITIES = %w[day week month year].freeze
+
+  def initialize(transactions_scope:, family:, period:, granularity: nil)
     @transactions_scope = transactions_scope
     @family = family
     @period = period
+    @explicit_granularity = granularity
+  end
+
+  def granularity
+    @granularity ||= @explicit_granularity.presence_in(GRANULARITIES) || period.bar_interval
   end
 
   def cumulative_series
     return empty_series unless any_matching_entries?
 
     running = 0
-    values = bucketed_rows.map do |row|
+    values = bucketed_rows_for(cumulative_trunc_unit).map do |row|
       running += row["net"].to_d
       Series::Value.new(
         date: row["bucket"],
@@ -42,10 +55,10 @@ class Transaction::ChartSeriesBuilder
   def periodic_totals
     return [] unless any_matching_entries?
 
-    bucketed_rows.map do |row|
+    bucketed_rows_for(granularity).map do |row|
       {
         date: row["bucket"],
-        label: bucket_label(row["bucket"]),
+        label: bucket_label(row["bucket"], granularity),
         income: row["income"].to_f.round(2),
         expense: row["expense"].to_f.round(2),
         partial: row["bucket"] > Date.current
@@ -60,12 +73,14 @@ class Transaction::ChartSeriesBuilder
       family.currency
     end
 
-    def trunc_unit
+    def cumulative_trunc_unit
       period.interval.split(" ").last # "1 day" -> "day", "1 week" -> "week", "1 month" -> "month"
     end
 
-    def bucket_label(date)
-      case trunc_unit
+    def bucket_label(date, unit)
+      case unit
+      when "year"
+        date.strftime("%Y")
       when "month"
         I18n.l(date, format: :short_month_year)
       else
@@ -100,16 +115,17 @@ class Transaction::ChartSeriesBuilder
         .to_sql
     end
 
-    def bucketed_rows
-      @bucketed_rows ||= ActiveRecord::Base.connection.select_all(sanitized_query_sql).to_a
+    def bucketed_rows_for(unit)
+      @bucketed_rows_by_unit ||= {}
+      @bucketed_rows_by_unit[unit] ||= ActiveRecord::Base.connection.select_all(sanitized_query_sql(unit)).to_a
     end
 
-    def sanitized_query_sql
+    def sanitized_query_sql(unit)
       ActiveRecord::Base.sanitize_sql_array([
         query_sql,
         {
-          trunc_unit: trunc_unit,
-          step: period.interval,
+          trunc_unit: unit,
+          step: "1 #{unit}",
           start_date: period.start_date,
           end_date: period.end_date,
           transfer_kinds: Transaction::TRANSFER_KINDS,

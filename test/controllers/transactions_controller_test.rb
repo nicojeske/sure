@@ -858,6 +858,25 @@ end
     assert_select "a[href=?]", expected_toggle_href
   end
 
+  test "an explicit chart granularity survives the period picker and view toggle links" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+    create_transaction(account: account)
+
+    get transactions_url(granularity: "week")
+    assert_response :success
+
+    expected_toggle_href = transactions_path(chart_view: "cumulative", granularity: "week")
+    assert_select "a[href=?]", expected_toggle_href
+  end
+
+  test "an invalid chart granularity param is ignored" do
+    get transactions_url(granularity: "fortnight")
+
+    assert_response :success
+  end
+
   private
     def rendered_entry_ids
       css_select("turbo-frame[id^='entry_']").map { |node| node["id"].delete_prefix("entry_") }

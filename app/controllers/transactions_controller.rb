@@ -18,6 +18,9 @@ class TransactionsController < ApplicationController
     @search = Transaction::Search.new(Current.family, filters: @q, accessible_account_ids: @accessible_account_ids)
     @chart_view = params[:chart_view].presence_in(%w[cumulative periodic]) || "cumulative"
     @chart_period = chart_period_for(@period, @q)
+    # No default here, unlike @chart_view — nil means "let the chart auto-derive a
+    # granularity from @chart_period" (Transaction::ChartSeriesBuilder#granularity).
+    @chart_granularity = params[:granularity].presence_in(Transaction::ChartSeriesBuilder::GRANULARITIES)
 
     base_scope = @search.transactions_scope
                        .reverse_chronological
