@@ -1,4 +1,4 @@
-<%= render DS::Dialog.new(variant: "modal", width: "full", content_class: "lg:max-w-[900px]", scrollable: false) do |dialog| %>
+<%= render DS::Dialog.new(variant: "modal", width: "xl", scrollable: false) do |dialog| %>
   <% dialog.with_header(title: @receipt_link&.document_title.presence || t(".fallback_title")) %>
 
   <% dialog.with_body do %>

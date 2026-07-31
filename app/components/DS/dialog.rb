@@ -44,6 +44,7 @@ class DS::Dialog < DesignSystemComponent
     sm: "lg:max-w-[300px]",
     md: "lg:max-w-[550px]",
     lg: "lg:max-w-[700px]",
+    xl: "lg:max-w-[900px]",
     full: "lg:max-w-full"
   }.freeze
   VALID_HEADING_LEVELS = (1..6).freeze
