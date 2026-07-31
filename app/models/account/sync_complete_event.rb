@@ -21,8 +21,5 @@ class Account::SyncCompleteEvent
     unless account.linked?
       account.family.broadcast_sync_complete
     end
-
-    # Refresh entire account page (only applies if currently viewing this account)
-    account.broadcast_refresh
   end
 end
