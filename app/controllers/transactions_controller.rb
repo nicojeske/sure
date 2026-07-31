@@ -570,12 +570,23 @@ class TransactionsController < ApplicationController
       end
     end
 
-    # Clamps the chart's own ?period= picker to the intersection with any active
-    # q[start_date]/q[end_date] filters, so a narrow date filter under a wide period
-    # doesn't render a long flat zero tail.
+    # Scopes the chart's own ?period= picker to any active q[start_date]/q[end_date]
+    # filter (e.g. the year/month picker), so the chart shows exactly what the list
+    # is filtered to instead of an unrelated (and often non-overlapping) window.
     def chart_period_for(period, q)
       filter_start = parse_filter_date(q[:start_date])
       filter_end = parse_filter_date(q[:end_date])
+
+      # Both bounds set means the user picked an explicit range (year/month picker or
+      # the Date tab) — that range *is* the chart period, not an intersection with
+      # ?period=. Intersecting would collapse a past month under the default 30-day
+      # period to a single (or zero-length) day.
+      if filter_start && filter_end
+        start_date = filter_start
+        end_date = [ filter_end, filter_start ].max
+        return period if start_date == period.start_date && end_date == period.end_date
+        return Period.custom(start_date: start_date, end_date: end_date)
+      end
 
       start_date = [ period.start_date, filter_start ].compact.max
       end_date = [ period.end_date, filter_end ].compact.min

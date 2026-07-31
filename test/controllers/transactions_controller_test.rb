@@ -365,6 +365,54 @@ end
     assert_response :success
   end
 
+  test "filters transactions by year via the date picker's start_date/end_date" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+
+    in_year = create_transaction(account: account, date: Date.new(2024, 6, 15), amount: 50)
+    out_of_year = create_transaction(account: account, date: Date.new(2023, 6, 15), amount: 50)
+
+    get transactions_url(q: { start_date: "2024-01-01", end_date: "2024-12-31" })
+
+    assert_response :success
+    assert_includes @controller.instance_variable_get(:@transactions), in_year.transaction
+    assert_not_includes @controller.instance_variable_get(:@transactions), out_of_year.transaction
+  end
+
+  test "filters transactions by year and month via the date picker" do
+    family = families(:empty)
+    sign_in users(:empty)
+    account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
+
+    in_month = create_transaction(account: account, date: Date.new(2024, 3, 10), amount: 50)
+    out_of_month = create_transaction(account: account, date: Date.new(2024, 4, 10), amount: 50)
+
+    get transactions_url(q: { start_date: "2024-03-01", end_date: "2024-03-31" })
+
+    assert_response :success
+    assert_includes @controller.instance_variable_get(:@transactions), in_month.transaction
+    assert_not_includes @controller.instance_variable_get(:@transactions), out_of_month.transaction
+  end
+
+  test "chart period follows an explicit start_date/end_date filter instead of intersecting with ?period=" do
+    get transactions_url(q: { start_date: "2024-03-01", end_date: "2024-03-31" })
+
+    assert_response :success
+    chart_period = @controller.instance_variable_get(:@chart_period)
+    assert_equal Date.new(2024, 3, 1), chart_period.start_date
+    assert_equal Date.new(2024, 3, 31), chart_period.end_date
+  end
+
+  test "chart period does not raise on an inverted start_date/end_date filter" do
+    get transactions_url(q: { start_date: "2024-03-31", end_date: "2024-03-01" })
+
+    assert_response :success
+    chart_period = @controller.instance_variable_get(:@chart_period)
+    assert_equal Date.new(2024, 3, 31), chart_period.start_date
+    assert_equal Date.new(2024, 3, 31), chart_period.end_date
+  end
+
   test "index shows a receipt pill for a linked transaction and a warning tone when the amount conflicts" do
     connection = paperless_connections(:one)
     # receipt_links(:linked_one) is already linked to entries(:transaction)'s transaction with no

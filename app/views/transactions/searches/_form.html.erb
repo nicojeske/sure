@@ -17,6 +17,11 @@
       </div>
     </div>
 
+    <%= render UI::Transactions::DateFilter.new(
+          start_date: @q[:start_date],
+          end_date: @q[:end_date]
+        ) %>
+
     <%= render DS::Popover.new(variant: "button", no_padding: true) do |popover| %>
       <% popover.with_button(
         id: "transaction-filters-button",

@@ -15,24 +15,6 @@ class UI::Account::ActivityDateFilter < ApplicationComponent
     end
   end
 
-  def months
-    @months ||= (1..12).map { |m| [ m, I18n.t("date.month_names")[m] ] }
-  end
-
-  def trigger_label
-    if selected_year && selected_month
-      I18n.t("date.month_names")[selected_month] + " #{selected_year}"
-    elsif selected_year
-      selected_year.to_s
-    else
-      I18n.t("accounts.show.activity.filter_period.all_time")
-    end
-  end
-
-  def active?
-    selected_year.present?
-  end
-
   def href_for(year: nil, month: nil)
     base_params = helpers.request.query_parameters.except("activity_year", "activity_month", "page").to_h
 
@@ -48,13 +30,5 @@ class UI::Account::ActivityDateFilter < ApplicationComponent
     base_params = helpers.request.query_parameters.except("activity_year", "activity_month", "page").to_h
     query = base_params.to_query
     query.empty? ? helpers.account_path(account) : "#{helpers.account_path(account)}?#{query}"
-  end
-
-  def year_selected?(year)
-    selected_year == year
-  end
-
-  def month_selected?(month)
-    selected_year.present? && selected_month == month
   end
 end

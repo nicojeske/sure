@@ -3,6 +3,12 @@ en:
   UI:
     period_picker:
       aria_label: "Time period: %{period}"
+    year_month_filter:
+      all_time: All time
+      clear: Clear filter
+      month: Month
+      select_year_first: Select a year first
+      year: Year
     account:
       activity_feed:
         toggle_selection_checkboxes: Toggle selection
@@ -81,6 +87,8 @@ en:
         balance_tooltip: "The end of day balance, after all transactions and adjustments"
         no_balance_data: "No balance data available for this date"
     transactions:
+      date_filter:
+        custom_range: Custom range
       chart:
         title: Net flow
         no_data_available: No data available for this period
