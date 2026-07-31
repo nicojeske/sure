@@ -7,11 +7,12 @@
           this card on its cross axis (items-center) rather than stretching it, so every
           ancestor up to the dialog is auto/content-sized and there's no percentage height to
           inherit. Give the embed box its own definite height instead. %>
-      <div class="h-[70vh] rounded-lg overflow-hidden bg-surface-inset">
+      <div class="h-[70vh] rounded-lg overflow-hidden bg-surface-inset" data-controller="paperless-document-preview">
         <% if @receipt_link&.image? %>
           <%= image_tag preview_paperless_document_path(@document_id),
                 class: "w-full h-full object-contain",
-                alt: t(".preview_alt", title: @receipt_link.document_title.presence || t(".fallback_title")) %>
+                alt: t(".preview_alt", title: @receipt_link.document_title.presence || t(".fallback_title")),
+                data: { paperless_document_preview_target: "image", action: "error->paperless-document-preview#fallbackToFrame" } %>
         <% else %>
           <%= tag.iframe src: preview_paperless_document_path(@document_id),
                 class: "w-full h-full",
