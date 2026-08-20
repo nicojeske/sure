@@ -1,0 +1,50 @@
+---
+en:
+  receipts:
+    index:
+      page_title: Receipts
+      subtitle: Receipts and invoices Sure has matched to your transactions from Paperless-ngx.
+      status_filter_label: Filter by match status
+      source_filter_label: Filter by how the match was made
+      status_filter:
+        linked: Linked
+        suggested: Suggested
+        dismissed: Dismissed
+        all: All
+      source_filter:
+        all: Any source
+        auto: Automatic
+        manual: Manual
+      status:
+        linked: Linked
+        suggested: Suggested
+        dismissed: Dismissed
+      source:
+        auto: Auto
+        manual: Manual
+      time_ago: "%{time} ago"
+    empty:
+      no_matches_title: No receipts here yet
+      no_matches_body: Nothing matches the current filters. Run a scan to look for receipts against your recent transactions, or try a different filter.
+      not_configured_title: Paperless-ngx is not connected
+      not_configured_body: Connect a Paperless-ngx instance to start matching receipts and invoices to your transactions automatically.
+      configure: Set up Paperless-ngx
+    scan_status:
+      progress_label: Scan progress
+      never_run: No scan has run yet
+      never_run_hint: Scans run automatically each night, or start one now.
+      running: "Scanning transactions… %{processed} of %{total}"
+      completed: "Last scan finished %{time} ago"
+      failed: Last scan failed
+      summary: "%{scanned} scanned · %{linked} linked · %{suggested} suggested"
+      scan_now: Scan for receipts
+      scanning: Scanning…
+      error: "The scan stopped early: %{error}"
+      partial_errors:
+        one: 1 transaction could not be scanned. Check the debug log for details.
+        other: "%{count} transactions could not be scanned. Check the debug log for details."
+      capped: "Stopped after the %{limit}-transaction limit for one run. Scan again to continue through the backlog."
+    scans:
+      create:
+        not_configured: Connect a Paperless-ngx instance before scanning for receipts.
+        timed_out: The scan stopped responding and was marked as failed.

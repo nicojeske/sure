@@ -1,0 +1,11 @@
+completed:
+  family: dylan_family
+  paperless_connection: one
+  status: completed
+  trigger: scheduled
+  total_count: 12
+  processed_count: 12
+  linked_count: 3
+  suggested_count: 2
+  started_at: <%= 2.hours.ago.to_fs(:db) %>
+  completed_at: <%= 2.hours.ago.to_fs(:db) %>

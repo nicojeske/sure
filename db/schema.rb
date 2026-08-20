@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_060353) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_20_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1533,6 +1533,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_060353) do
     t.index ["family_id"], name: "index_paperless_connections_on_family_id", unique: true
   end
 
+  create_table "paperless_scans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "capped", default: false, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.text "error"
+    t.integer "error_count", default: 0, null: false
+    t.uuid "family_id", null: false
+    t.integer "linked_count", default: 0, null: false
+    t.uuid "paperless_connection_id", null: false
+    t.integer "processed_count", default: 0, null: false
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.integer "suggested_count", default: 0, null: false
+    t.integer "total_count", default: 0, null: false
+    t.string "trigger", default: "manual", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "created_at"], name: "index_paperless_scans_on_family_id_and_created_at"
+    t.index ["family_id"], name: "index_paperless_scans_on_family_id_in_progress", unique: true, where: "((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying])::text[]))"
+    t.index ["paperless_connection_id"], name: "index_paperless_scans_on_paperless_connection_id"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "chk_paperless_scans_status"
+  end
+
   create_table "plaid_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.decimal "available_balance", precision: 19, scale: 4
     t.datetime "created_at", null: false
@@ -1665,6 +1687,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_060353) do
     t.string "status", default: "suggested", null: false
     t.uuid "transaction_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["paperless_connection_id", "created_at"], name: "index_receipt_links_on_paperless_connection_id_and_created_at"
     t.index ["paperless_connection_id"], name: "index_receipt_links_on_paperless_connection_id"
     t.index ["transaction_id", "document_id"], name: "index_receipt_links_on_transaction_id_and_document_id", unique: true
     t.index ["transaction_id", "status"], name: "index_receipt_links_on_transaction_id_and_status"
@@ -2478,6 +2501,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_060353) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "oidc_identities", "users"
   add_foreign_key "paperless_connections", "families"
+  add_foreign_key "paperless_scans", "families"
+  add_foreign_key "paperless_scans", "paperless_connections"
   add_foreign_key "plaid_accounts", "plaid_items"
   add_foreign_key "plaid_items", "families"
   add_foreign_key "questrade_accounts", "questrade_items"

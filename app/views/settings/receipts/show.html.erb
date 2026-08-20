@@ -145,6 +145,17 @@
                          step: 0.01,
                          data: { "auto-submit-form-target": "auto" } %>
   <% end %>
+
+  <div class="flex items-center justify-between gap-4 pt-2">
+    <p class="text-secondary text-sm"><%= t(".review_matches_description") %></p>
+    <%= render DS::Link.new(
+          text: t(".review_matches"),
+          href: receipts_path,
+          variant: :outline,
+          size: :sm,
+          icon: "receipt"
+        ) %>
+  </div>
 <% end %>
 
 <% if @paperless_connection.persisted? %>

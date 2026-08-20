@@ -23,6 +23,8 @@ en:
         auto_link_enabled_description: Automatically link a transaction to a receipt when exactly one confident match is found.
         match_window_days_label: Match window (days)
         min_auto_link_score_label: Minimum auto-link score
+        review_matches: Review matches
+        review_matches_description: See what has been matched recently, and scan your recent transactions on demand.
         structured_match_window_days_label: Amount search window (days)
         custom_fields_title: Custom fields
         custom_fields_subtitle: Map Paperless-ngx custom fields so Sure can read structured receipt data instead of guessing from OCR text.

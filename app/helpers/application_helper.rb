@@ -114,6 +114,20 @@ module ApplicationHelper
     end
   end
 
+  # Nil unless the family has a working Paperless connection — the primary nav is deliberately
+  # short, so /receipts only appears for the families it means anything to. Callers .compact.
+  def receipts_nav_item
+    return nil unless Current.family&.paperless_configured?
+
+    {
+      name: t("layouts.application.nav.receipts"),
+      path: receipts_path,
+      icon: "receipt",
+      icon_custom: false,
+      active: page_active?(receipts_path)
+    }
+  end
+
   # Wrapper around I18n.l to support custom date formats
   def format_date(object, format = :default, options = {})
     date = object.to_date

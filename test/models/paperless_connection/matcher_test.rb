@@ -13,13 +13,26 @@ class PaperlessConnection::MatcherTest < ActiveSupport::TestCase
     stub_search([ document(id: 501, content: "Total: 10.00", created: Date.current, correspondent: 1, title: "Starbucks Receipt") ])
     stub_correspondents(1 => "Starbucks")
 
-    @matcher.match!(transaction)
+    result = @matcher.match!(transaction)
 
     link = transaction.receipt_links.sole
     assert_equal "linked", link.status
     assert_equal "auto", link.source
     assert_equal 501, link.document_id
+    assert_equal :linked, result.outcome
     assert transaction.reload.receipt_scanned_at.present?
+  end
+
+  test "match! reports :none when nothing clears the suggestion floor" do
+    transaction = build_transaction(amount: 10, name: "Starbucks", date: Date.current)
+
+    stub_search([])
+    stub_correspondents({})
+
+    result = @matcher.match!(transaction)
+
+    assert_equal :none, result.outcome
+    assert_empty transaction.receipt_links
   end
 
   test "matches EU-formatted amount 1.234,56 against a 1234.56 transaction" do

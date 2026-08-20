@@ -1,0 +1,22 @@
+<%# locals: (configured:) %>
+<div class="flex flex-col items-center justify-center text-center gap-2 py-12 px-4">
+  <%= icon "receipt", size: "lg", class: "text-subdued" %>
+  <% if configured %>
+    <p class="text-primary text-sm font-medium"><%= t(".no_matches_title") %></p>
+    <p class="text-secondary text-sm max-w-md"><%= t(".no_matches_body") %></p>
+  <% else %>
+    <p class="text-primary text-sm font-medium"><%= t(".not_configured_title") %></p>
+    <p class="text-secondary text-sm max-w-md"><%= t(".not_configured_body") %></p>
+    <% if Current.user.admin? %>
+      <div class="mt-2">
+        <%= render DS::Link.new(
+              text: t(".configure"),
+              href: settings_receipts_path,
+              variant: :outline,
+              size: :sm,
+              icon: "settings"
+            ) %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

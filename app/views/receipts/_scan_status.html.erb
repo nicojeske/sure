@@ -1,0 +1,91 @@
+<%# locals: (scan: nil) %>
+<%#
+  Rendered both from a request (ReceiptsController#index) and from PaperlessScanFamilyJob's
+  broadcast. In the job there is no Current.user and no lazy-lookup view context, so this partial
+  must NOT read Current.* and must use absolute i18n keys — never t(".").
+%>
+<div id="paperless_scan_status">
+  <div class="bg-container shadow-border-xs rounded-xl p-4">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-4 min-w-0">
+        <% if scan&.in_progress? %>
+          <%= render DS::ProgressRing.new(
+                percent: scan.percent,
+                size: 48,
+                stroke_width: 5,
+                tone: :success,
+                label: t("receipts.scan_status.progress_label")
+              ) %>
+        <% end %>
+
+        <div class="space-y-1 min-w-0">
+          <p class="text-primary font-medium text-sm">
+            <% if scan.nil? %>
+              <%= t("receipts.scan_status.never_run") %>
+            <% elsif scan.in_progress? %>
+              <%= t("receipts.scan_status.running", processed: scan.processed_count, total: scan.total_count) %>
+            <% elsif scan.failed? %>
+              <%= t("receipts.scan_status.failed") %>
+            <% else %>
+              <%= t("receipts.scan_status.completed",
+                    time: time_ago_in_words(scan.completed_at || scan.updated_at)) %>
+            <% end %>
+          </p>
+
+          <% if scan.present? %>
+            <p class="text-secondary text-xs">
+              <%= t("receipts.scan_status.summary",
+                    scanned: scan.processed_count,
+                    linked: scan.linked_count,
+                    suggested: scan.suggested_count) %>
+            </p>
+          <% else %>
+            <p class="text-secondary text-xs"><%= t("receipts.scan_status.never_run_hint") %></p>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="shrink-0">
+        <% if scan&.in_progress? %>
+          <%= render DS::Button.new(
+                text: t("receipts.scan_status.scanning"),
+                variant: "outline",
+                size: "sm",
+                icon: "loader-circle",
+                disabled: true
+              ) %>
+        <% else %>
+          <%= render DS::Button.new(
+                text: t("receipts.scan_status.scan_now"),
+                variant: "outline",
+                size: "sm",
+                icon: "refresh-cw",
+                href: receipts_scan_path,
+                method: :post
+              ) %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if scan&.failed? && scan.error.present? %>
+      <div class="mt-3">
+        <%= render DS::Alert.new(
+              message: t("receipts.scan_status.error", error: scan.error),
+              variant: :error
+            ) %>
+      </div>
+    <% end %>
+
+    <% if scan.present? && scan.error_count.positive? && !scan.failed? %>
+      <p class="text-warning text-xs mt-3">
+        <%= t("receipts.scan_status.partial_errors", count: scan.error_count) %>
+      </p>
+    <% end %>
+
+    <% if scan&.capped? && scan.completed? %>
+      <p class="text-secondary text-xs mt-3">
+        <%= t("receipts.scan_status.capped", limit: scan.total_count) %>
+      </p>
+    <% end %>
+  </div>
+</div>

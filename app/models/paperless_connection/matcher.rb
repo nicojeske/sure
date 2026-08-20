@@ -3,6 +3,11 @@
 class PaperlessConnection::Matcher
   Candidate = Data.define(:document, :score, :reasons)
 
+  # What `match!` actually persisted, so a caller scanning many transactions can tally outcomes
+  # without re-querying receipt_links per transaction. :none covers "scanned, nothing worth
+  # showing" — the receipt_scanned_at stamp still happens.
+  Result = Data.define(:outcome, :candidates) # outcome: :linked | :suggested | :none
+
   SUGGESTION_FLOOR = 0.40
   MAX_SUGGESTIONS  = 5
   SEARCH_PAGE_SIZE = 50
@@ -50,26 +55,31 @@ class PaperlessConnection::Matcher
   # Persists links/suggestions per the decision table and always stamps receipt_scanned_at,
   # including when zero candidates are found. A candidate whose mapped total conflicts with the
   # transaction amount never auto-links, even if it otherwise clears the threshold on date +
-  # correspondent alone — it still competes for a suggestion slot below.
+  # correspondent alone — it still competes for a suggestion slot below. Returns a Result so
+  # callers can tally outcomes.
   def match!(transaction)
     candidates = candidates_for(transaction)
     qualifying = candidates.select do |candidate|
       candidate.score >= connection.min_auto_link_score.to_f && !candidate.reasons["amount_conflict"]
     end
 
-    case qualifying.size
-    when 0
-      candidates.select { |candidate| candidate.score >= SUGGESTION_FLOOR }
-        .first(MAX_SUGGESTIONS)
-        .each { |candidate| persist_link(transaction, candidate, status: "suggested", source: "auto") }
-    when 1
-      persist_link(transaction, qualifying.first, status: "linked", source: "auto")
-    else
-      qualifying.each { |candidate| persist_link(transaction, candidate, status: "suggested", source: "auto") }
-    end
+    outcome =
+      case qualifying.size
+      when 0
+        suggestions = candidates.select { |candidate| candidate.score >= SUGGESTION_FLOOR }
+          .first(MAX_SUGGESTIONS)
+        suggestions.each { |candidate| persist_link(transaction, candidate, status: "suggested", source: "auto") }
+        suggestions.any? ? :suggested : :none
+      when 1
+        persist_link(transaction, qualifying.first, status: "linked", source: "auto")
+        :linked
+      else
+        qualifying.each { |candidate| persist_link(transaction, candidate, status: "suggested", source: "auto") }
+        :suggested
+      end
 
     transaction.update_column(:receipt_scanned_at, Time.current)
-    candidates
+    Result.new(outcome: outcome, candidates: candidates)
   end
 
   private

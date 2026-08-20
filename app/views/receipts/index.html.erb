@@ -1,0 +1,53 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<div class="space-y-4">
+  <%= render "layouts/shared/page_header", title: t(".page_title"), subtitle: t(".subtitle") %>
+
+  <%# Replaced live by PaperlessScanFamilyJob's broadcast on the family stream, which every page
+      already subscribes to via layouts/shared/_htmldoc. %>
+  <%= render "receipts/scan_status", scan: @scan %>
+
+  <div class="bg-container shadow-border-xs rounded-xl">
+    <div class="flex items-center justify-between gap-4 p-4 flex-wrap border-b border-subdued">
+      <nav class="flex items-center gap-1" aria-label="<%= t(".status_filter_label") %>">
+        <% ReceiptsController::STATUSES.each do |status| %>
+          <%= link_to t(".status_filter.#{status}"),
+                receipts_path(status: status, source: @source),
+                class: class_names(
+                  "text-sm px-2.5 py-1 rounded-md focus-ring",
+                  "bg-container-inset text-primary font-medium": @status == status,
+                  "text-secondary hover:bg-surface-hover": @status != status
+                ) %>
+        <% end %>
+      </nav>
+
+      <nav class="flex items-center gap-1" aria-label="<%= t(".source_filter_label") %>">
+        <% ReceiptsController::SOURCES.each do |source| %>
+          <%= link_to t(".source_filter.#{source}"),
+                receipts_path(status: @status, source: source),
+                class: class_names(
+                  "text-xs px-2 py-1 rounded-md focus-ring",
+                  "bg-container-inset text-primary font-medium": @source == source,
+                  "text-secondary hover:bg-surface-hover": @source != source
+                ) %>
+        <% end %>
+      </nav>
+    </div>
+
+    <% if @receipt_links.blank? %>
+      <%= render "receipts/empty", configured: @paperless_connection.present? %>
+    <% else %>
+      <div>
+        <% @receipt_links.each do |receipt_link| %>
+          <%= render "receipts/row", receipt_link: receipt_link %>
+        <% end %>
+      </div>
+
+      <% if @pagy.pages > 1 %>
+        <div class="p-4 border-t border-subdued">
+          <%= render "shared/pagination", pagy: @pagy %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

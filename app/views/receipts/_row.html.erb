@@ -1,0 +1,40 @@
+<%# locals: (receipt_link:) %>
+<% entry = receipt_link.transaction_record.entry %>
+<div class="flex items-center justify-between gap-4 p-3 border-b border-subdued last:border-b-0 hover:bg-surface-hover flex-wrap">
+  <div class="min-w-0 flex-1">
+    <%= render "receipt_links/document_summary", receipt_link: receipt_link, entry: entry %>
+  </div>
+
+  <div class="flex items-center gap-3 shrink-0">
+    <%= link_to entry_path(entry),
+          data: { turbo_frame: "drawer", turbo_prefetch: false },
+          class: "focus-ring rounded-md min-w-0 text-right" do %>
+      <p class="text-sm font-medium text-primary truncate max-w-52"><%= entry.name %></p>
+      <p class="text-xs text-secondary">
+        <%= l(entry.date, format: :long) %>
+        &middot;
+        <span class="privacy-sensitive"><%= format_money(-entry.amount_money) %></span>
+      </p>
+    <% end %>
+
+    <div class="flex items-center gap-1.5">
+      <%= render DS::Pill.new(
+            label: t("receipts.index.status.#{receipt_link.status}"),
+            tone: receipt_link.linked? ? :success : (receipt_link.dismissed? ? :neutral : :info),
+            marker: false,
+            size: :sm
+          ) %>
+      <%= render DS::Pill.new(
+            label: t("receipts.index.source.#{receipt_link.source}"),
+            tone: :neutral,
+            style: :outline,
+            marker: false,
+            size: :sm
+          ) %>
+    </div>
+
+    <p class="text-xs text-subdued w-20 text-right">
+      <%= t("receipts.index.time_ago", time: time_ago_in_words(receipt_link.created_at)) %>
+    </p>
+  </div>
+</div>

@@ -9,6 +9,7 @@ class PaperlessConnection < ApplicationRecord
 
   belongs_to :family
   has_many :receipt_links, dependent: :destroy
+  has_many :paperless_scans, dependent: :destroy
 
   validates :base_url, presence: true
   validate :base_url_must_be_valid_http_url
@@ -25,8 +26,30 @@ class PaperlessConnection < ApplicationRecord
     reference_field_id: /rechnungsnummer|invoice|reference|beleg|number|nummer/i
   }.freeze
 
+  # Bounds of a single family-wide scan, shared by the nightly job and the manual /receipts run.
+  MAX_TRANSACTIONS_PER_RUN = 500
+  LOOKBACK_WINDOW = 90.days
+  RESCAN_AFTER = 7.days
+
   def configured?
     base_url.present? && api_token.present?
+  end
+
+  def latest_scan = paperless_scans.recent.first
+
+  # receipt_scanned_at IS NULL (never scanned), or it's stale (> RESCAN_AFTER) and nothing is
+  # linked yet — a receipt is often filed in Paperless days after the transaction posts, so a
+  # one-shot scan would permanently miss it. Unordered and unlimited; callers apply the cap.
+  def transactions_needing_scan
+    family.transactions
+      .joins(:entry)
+      .where(entries: { date: LOOKBACK_WINDOW.ago.to_date.. })
+      .where.not(kind: Transaction::TRANSFER_KINDS)
+      .where(
+        "transactions.receipt_scanned_at IS NULL OR (transactions.receipt_scanned_at < :rescan_before AND NOT EXISTS (" \
+        "SELECT 1 FROM receipt_links WHERE receipt_links.transaction_id = transactions.id AND receipt_links.status = 'linked'))",
+        rescan_before: RESCAN_AFTER.ago
+      )
   end
 
   def document_url(document_id)
