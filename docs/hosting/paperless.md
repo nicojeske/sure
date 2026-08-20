@@ -49,9 +49,10 @@ match for your family, newest first:
 - Filter by status — **Linked** (the default), **Suggested**, **Dismissed**, or **All** — and by
   how the match was made, **Automatic** or **Manual**. The filters live in the URL, so a filtered
   view is shareable and bookmarkable.
-- Each row is a table row: the Paperless document (thumbnail, title, date, and structured amount
-  when a custom field is mapped), the **Recipient** (the document's Paperless correspondent) in its
-  own column, the transaction it was matched to, and the match status with the reasons it scored on.
+- Each row is a table row: the Paperless document (thumbnail, title, correspondent, date, and
+  structured amount when a custom field is mapped), the **Recipient** (the matched transaction's
+  merchant) in its own column, the transaction itself, and the match status with the reasons it
+  scored on.
 - Act on a match without leaving the page: **confirm** a suggestion, **dismiss** it, or **remove**
   the link entirely. The list re-renders itself through the filters you're currently viewing, so a
   confirmed suggestion drops out of a "Suggested" list on the spot. A dismissed match can be

@@ -42,7 +42,7 @@ module ReceiptLinkListing
 
     def receipt_links_scope
       scope = accessible_receipt_links
-        .preload(:paperless_connection, transaction_record: { entry: :account })
+        .preload(:paperless_connection, transaction_record: [ :merchant, { entry: :account } ])
         .order(created_at: :desc)
 
       scope = scope.where(status: @status) unless @status == "all"

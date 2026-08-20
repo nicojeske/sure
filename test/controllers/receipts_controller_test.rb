@@ -89,7 +89,6 @@ class ReceiptsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "tr#" + ActionView::RecordIdentifier.dom_id(link)
     assert_select "th", text: "Recipient"
-    assert_select "body", text: /Unknown Vendor/
     assert_select "form[action=?]", confirm_receipts_link_path(link, status: "suggested", source: "all")
     assert_select "form[action=?]", dismiss_receipts_link_path(link, status: "suggested", source: "all")
   end
@@ -100,6 +99,9 @@ class ReceiptsControllerTest < ActionDispatch::IntegrationTest
     get receipts_path
 
     assert_response :success
+    # Recipient column is the transaction's merchant, not the Paperless correspondent.
+    assert_equal "Amazon", link.transaction_record.merchant.name
+    assert_select "tr#" + ActionView::RecordIdentifier.dom_id(link) + " td", text: "Amazon"
     assert_select "form[action=?]", receipts_link_path(link, status: "linked", source: "all")
     assert_select "form[action=?]", confirm_receipts_link_path(link, status: "linked", source: "all"), count: 0
     assert_select "form[action=?]", dismiss_receipts_link_path(link, status: "linked", source: "all")

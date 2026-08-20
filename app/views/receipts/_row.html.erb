@@ -10,15 +10,13 @@
 
 <tr id="<%= dom_id(receipt_link) %>" class="border-b border-subdued last:border-b-0 hover:bg-surface-hover align-middle">
   <td class="px-3 py-3">
-    <%= render "receipt_links/document_summary",
-          receipt_link: receipt_link,
-          entry: entry,
-          show_correspondent: false %>
+    <%= render "receipt_links/document_summary", receipt_link: receipt_link, entry: entry %>
   </td>
 
   <td class="px-3 py-3">
-    <% if receipt_link.document_correspondent.present? %>
-      <p class="text-sm text-primary truncate"><%= receipt_link.document_correspondent %></p>
+    <% merchant = receipt_link.transaction_record.merchant %>
+    <% if merchant.present? %>
+      <p class="text-sm text-primary truncate"><%= merchant.name %></p>
     <% else %>
       <p class="text-sm text-subdued">&mdash;</p>
     <% end %>
