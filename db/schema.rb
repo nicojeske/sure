@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_060353) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -373,6 +373,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
     t.index ["category_id"], name: "index_budget_categories_on_category_id"
   end
 
+  create_table "budget_shares", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "owner_id", null: false
+    t.uuid "viewer_id", null: false
+    t.string "permission", default: "read_only", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_id", "viewer_id"], name: "index_budget_shares_on_owner_id_and_viewer_id", unique: true
+    t.index ["owner_id"], name: "index_budget_shares_on_owner_id"
+    t.index ["viewer_id"], name: "index_budget_shares_on_viewer_id"
+  end
+
   create_table "budgets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.decimal "budgeted_spending", precision: 19, scale: 4
     t.datetime "created_at", null: false
@@ -382,8 +393,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
     t.uuid "family_id", null: false
     t.date "start_date", null: false
     t.datetime "updated_at", null: false
-    t.index ["family_id", "start_date", "end_date"], name: "index_budgets_on_family_id_and_start_date_and_end_date", unique: true
+    t.uuid "user_id"
+    t.index ["family_id", "start_date", "end_date", "user_id"], name: "index_budgets_personal_unique", unique: true, where: "(user_id IS NOT NULL)"
+    t.index ["family_id", "start_date", "end_date"], name: "index_budgets_shared_unique", unique: true, where: "(user_id IS NULL)"
     t.index ["family_id"], name: "index_budgets_on_family_id"
+    t.index ["user_id"], name: "index_budgets_on_user_id"
   end
 
   create_table "categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -392,9 +406,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
     t.datetime "created_at", null: false
     t.uuid "family_id", null: false
     t.string "lucide_icon", default: "shapes", null: false
+    t.datetime "last_used_at"
     t.string "name", null: false
     t.uuid "parent_id"
     t.datetime "updated_at", null: false
+    t.index ["family_id", "last_used_at"], name: "index_categories_on_family_id_and_last_used_at"
+    t.index ["family_id", "name"], name: "index_categories_on_family_id_and_name", unique: true
     t.index ["family_id"], name: "index_categories_on_family_id"
   end
 
@@ -768,6 +785,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
     t.string "moniker", default: "Family", null: false
     t.integer "month_start_day", default: 1, null: false
     t.string "name"
+    t.boolean "household_budget_enabled", default: true, null: false
+    t.boolean "personal_budgets", default: false, null: false
     t.boolean "recurring_transactions_disabled", default: false, null: false
     t.string "stripe_customer_id"
     t.string "timezone"
@@ -2105,6 +2124,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
     t.string "name"
     t.datetime "updated_at", null: false
     t.index ["family_id"], name: "index_tags_on_family_id"
+    t.index ["family_id", "name"], name: "index_tags_on_family_id_and_name", unique: true
   end
 
   create_table "tool_calls", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2359,6 +2379,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
     t.datetime "sync_start_date"
     t.text "token", null: false
     t.datetime "updated_at", null: false
+    t.boolean "import_all_history", default: false, null: false
     t.index ["family_id", "profile_id"], name: "index_wise_items_on_family_id_and_profile_id", unique: true
     t.index ["family_id"], name: "index_wise_items_on_family_id"
     t.index ["status"], name: "index_wise_items_on_status"
@@ -2385,9 +2406,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_000000) do
   add_foreign_key "binance_items", "families"
   add_foreign_key "brex_accounts", "brex_items"
   add_foreign_key "brex_items", "families"
-  add_foreign_key "budget_categories", "budgets"
+  add_foreign_key "budget_categories", "budgets", on_delete: :cascade
   add_foreign_key "budget_categories", "categories"
+  add_foreign_key "budget_shares", "users", column: "owner_id"
+  add_foreign_key "budget_shares", "users", column: "viewer_id"
   add_foreign_key "budgets", "families"
+  add_foreign_key "budgets", "users", on_delete: :cascade
   add_foreign_key "categories", "families"
   add_foreign_key "chats", "users"
   add_foreign_key "coinbase_accounts", "coinbase_items"
