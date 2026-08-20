@@ -45,14 +45,14 @@ class ReceiptLinksController < ApplicationController
   def confirm
     return unless require_account_permission!(@entry.account, :annotate, redirect_path: transaction_path(@entry))
 
-    @receipt_link.update!(status: "linked")
+    @receipt_link.confirm!
     render_receipt_links
   end
 
   def dismiss
     return unless require_account_permission!(@entry.account, :annotate, redirect_path: transaction_path(@entry))
 
-    @receipt_link.update!(status: "dismissed")
+    @receipt_link.dismiss!
     render_receipt_links
   end
 

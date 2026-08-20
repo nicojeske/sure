@@ -17,6 +17,13 @@ class ReceiptLink < ApplicationRecord
   def dismissed? = status == "dismissed"
   def image? = document_mime_type.to_s.start_with?("image/")
 
+  # The two user decisions on a suggestion, named once here so the drawer
+  # (ReceiptLinksController) and the receipts list (Receipts::LinksController) can't drift on what
+  # "confirm" or "dismiss" means. Confirming does not touch the transaction's other links —
+  # multiple linked documents per transaction are allowed (an invoice *and* a receipt).
+  def confirm! = update!(status: "linked")
+  def dismiss! = update!(status: "dismissed")
+
   # Shared by PaperlessConnection::Matcher and ReceiptLinksController#link_document, the two
   # places a document gets attached to a transaction — keeps the cached document_* columns
   # (used to render rows without a Paperless HTTP call) in sync in exactly one place.

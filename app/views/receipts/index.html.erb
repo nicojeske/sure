@@ -10,7 +10,7 @@
   <div class="bg-container shadow-border-xs rounded-xl">
     <div class="flex items-center justify-between gap-4 p-4 flex-wrap border-b border-subdued">
       <nav class="flex items-center gap-1" aria-label="<%= t(".status_filter_label") %>">
-        <% ReceiptsController::STATUSES.each do |status| %>
+        <% ReceiptLinkListing::STATUSES.each do |status| %>
           <%= link_to t(".status_filter.#{status}"),
                 receipts_path(status: status, source: @source),
                 class: class_names(
@@ -22,7 +22,7 @@
       </nav>
 
       <nav class="flex items-center gap-1" aria-label="<%= t(".source_filter_label") %>">
-        <% ReceiptsController::SOURCES.each do |source| %>
+        <% ReceiptLinkListing::SOURCES.each do |source| %>
           <%= link_to t(".source_filter.#{source}"),
                 receipts_path(status: @status, source: source),
                 class: class_names(
@@ -34,20 +34,6 @@
       </nav>
     </div>
 
-    <% if @receipt_links.blank? %>
-      <%= render "receipts/empty", configured: @paperless_connection.present? %>
-    <% else %>
-      <div>
-        <% @receipt_links.each do |receipt_link| %>
-          <%= render "receipts/row", receipt_link: receipt_link %>
-        <% end %>
-      </div>
-
-      <% if @pagy.pages > 1 %>
-        <div class="p-4 border-t border-subdued">
-          <%= render "shared/pagination", pagy: @pagy %>
-        </div>
-      <% end %>
-    <% end %>
+    <%= render "receipts/list" %>
   </div>
 </div>

@@ -81,6 +81,30 @@ class ReceiptsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes rendered_links, receipt_links(:linked_one)
   end
 
+  test "index renders the recipient and the row actions for a suggestion" do
+    link = receipt_links(:suggested_transfer_out)
+
+    get receipts_path(status: "suggested")
+
+    assert_response :success
+    assert_select "tr#" + ActionView::RecordIdentifier.dom_id(link)
+    assert_select "th", text: "Recipient"
+    assert_select "body", text: /Unknown Vendor/
+    assert_select "form[action=?]", confirm_receipts_link_path(link, status: "suggested", source: "all")
+    assert_select "form[action=?]", dismiss_receipts_link_path(link, status: "suggested", source: "all")
+  end
+
+  test "index offers unlink but not confirm for an already linked match" do
+    link = receipt_links(:linked_one)
+
+    get receipts_path
+
+    assert_response :success
+    assert_select "form[action=?]", receipts_link_path(link, status: "linked", source: "all")
+    assert_select "form[action=?]", confirm_receipts_link_path(link, status: "linked", source: "all"), count: 0
+    assert_select "form[action=?]", dismiss_receipts_link_path(link, status: "linked", source: "all")
+  end
+
   test "index renders the not-connected empty state without a configured connection" do
     @connection.destroy
 

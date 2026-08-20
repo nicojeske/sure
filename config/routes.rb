@@ -488,6 +488,14 @@ Rails.application.routes.draw do
 
   resources :receipts, only: :index
   post "receipts/scan", to: "receipts/scans#create", as: :receipts_scan
+  namespace :receipts do
+    resources :links, only: :destroy do
+      member do
+        patch :confirm
+        patch :dismiss
+      end
+    end
+  end
 
   resources :transactions, only: %i[index new create show update destroy] do
     resource :split, only: %i[new create edit update destroy]

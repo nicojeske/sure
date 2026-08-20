@@ -39,4 +39,28 @@ class ReceiptLinkTest < ActiveSupport::TestCase
 
     assert_not @link.amount_conflicts_with?(nil)
   end
+
+  test "confirm! links a suggestion" do
+    link = receipt_links(:suggested_transfer_out)
+
+    link.confirm!
+
+    assert_equal "linked", link.reload.status
+  end
+
+  test "dismiss! dismisses a suggestion" do
+    link = receipt_links(:suggested_transfer_out)
+
+    link.dismiss!
+
+    assert_equal "dismissed", link.reload.status
+  end
+
+  test "confirm! restores a dismissed match" do
+    link = receipt_links(:dismissed_transfer_in)
+
+    link.confirm!
+
+    assert_equal "linked", link.reload.status
+  end
 end

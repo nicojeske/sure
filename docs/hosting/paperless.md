@@ -49,8 +49,14 @@ match for your family, newest first:
 - Filter by status — **Linked** (the default), **Suggested**, **Dismissed**, or **All** — and by
   how the match was made, **Automatic** or **Manual**. The filters live in the URL, so a filtered
   view is shareable and bookmarkable.
-- Each row shows the Paperless document (title, correspondent, date, and structured amount when a
-  custom field is mapped) alongside the transaction it was matched to.
+- Each row is a table row: the Paperless document (thumbnail, title, date, and structured amount
+  when a custom field is mapped), the **Recipient** (the document's Paperless correspondent) in its
+  own column, the transaction it was matched to, and the match status with the reasons it scored on.
+- Act on a match without leaving the page: **confirm** a suggestion, **dismiss** it, or **remove**
+  the link entirely. The list re-renders itself through the filters you're currently viewing, so a
+  confirmed suggestion drops out of a "Suggested" list on the spot. A dismissed match can be
+  confirmed later — it stays visible under the **Dismissed** filter.
+- The eye button previews the document in a modal without opening Paperless.
 
 **Scan for receipts** starts a family-wide scan immediately instead of waiting for the nightly run.
 Progress updates live — no page reload — and is shared by every open tab, because the job pushes it
@@ -94,5 +100,10 @@ A few things worth knowing about a manual scan:
   `Current.*` and must use absolute i18n keys.
 - A partial unique index on `paperless_scans.family_id` (where status is `pending`/`running`)
   enforces one live scan per family. `PaperlessScan#stale?` covers a job that died mid-run.
+- `ReceiptLink#confirm!` / `#dismiss!` are the one definition of those two decisions, shared by the
+  drawer (`ReceiptLinksController`) and the list (`Receipts::LinksController`). The two controllers
+  render completely different things, so they share the *scope* instead via the
+  `ReceiptLinkListing` concern — a mutation always re-queries through the filters the user is
+  looking at, which is why row actions carry `status`/`source`/`page`.
 - See `app/models/provider/paperless.rb` for the API client and `app/models/paperless_connection/matcher.rb`
   for the scoring logic.

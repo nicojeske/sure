@@ -1,40 +1,115 @@
-<%# locals: (receipt_link:) %>
+<%# locals: (receipt_link:, filters: {}) %>
 <% entry = receipt_link.transaction_record.entry %>
-<div class="flex items-center justify-between gap-4 p-3 border-b border-subdued last:border-b-0 hover:bg-surface-hover flex-wrap">
-  <div class="min-w-0 flex-1">
-    <%= render "receipt_links/document_summary", receipt_link: receipt_link, entry: entry %>
-  </div>
+<% reason_labels = {
+     "amount" => t("receipt_links.suggestion.reason_amount"),
+     "amount_secondary" => t("receipt_links.suggestion.reason_amount_secondary"),
+     "amount_conflict" => t("receipt_links.suggestion.reason_amount_conflict"),
+     "date" => t("receipt_links.suggestion.reason_date"),
+     "correspondent" => t("receipt_links.suggestion.reason_correspondent")
+   } %>
 
-  <div class="flex items-center gap-3 shrink-0">
+<tr id="<%= dom_id(receipt_link) %>" class="border-b border-subdued last:border-b-0 hover:bg-surface-hover align-middle">
+  <td class="px-3 py-3">
+    <%= render "receipt_links/document_summary",
+          receipt_link: receipt_link,
+          entry: entry,
+          show_correspondent: false %>
+  </td>
+
+  <td class="px-3 py-3">
+    <% if receipt_link.document_correspondent.present? %>
+      <p class="text-sm text-primary truncate"><%= receipt_link.document_correspondent %></p>
+    <% else %>
+      <p class="text-sm text-subdued">&mdash;</p>
+    <% end %>
+  </td>
+
+  <td class="px-3 py-3">
     <%= link_to entry_path(entry),
           data: { turbo_frame: "drawer", turbo_prefetch: false },
-          class: "focus-ring rounded-md min-w-0 text-right" do %>
-      <p class="text-sm font-medium text-primary truncate max-w-52"><%= entry.name %></p>
+          class: "focus-ring rounded-md block min-w-0" do %>
+      <p class="text-sm font-medium text-primary truncate"><%= entry.name %></p>
       <p class="text-xs text-secondary">
         <%= l(entry.date, format: :long) %>
         &middot;
         <span class="privacy-sensitive"><%= format_money(-entry.amount_money) %></span>
       </p>
     <% end %>
+  </td>
 
-    <div class="flex items-center gap-1.5">
-      <%= render DS::Pill.new(
-            label: t("receipts.index.status.#{receipt_link.status}"),
-            tone: receipt_link.linked? ? :success : (receipt_link.dismissed? ? :neutral : :info),
-            marker: false,
-            size: :sm
+  <td class="px-3 py-3">
+    <div class="space-y-1">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <%= render DS::Pill.new(
+              label: t("receipts.index.status.#{receipt_link.status}"),
+              tone: receipt_link.linked? ? :success : (receipt_link.dismissed? ? :neutral : :info),
+              marker: false,
+              size: :sm
+            ) %>
+        <%= render DS::Pill.new(
+              label: t("receipts.index.source.#{receipt_link.source}"),
+              tone: :neutral,
+              style: :outline,
+              marker: false,
+              size: :sm
+            ) %>
+      </div>
+      <% matched_reasons = receipt_link.match_reasons.keys.filter_map { |key| reason_labels[key] } %>
+      <% if matched_reasons.any? %>
+        <p class="text-xs text-subdued"><%= matched_reasons.join(" · ") %></p>
+      <% end %>
+      <p class="text-xs text-subdued">
+        <%= t("receipts.index.time_ago", time: time_ago_in_words(receipt_link.created_at)) %>
+      </p>
+    </div>
+  </td>
+
+  <td class="px-3 py-3">
+    <div class="flex items-center justify-end gap-1.5">
+      <%= render DS::Link.new(
+            href: paperless_document_path(receipt_link.document_id),
+            variant: :outline,
+            size: :sm,
+            icon: "eye",
+            text: "",
+            frame: :modal,
+            aria: { label: t("receipts.row.preview") }
           ) %>
-      <%= render DS::Pill.new(
-            label: t("receipts.index.source.#{receipt_link.source}"),
-            tone: :neutral,
-            style: :outline,
-            marker: false,
-            size: :sm
+
+      <% unless receipt_link.linked? %>
+        <%= render DS::Button.new(
+              href: confirm_receipts_link_path(receipt_link, filters),
+              method: :patch,
+              variant: :outline,
+              size: :sm,
+              icon: "check",
+              text: "",
+              aria_label: t("receipts.row.confirm")
+            ) %>
+      <% end %>
+
+      <% unless receipt_link.dismissed? %>
+        <%= render DS::Button.new(
+              href: dismiss_receipts_link_path(receipt_link, filters),
+              method: :patch,
+              variant: :ghost,
+              size: :sm,
+              icon: "x",
+              text: "",
+              aria_label: t("receipts.row.dismiss")
+            ) %>
+      <% end %>
+
+      <%= render DS::Button.new(
+            href: receipts_link_path(receipt_link, filters),
+            method: :delete,
+            variant: :outline_destructive,
+            size: :sm,
+            icon: "trash-2",
+            text: "",
+            aria_label: t("receipts.row.remove"),
+            confirm: CustomConfirm.for_resource_deletion("receipt link")
           ) %>
     </div>
-
-    <p class="text-xs text-subdued w-20 text-right">
-      <%= t("receipts.index.time_ago", time: time_ago_in_words(receipt_link.created_at)) %>
-    </p>
-  </div>
-</div>
+  </td>
+</tr>

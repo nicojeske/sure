@@ -23,6 +23,18 @@ en:
         auto: Auto
         manual: Manual
       time_ago: "%{time} ago"
+    list:
+      header:
+        document: Document
+        recipient: Recipient
+        transaction: Transaction
+        status: Match
+        actions: Actions
+    row:
+      preview: Preview document
+      confirm: Confirm this match
+      dismiss: Dismiss this match
+      remove: Remove this match
     empty:
       no_matches_title: No receipts here yet
       no_matches_body: Nothing matches the current filters. Run a scan to look for receipts against your recent transactions, or try a different filter.
