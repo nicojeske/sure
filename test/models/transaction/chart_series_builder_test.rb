@@ -42,8 +42,10 @@ class Transaction::ChartSeriesBuilderTest < ActiveSupport::TestCase
     entry.transaction.tags = [ tag_a, tag_b ]
 
     search = Transaction::Search.new(@family, filters: { tags: [ tag_a.name, tag_b.name ] })
-    # Sanity check: the underlying scope really is multiplied by the tag join.
-    assert_equal 2, search.transactions_scope.count
+    # Sanity check: Transaction::Search#apply_tag_filter dedupes via a subquery
+    # (see #3174), so a transaction tagged with two of the filtered tags is
+    # still counted once here.
+    assert_equal 1, search.transactions_scope.count
 
     series = builder_for(search).cumulative_series
 
