@@ -29,18 +29,11 @@
         <% end %>
       <% end %>
 
-      <% if period.key.present? %>
-        <%= render UI::PeriodPicker.new(
-          selected: period,
-          url: account_path(account),
-          extra_params: account.supports_trades? ? { chart_view: view } : {}
-        ) %>
-      <% else %>
-        <span class="inline-flex items-center gap-1.5 bg-container border border-secondary font-medium rounded-lg px-3 py-2 text-sm text-secondary">
-          <%= helpers.icon("calendar", size: "sm") %>
-          <%= l(period.start_date, format: :long) %> – <%= l(period.end_date, format: :long) %>
-        </span>
-      <% end %>
+      <%= render UI::PeriodPicker.new(
+        selected: period,
+        url: account_path(account),
+        extra_params: account.supports_trades? ? { chart_view: view } : {}
+      ) %>
     </div>
   </div>
 
@@ -55,7 +48,8 @@
         id="lineChart"
         class="w-full h-full privacy-sensitive"
         data-controller="time-series-chart"
-        data-time-series-chart-data-value="<%= series.to_json %>"></div>
+        data-time-series-chart-data-value="<%= series.to_json %>"
+        data-time-series-chart-selectable-value="true"></div>
       <% else %>
         <div class="w-full h-full flex items-center justify-center">
           <p class="text-secondary text-sm"><%= t("UI.account.chart.no_data_available") %></p>
