@@ -384,7 +384,7 @@ Rails.application.routes.draw do
     resource :mcp, controller: "mcp", only: :show do
       delete "tokens/:token_id", to: "mcp#revoke", as: :revoke_token
     end
-    resource :ai_prompts, only: :show
+    resource :ai_prompts, only: %i[show update]
     resource :llm_usage, only: :show
     resource :guides, only: :show
     resource :receipts, controller: "receipts", only: %i[show update destroy] do
