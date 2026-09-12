@@ -1,0 +1,14 @@
+---
+en:
+  activerecord:
+    attributes:
+      family:
+        stripped_name_prefixes: Name prefixes to remove
+        stripped_name_prefixes_list: Name prefixes to remove
+    errors:
+      models:
+        family:
+          attributes:
+            stripped_name_prefixes:
+              too_many: can have at most %{count} entries
+              invalid_format: "'%{token}' can only contain letters, numbers, spaces and . & _ -"

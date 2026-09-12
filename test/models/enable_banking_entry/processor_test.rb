@@ -703,6 +703,71 @@ class EnableBankingEntry::ProcessorTest < ActiveSupport::TestCase
     assert_equal "HERR DR. EISENSTADT 7000", name
   end
 
+  test "strips Curve's CRV* prefix from the creditor name, for both entry name and merchant" do
+    tx = {
+      entry_reference: "ref_curve_creditor",
+      transaction_id: nil,
+      booking_date: Date.current.to_s,
+      transaction_amount: { amount: "12.50", currency: "EUR" },
+      creditor: { name: "CRV*ALDI SUED" },
+      credit_debit_indicator: "DBIT",
+      status: "BOOK"
+    }
+
+    EnableBankingEntry::Processor.new(tx, enable_banking_account: @enable_banking_account).process
+    entry = @account.entries.find_by!(external_id: "enable_banking_ref_curve_creditor")
+
+    assert_equal "ALDI SUED", entry.name
+    assert_equal "ALDI SUED", entry.transaction.merchant&.name
+  end
+
+  test "strips Curve's CRV* prefix from a remittance line" do
+    name = build_name(
+      credit_debit_indicator: "DBIT",
+      creditor: { name: "" },
+      bank_transaction_code: nil,
+      remittance_information: [
+        "POS         130,00 AT  D6   21.07. 14:20",
+        "CRV*ALDI SUED"
+      ]
+    )
+
+    assert_equal "ALDI SUED", name
+  end
+
+  test "treats a CRV-prefixed technical card counterparty as still technical, falling back to remittance" do
+    name = build_name(
+      credit_debit_indicator: "CRDT",
+      debtor_name: "CRV*CARD-1234",
+      remittance_information: [ "ACME SHOP" ],
+      bank_transaction_code: { description: "Card Purchase" }
+    )
+
+    assert_equal "ACME SHOP", name
+  end
+
+  test "strips a family-configured custom prefix in addition to the built-in defaults" do
+    @family.update!(stripped_name_prefixes: [ "REVOLT" ])
+
+    name = build_name_with_family(
+      credit_debit_indicator: "DBIT",
+      creditor: { name: "REVOLT*Bakery Vienna" },
+      bank_transaction_code: nil
+    )
+
+    assert_equal "Bakery Vienna", name
+  end
+
+  test "does not strip a prefix that isn't configured for the family" do
+    name = build_name_with_family(
+      credit_debit_indicator: "DBIT",
+      creditor: { name: "REVOLT*Bakery Vienna" },
+      bank_transaction_code: nil
+    )
+
+    assert_equal "REVOLT*Bakery Vienna", name
+  end
+
   test "falls back to the technical line when remittance_information has no descriptive line" do
     name = build_name(
       credit_debit_indicator: "DBIT",

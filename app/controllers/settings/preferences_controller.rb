@@ -1,6 +1,8 @@
 class Settings::PreferencesController < ApplicationController
   layout "settings"
 
+  before_action :require_admin!, only: :strip_name_prefixes
+
   def show
     @user = Current.user
     @family_members = Current.family.users.where.not(id: @user.id).where(active: true)
@@ -25,5 +27,24 @@ class Settings::PreferencesController < ApplicationController
       @user.update!(preferences: updated_prefs)
     end
     redirect_to settings_preferences_path
+  end
+
+  # Retroactively cleans Enable Banking-sourced transaction/merchant names already in
+  # the database, using the family's current stripped_name_prefixes -- the settings
+  # page only ever strips new prefixes for new syncs. Runs in the background since a
+  # family can have a large transaction history.
+  def strip_name_prefixes
+    StripNamePrefixesJob.perform_later(Current.family)
+
+    DebugLogEntry.capture(
+      category: "name_prefix_backfill",
+      level: "info",
+      message: "Transaction name prefix cleanup requested from settings",
+      source: self.class.name,
+      family: Current.family,
+      user: Current.user
+    )
+
+    redirect_to settings_preferences_path, notice: t(".success")
   end
 end

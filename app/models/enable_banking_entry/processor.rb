@@ -3,9 +3,6 @@ require "digest/md5"
 class EnableBankingEntry::Processor
   include CurrencyNormalizable
 
-  # Small-merchant card terminal providers that prefix the payee with "KEYWORD *"
-  PAYMENT_PROCESSOR_PREFIX = /\A(SUMUP|SQ|IZETTLE|ZETTLE|PAYPAL)\s*\*\s*/i
-
   # Payment wallets that some ASPSPs prefix onto the descriptor of a card
   # purchase, e.g. "Apple pay: <payee and terminal text>". The wallet is how the
   # card was presented, not who was paid, so it is stripped before anything reads
@@ -54,16 +51,17 @@ class EnableBankingEntry::Processor
     "enable_banking_content_#{Digest::MD5.hexdigest(content)}"
   end
 
-  # known_merchant_names: optional pre-fetched Family#known_merchant_names, so a
+  # known_merchant_names / name_prefix_stripper: optional pre-fetched values, so a
   # caller processing many transactions in one batch (see
-  # EnableBankingAccount::Transactions::Processor) can compute it once instead of
-  # once per row -- same pattern as the shared import_adapter. Falls back to
-  # fetching it lazily per-instance when not provided (e.g. in isolation/tests).
-  def initialize(enable_banking_transaction, enable_banking_account:, import_adapter: nil, known_merchant_names: nil)
+  # EnableBankingAccount::Transactions::Processor) can compute them once instead of
+  # once per row -- same pattern as the shared import_adapter. Both fall back to
+  # fetching/building lazily per-instance when not provided (e.g. in isolation/tests).
+  def initialize(enable_banking_transaction, enable_banking_account:, import_adapter: nil, known_merchant_names: nil, name_prefix_stripper: nil)
     @enable_banking_transaction = enable_banking_transaction
     @enable_banking_account = enable_banking_account
     @import_adapter = import_adapter
     @known_merchant_names = known_merchant_names
+    @name_prefix_stripper = name_prefix_stripper
   end
 
   def process
@@ -232,11 +230,18 @@ class EnableBankingEntry::Processor
       # Determine counterparty based on transaction direction
       # For outgoing payments (DBIT), counterparty is the creditor (who we paid)
       # For incoming payments (CRDT), counterparty is the debtor (who paid us)
-      if credit_debit_indicator == "CRDT"
+      raw = if credit_debit_indicator == "CRDT"
         data.dig(:debtor, :name).presence || data[:debtor_name].presence
       else
         data.dig(:creditor, :name).presence || data[:creditor_name].presence
       end
+
+      # Stripped here (rather than at each call site) so every consumer -- #name,
+      # #merchant_name_candidate, and the technical_card_counterparty? check below --
+      # sees the real counterparty rather than an aggregator's card-fronting prefix
+      # (e.g. Curve's "CRV*"). A technical "CRV*CARD-1234" counterparty still resolves
+      # to "CARD-1234" and is still recognized as technical.
+      raw.present? ? name_prefix_stripper.call(raw) : raw
     end
 
     def technical_card_counterparty?(value)
@@ -249,7 +254,8 @@ class EnableBankingEntry::Processor
       descriptive = lines.find { |line| !technical_remittance_line?(line) } || lines.first
       return descriptive if descriptive.blank?
 
-      matched_known_merchant_name(descriptive) || strip_payment_processor_prefix(descriptive)
+      stripped = name_prefix_stripper.call(descriptive)
+      matched_known_merchant_name(stripped) || stripped
     end
 
     # The remittance lines describing who was paid, one per element, with any
@@ -284,11 +290,6 @@ class EnableBankingEntry::Processor
       line.match?(/\A(POS|ATM)\s+\d+[.,]\d{2}\b.*\d{1,2}[.\/]\d{1,2}\.?\s+\d{2}:\d{2}\z/i)
     end
 
-    def strip_payment_processor_prefix(value)
-      return value if value.blank?
-      value.sub(PAYMENT_PROCESSOR_PREFIX, "").strip.presence || value
-    end
-
     # Prefer a merchant name the family already knows over any text heuristic: it's
     # already clean/trusted, and sidesteps guessing which parts of a POS line are
     # noise (store numbers, city, loyalty markers, ...) vs. part of the name.
@@ -311,6 +312,10 @@ class EnableBankingEntry::Processor
 
     def known_merchant_names
       @known_merchant_names ||= account&.family&.known_merchant_names || []
+    end
+
+    def name_prefix_stripper
+      @name_prefix_stripper ||= Transaction::NamePrefixStripper.for_family(account&.family)
     end
 
     def merchant_name_candidate

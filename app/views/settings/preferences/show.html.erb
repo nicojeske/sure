@@ -263,6 +263,33 @@
       <% end %>
     </div>
   <% end %>
+  <%= settings_section title: t(".name_cleanup_title"), subtitle: t(".name_cleanup_subtitle") do %>
+    <div>
+      <%= styled_form_with model: @user, class: "space-y-2", data: { controller: "auto-submit-form" } do |form| %>
+        <%= form.hidden_field :redirect_to, value: "preferences" %>
+        <%= form.fields_for :family do |family_form| %>
+          <%= family_form.text_field :stripped_name_prefixes_list,
+              label: t(".name_cleanup_label"),
+              placeholder: t(".name_cleanup_placeholder"),
+              data: { auto_submit_form_target: "auto" } %>
+        <% end %>
+        <p class="text-xs text-secondary"><%= t(".name_cleanup_hint") %></p>
+      <% end %>
+      <div class="flex justify-end pt-2">
+        <%= render DS::Button.new(
+          text: t(".name_cleanup_backfill_button"),
+          variant: :secondary,
+          href: strip_name_prefixes_settings_preferences_path,
+          icon: "sparkles",
+          confirm: CustomConfirm.new(
+            title: t(".name_cleanup_backfill_confirm_title"),
+            body: t(".name_cleanup_backfill_confirm_body"),
+            btn_text: t(".name_cleanup_backfill_confirm_button")
+          )
+        ) %>
+      </div>
+    </div>
+  <% end %>
 <% end %>
 
 <%# Preview features toggle — visible to all users, not just admins. Lives at

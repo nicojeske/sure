@@ -215,9 +215,20 @@ en:
         sharing_default_label: Default sharing for new accounts
         sharing_shared: Share with all members
         sharing_private: Keep private by default
+        name_cleanup_title: Transaction name cleanup
+        name_cleanup_subtitle: Remove noisy prefixes some card providers add to every transaction
+        name_cleanup_label: Additional prefixes to remove
+        name_cleanup_placeholder: "e.g. Revolt, Wallster"
+        name_cleanup_hint: "Comma-separated. SumUp, SQ, iZettle, Zettle, PayPal and Curve (CRV) prefixes are already removed automatically; add any others your bank or card provider prepends to transaction names, in the form \"PREFIX*\"."
+        name_cleanup_backfill_button: Clean up existing transactions
+        name_cleanup_backfill_confirm_title: Clean up existing transaction names?
+        name_cleanup_backfill_confirm_body: This renames existing Enable Banking transactions and merchants that still have a configured prefix, in the background. It may take a few minutes for large histories.
+        name_cleanup_backfill_confirm_button: Clean up
         preview:
           title: Enable preview features
           description: Opt in to in-progress features tagged preview or canary.
+      strip_name_prefixes:
+        success: Cleanup started. This can take a few minutes for large transaction histories.
     budget_shares:
       update:
         success: Budget sharing settings updated

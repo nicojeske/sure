@@ -363,7 +363,9 @@ Rails.application.routes.draw do
 
   namespace :settings do
     resource :profile, only: [ :show, :destroy ]
-    resource :preferences, only: %i[show update]
+    resource :preferences, only: %i[show update] do
+      post :strip_name_prefixes, on: :collection
+    end
     resource :budget_shares, only: :update
     resource :appearance, only: %i[show update]
     resource :debug, only: :show
