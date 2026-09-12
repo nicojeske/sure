@@ -8,3 +8,12 @@ en:
         ai_prompt_categorizer_anthropic: "Transaction categorizer prompt (Anthropic)"
         ai_prompt_merchant_openai: "Merchant detector prompt (OpenAI)"
         ai_prompt_merchant_anthropic: "Merchant detector prompt (Anthropic)"
+        stripped_name_prefixes: Name prefixes to remove
+        stripped_name_prefixes_list: Name prefixes to remove
+    errors:
+      models:
+        family:
+          attributes:
+            stripped_name_prefixes:
+              too_many: can have at most %{count} entries
+              invalid_format: "'%{token}' can only contain letters, numbers, spaces and . & _ -"

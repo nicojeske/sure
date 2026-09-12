@@ -33,6 +33,12 @@ class Family < ApplicationRecord
   ASSISTANT_TYPES = %w[builtin external].freeze
   SHARING_DEFAULTS = %w[shared private].freeze
 
+  # A family-supplied prefix token is combined with Transaction::NamePrefixStripper::DEFAULT_PREFIXES
+  # (see #name_prefix_stripper), so it must be safe to interpolate into that class's regex alternation.
+  # No "*" (that's the separator the stripper matches on) and no other regex metacharacters.
+  STRIPPED_NAME_PREFIX_FORMAT = /\A[A-Za-z0-9][A-Za-z0-9 .&_-]{0,29}\z/
+  MAX_STRIPPED_NAME_PREFIXES = 20
+
   has_many :users, dependent: :destroy
   has_many :accounts, dependent: :destroy
   has_many :invitations, dependent: :destroy
@@ -153,8 +159,10 @@ class Family < ApplicationRecord
   validates :personal_budgets, inclusion: { in: [ true, false ] }
   validates :household_budget_enabled, inclusion: { in: [ true, false ] }
   validate :timezone_must_be_a_known_zone, if: :timezone_changed?
+  validate :stripped_name_prefixes_must_be_well_formed
 
   before_validation :normalize_enabled_currencies!
+  before_validation :normalize_stripped_name_prefixes!
 
   def primary_currency_code
     self.class.normalize_currency_code(currency) || "USD"
@@ -336,6 +344,24 @@ class Family < ApplicationRecord
   # merchants (unlike available_merchants), since those were explicitly removed.
   def known_merchant_names
     (assigned_merchants.pluck(:name) + merchants.pluck(:name)).uniq
+  end
+
+  # Strips card-aggregator prefixes (e.g. Curve's "CRV*") from provider-supplied names
+  # and merchant names, combining the built-in defaults with this family's own tokens.
+  # Memoized per instance -- safe because #stripped_name_prefixes only changes via a
+  # fresh save, which callers (a new sync, a new backfill run) load a fresh Family for.
+  def name_prefix_stripper
+    @name_prefix_stripper ||= Transaction::NamePrefixStripper.for_family(self)
+  end
+
+  # Comma-separated view of stripped_name_prefixes for the settings form, which edits
+  # this as a single text field rather than an array of inputs.
+  def stripped_name_prefixes_list
+    Array(stripped_name_prefixes).join(", ")
+  end
+
+  def stripped_name_prefixes_list=(value)
+    self.stripped_name_prefixes = value.to_s.split(",")
   end
 
   def assigned_merchants_for(user)
@@ -668,6 +694,31 @@ class Family < ApplicationRecord
 
     def normalize_currency_codes(values)
       Array(values).filter_map { |value| self.class.normalize_currency_code(value) }.uniq
+    end
+
+    def normalize_stripped_name_prefixes!
+      default_prefixes_upcased = Transaction::NamePrefixStripper::DEFAULT_PREFIXES.map(&:upcase)
+
+      normalized = Array(stripped_name_prefixes).filter_map { |token| token.to_s.strip.presence }
+      normalized = normalized.uniq(&:upcase).reject { |token| default_prefixes_upcased.include?(token.upcase) }
+
+      self.stripped_name_prefixes = normalized
+    end
+
+    def stripped_name_prefixes_must_be_well_formed
+      tokens = Array(stripped_name_prefixes)
+      return if tokens.empty?
+
+      if tokens.size > MAX_STRIPPED_NAME_PREFIXES
+        errors.add(:stripped_name_prefixes, :too_many, count: MAX_STRIPPED_NAME_PREFIXES)
+      end
+
+      tokens.each do |token|
+        unless token.match?(STRIPPED_NAME_PREFIX_FORMAT)
+          errors.add(:stripped_name_prefixes, :invalid_format, token: token)
+          break
+        end
+      end
     end
 
     # Not a plain `inclusion: { in: ActiveSupport::TimeZone.all.map(&:name) }`

@@ -66,6 +66,40 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal original_codes, @member.family.reload.enabled_currency_codes
   end
 
+  test "admin can update stripped name prefixes" do
+    patch user_url(@user), params: {
+      user: {
+        redirect_to: "preferences",
+        family_attributes: {
+          id: @user.family.id,
+          stripped_name_prefixes_list: "Revolt, Wallster"
+        }
+      }
+    }
+
+    assert_redirected_to settings_preferences_url
+    assert_equal [ "Revolt", "Wallster" ], @user.family.reload.stripped_name_prefixes
+  end
+
+  test "non-admin cannot update stripped name prefixes" do
+    sign_in @member = users(:family_member)
+    original_prefixes = @member.family.stripped_name_prefixes
+
+    patch user_url(@member), params: {
+      user: {
+        redirect_to: "preferences",
+        family_attributes: {
+          id: @member.family.id,
+          stripped_name_prefixes_list: "Revolt, Wallster"
+        }
+      }
+    }
+
+    assert_redirected_to settings_profile_url
+    assert_equal I18n.t("users.reset.unauthorized"), flash[:alert]
+    assert_equal original_prefixes, @member.family.reload.stripped_name_prefixes
+  end
+
   test "admin can reset family data" do
     account = accounts(:investment)
     category = categories(:income)

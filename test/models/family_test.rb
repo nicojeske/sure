@@ -265,6 +265,47 @@ class FamilyTest < ActiveSupport::TestCase
     assert_equal Money::Currency.as_options.map(&:iso_code), family.reload.enabled_currency_codes
   end
 
+  test "stripped_name_prefixes are normalized, deduplicated, and stripped of blank entries" do
+    family = families(:dylan_family)
+    family.update!(stripped_name_prefixes: [ " Revolt ", "REVOLT", "", "  ", "Wallster" ])
+
+    assert_equal [ "Revolt", "Wallster" ], family.reload.stripped_name_prefixes
+  end
+
+  test "stripped_name_prefixes drops tokens already covered by the built-in defaults" do
+    family = families(:dylan_family)
+    family.update!(stripped_name_prefixes: [ "crv", "SumUp", "Wallster" ])
+
+    assert_equal [ "Wallster" ], family.reload.stripped_name_prefixes
+  end
+
+  test "stripped_name_prefixes rejects a token containing an asterisk or other regex metacharacters" do
+    family = families(:dylan_family)
+    family.stripped_name_prefixes = [ "REVOLT*" ]
+
+    assert_not family.valid?
+    assert_includes family.errors[:stripped_name_prefixes], "'REVOLT*' can only contain letters, numbers, spaces and . & _ -"
+  end
+
+  test "stripped_name_prefixes rejects more than the maximum number of entries" do
+    family = families(:dylan_family)
+    family.stripped_name_prefixes = (1..(Family::MAX_STRIPPED_NAME_PREFIXES + 1)).map { |i| "TOKEN#{i}" }
+
+    assert_not family.valid?
+    assert_includes family.errors[:stripped_name_prefixes], "can have at most #{Family::MAX_STRIPPED_NAME_PREFIXES} entries"
+  end
+
+  test "stripped_name_prefixes_list reads and writes a comma-separated string" do
+    family = families(:dylan_family)
+    family.update!(stripped_name_prefixes: [ "Revolt", "Wallster" ])
+
+    assert_equal "Revolt, Wallster", family.stripped_name_prefixes_list
+
+    family.update!(stripped_name_prefixes_list: "Foo, Bar")
+
+    assert_equal [ "Foo", "Bar" ], family.reload.stripped_name_prefixes
+  end
+
   test "upload_document stores provided metadata on family document" do
     family = families(:dylan_family)
     family.update!(vector_store_id: nil)
