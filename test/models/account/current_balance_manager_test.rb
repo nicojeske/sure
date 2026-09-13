@@ -208,7 +208,7 @@ class Account::CurrentBalanceManagerTest < ActiveSupport::TestCase
     assert_equal 1000, @linked_account.balance
   end
 
-  test "preserves previous day anchor as reconciliation when updating linked account balance" do
+  test "moves previous day anchor forward in place when updating linked account balance" do
     # First create a current anchor
     manager = Account::CurrentBalanceManager.new(@linked_account)
     result = manager.set_current_balance(1000)
@@ -219,26 +219,20 @@ class Account::CurrentBalanceManagerTest < ActiveSupport::TestCase
 
     # Travel to tomorrow to ensure date change
     travel_to Date.current + 1.day do
-      # Now update it
-      assert_difference -> { @linked_account.entries.count } => 1,
-                       -> { @linked_account.valuations.count } => 1 do
-        result = manager.set_current_balance(2000)
-        assert result.success?
-        assert result.changes_made?
+      # Now update it — no new entry should be created, the anchor just moves forward
+      assert_no_difference -> { @linked_account.entries.count } do
+        assert_no_difference -> { @linked_account.valuations.count } do
+          result = manager.set_current_balance(2000)
+          assert result.success?
+          assert result.changes_made?
+        end
       end
 
-      # The old anchor should now be a reconciliation
-      preserved_valuation = Valuation.find(original_id)
-      assert_equal "reconciliation", preserved_valuation.kind
-      assert_equal 1000, preserved_valuation.entry.amount
-      assert_equal Valuation.build_reconciliation_name(@linked_account.accountable_type), preserved_valuation.entry.name
-      assert_equal Date.yesterday, preserved_valuation.entry.date
-
-      # A new current anchor should exist for today
-      new_anchor = @linked_account.valuations.current_anchor.first
-      assert_not_equal original_id, new_anchor.id
-      assert_equal 2000, new_anchor.entry.amount
-      assert_equal Date.current, new_anchor.entry.date
+      # The same anchor is updated in place, not left behind as a reconciliation
+      updated_anchor = Valuation.find(original_id)
+      assert_equal "current_anchor", updated_anchor.kind
+      assert_equal 2000, updated_anchor.entry.amount
+      assert_equal Date.current, updated_anchor.entry.date
     end
 
     assert_equal 2000, @linked_account.balance

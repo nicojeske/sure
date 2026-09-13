@@ -93,18 +93,13 @@ class Account::CurrentBalanceManager
     # This is NOT a user-facing feature, and is primarily used in "processors" while syncing
     # linked account data (e.g. via Plaid)
     #
-    # Before overwriting a stale (previous-day) current_anchor, we convert it to a
-    # reconciliation valuation. This preserves the API-reported balance as a historical
-    # waypoint that the ReverseCalculator uses for more accurate balance history.
+    # The anchor is simply moved forward in place on every sync (never left behind as a
+    # reconciliation entry), so linked accounts accumulate a single current_anchor rather
+    # than a growing trail of "Manual balance update" entries in the account log.
     def set_current_balance_for_linked_account(balance)
       changes_made = false
 
       ActiveRecord::Base.transaction do
-        # If an anchor exists from a previous day, preserve it as a reconciliation
-        # before replacing it with today's fresh anchor.
-        preserve_anchor_as_reconciliation_if_stale if current_anchor_valuation
-
-        # Re-check: the memoized value was cleared if the anchor was converted
         if current_anchor_valuation
           changes_made = update_current_anchor(balance)
         else
@@ -118,25 +113,6 @@ class Account::CurrentBalanceManager
 
     def current_anchor_valuation
       @current_anchor_valuation ||= account.valuations.current_anchor.includes(:entry).first
-    end
-
-    # If the existing current_anchor is from a previous day, convert it to a
-    # reconciliation before overwriting. This accumulates a chain of API-reported
-    # balance waypoints over time without creating extra entries per sync.
-    #
-    # Same-day updates are left in place (no extra reconciliations on repeated syncs).
-    def preserve_anchor_as_reconciliation_if_stale
-      entry = current_anchor_valuation.entry
-      return if entry.date == Date.current # Same-day update — nothing to preserve
-
-      current_anchor_valuation.update!(kind: "reconciliation")
-      entry.update!(name: Valuation.build_reconciliation_name(account.accountable_type))
-      Rails.logger.info("[AnchorRotation] Converted current_anchor to reconciliation for account #{account.id}, date=#{entry.date}, entry_id=#{entry.id}")
-
-      # Clear memoized value so the next check creates a fresh current_anchor.
-      # The chained scope (.current_anchor.first) always issues a fresh SQL query,
-      # so we don't need to reload the full association.
-      @current_anchor_valuation = nil
     end
 
     def create_current_anchor(balance)
