@@ -1,0 +1,36 @@
+---
+en:
+  account_statements:
+    paperless_imports:
+      provider_errors:
+        unauthorized: Paperless rejected the API token.
+        not_found: Paperless resource not found.
+        rate_limited: Paperless rate limit exceeded. Try again shortly.
+        server_error: Paperless returned a server error.
+        unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+        parse_error: Could not parse the response from Paperless.
+        untrusted_host: Paperless returned a link to an unexpected host.
+        unknown: Unexpected response from Paperless.
+      new:
+        title: Import a statement from Paperless
+        title_for_account: "Import a statement into %{account}"
+        search_placeholder: Search by title, correspondent, or content...
+      search_results:
+        no_results: No documents found.
+        load_more: Load more
+      search_result:
+        import: Import
+        imported: Imported
+        view_statement: View statement
+        unsupported: Unsupported file type
+      create:
+        success: 'Imported "%{filename}" from Paperless.'
+        errors:
+          already_imported: 'That Paperless document is already in the Statement Vault as "%{filename}".'
+          duplicate: 'That file is already in the Statement Vault as "%{filename}".'
+          invalid:
+            unsupported_type: The Statement Vault only accepts PDF, CSV, and XLSX files.
+            too_large: That document is larger than the %{max_size}MB statement limit.
+            empty: That document is empty.
+            corrupt_pdf: That document is not a readable PDF.
+            unknown_document: That Paperless document could not be found.

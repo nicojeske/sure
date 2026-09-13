@@ -1,0 +1,26 @@
+<%# locals: (account:, query:, documents:, correspondents:, imported_statement_ids:, next_page:, error_message:) %>
+
+<% if error_message %>
+  <p class="text-sm text-destructive px-1 py-2"><%= error_message %></p>
+<% elsif documents.empty? %>
+  <p class="text-sm text-secondary px-1 py-2"><%= t(".no_results") %></p>
+<% else %>
+  <div class="space-y-2">
+    <% documents.each do |document| %>
+      <%= render "account_statements/paperless_imports/search_result", account: account, document: document,
+            correspondent: correspondents[document["correspondent"]], statement_id: imported_statement_ids[document["id"]] %>
+    <% end %>
+  </div>
+
+  <% if next_page %>
+    <div class="pt-3 text-center">
+      <%= render DS::Link.new(
+            text: t(".load_more"),
+            variant: :outline,
+            size: :sm,
+            href: new_account_statements_paperless_import_path(q: query, page: next_page, account_id: account&.id),
+            data: { turbo_frame: "paperless_statement_search_results" }
+          ) %>
+    </div>
+  <% end %>
+<% end %>

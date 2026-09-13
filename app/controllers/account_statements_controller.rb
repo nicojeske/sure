@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class AccountStatementsController < ApplicationController
+  include StatementManageable
+
   LINKED_MONTH_FORMAT = /\A\d{4}-(0[1-9]|1[0-2])\z/
 
   before_action :set_statement, only: %i[show update destroy link unlink reject]
@@ -37,6 +39,7 @@ class AccountStatementsController < ApplicationController
     @total_storage_bytes = visible_storage_scope.sum(:byte_size)
     @accounts = Current.user.accessible_accounts.visible.alphabetically
     @linked_filter_accounts = linked_filter_accounts
+    @paperless_configured = Current.family.paperless_configured?
     @breadcrumbs = [
       [ t("breadcrumbs.home"), root_path ],
       [ t("account_statements.index.title"), account_statements_path ]
@@ -173,12 +176,6 @@ class AccountStatementsController < ApplicationController
         .find(params[:id])
 
       raise ActiveRecord::RecordNotFound unless @statement.viewable_by?(Current.user)
-    end
-
-    def ensure_statement_manager!
-      return if AccountStatement.statement_manager?(Current.user)
-
-      redirect_to accounts_path, alert: t("accounts.not_authorized")
     end
 
     def statement_upload_params

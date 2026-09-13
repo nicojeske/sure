@@ -1,6 +1,6 @@
 class UI::AccountPage < ApplicationComponent
   attr_reader :account, :chart_view, :chart_period, :statement_coverage, :statements, :reconciliation_statuses,
-              :can_manage_statements
+              :can_manage_statements, :paperless_configured
 
   renders_one :activity_feed, ->(feed_data:, pagy:, search:, selected_year: nil, selected_month: nil) {
     UI::Account::ActivityFeed.new(
@@ -13,7 +13,7 @@ class UI::AccountPage < ApplicationComponent
   }
 
   def initialize(account:, chart_view: nil, chart_period: nil, active_tab: nil, statement_coverage: nil, statements: [],
-                 reconciliation_statuses: {}, can_manage_statements: false)
+                 reconciliation_statuses: {}, can_manage_statements: false, paperless_configured: false)
     @account = account
     @chart_view = chart_view
     @chart_period = chart_period
@@ -22,6 +22,7 @@ class UI::AccountPage < ApplicationComponent
     @statements = statements
     @reconciliation_statuses = reconciliation_statuses
     @can_manage_statements = can_manage_statements
+    @paperless_configured = paperless_configured
   end
 
   def id
@@ -114,7 +115,8 @@ class UI::AccountPage < ApplicationComponent
       coverage: statement_coverage,
       statements: statements,
       reconciliation_statuses: reconciliation_statuses,
-      can_manage_statements: can_manage_statements
+      can_manage_statements: can_manage_statements,
+      paperless_configured: paperless_configured
     }
   end
 end

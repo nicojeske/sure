@@ -8,6 +8,7 @@ en:
       coverage_range: "%{start} - %{end}"
       empty: No statements linked to this account yet.
       open_inbox: Inbox
+      search_paperless: Search Paperless
       statements_title: Statements
       year_label: Coverage year
     balance:
@@ -51,6 +52,7 @@ en:
       leave_unmatched: Leave unmatched
       linked_title: Linked statements
       no_suggestion: No suggestion
+      search_paperless: Search Paperless
       storage_used: Storage used
       title: Statement Vault
       unmatched_title: Unmatched inbox
@@ -89,7 +91,9 @@ en:
       link_suggestion: Link suggestion
       metadata_title: Statement metadata
       no_suggestion: No account suggestion yet.
+      open_in_paperless: Open in Paperless
       opening_balance: Opening balance
+      paperless_source: From Paperless
       period_end_on: Period end
       period_start_on: Period start
       reconciliation_title: Reconciliation

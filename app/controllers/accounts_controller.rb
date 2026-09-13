@@ -436,6 +436,7 @@ class AccountsController < ApplicationController
       permission = @account.permission_for(Current.user)
       @can_manage_statements = AccountStatement.statement_manager?(Current.user) &&
         permission.in?([ :owner, :full_control ])
+      @paperless_configured = Current.family.paperless_configured?
     end
 
     def statement_tab_frame_request?
@@ -452,7 +453,8 @@ class AccountsController < ApplicationController
         coverage: @statement_coverage,
         statements: @account_statements,
         reconciliation_statuses: @statement_reconciliation_statuses,
-        can_manage_statements: @can_manage_statements
+        can_manage_statements: @can_manage_statements,
+        paperless_configured: @paperless_configured
       }
     end
 

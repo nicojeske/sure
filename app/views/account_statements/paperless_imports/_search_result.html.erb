@@ -1,0 +1,34 @@
+<%# locals: (account:, document:, correspondent:, statement_id:) %>
+
+<div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-surface-inset">
+      <%= image_tag thumbnail_paperless_document_path(document["id"]), class: "w-full h-full object-cover" %>
+    </div>
+    <div class="min-w-0 flex-1 space-y-0.5">
+      <p class="text-sm font-medium text-primary truncate"><%= document["title"] %></p>
+      <p class="text-xs text-secondary truncate">
+        <%= [ correspondent, (Date.parse(document["created"].to_s).strftime("%b %d, %Y") rescue nil) ].compact.join(" · ") %>
+      </p>
+    </div>
+  </div>
+
+  <% if statement_id.present? %>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <%= render DS::Pill.new(label: t(".imported"), tone: :success, style: :soft, marker: false) %>
+      <%= render DS::Link.new(text: t(".view_statement"), variant: :outline, size: :sm,
+            href: account_statement_path(statement_id), data: { turbo_frame: "_top" }) %>
+    </div>
+  <% elsif !AccountStatement::PaperlessImporter.importable_document?(document) %>
+    <%= render DS::Pill.new(label: t(".unsupported"), tone: :neutral, style: :soft, marker: false, title: document["mime_type"]) %>
+  <% else %>
+    <%= render DS::Button.new(
+          text: t(".import"),
+          icon: "download",
+          variant: :outline,
+          size: :sm,
+          href: account_statements_paperless_imports_path(document_id: document["id"], account_id: account&.id),
+          method: :post
+        ) %>
+  <% end %>
+</div>

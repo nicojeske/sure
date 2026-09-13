@@ -8,9 +8,15 @@
           <p class="text-sm font-medium text-primary"><%= t(".upload_title") %></p>
           <p class="text-xs text-secondary"><%= t(".upload_description") %></p>
         </div>
-        <div class="text-right">
-          <p class="text-xs text-secondary"><%= t(".storage_used") %></p>
-          <p class="text-sm font-medium text-primary"><%= number_to_human_size(@total_storage_bytes) %></p>
+        <div class="flex items-start gap-4">
+          <% if @paperless_configured %>
+            <%= render DS::Link.new(text: t(".search_paperless"), icon: "search", variant: :outline, size: :sm,
+                  href: new_account_statements_paperless_import_path, frame: :modal) %>
+          <% end %>
+          <div class="text-right">
+            <p class="text-xs text-secondary"><%= t(".storage_used") %></p>
+            <p class="text-sm font-medium text-primary"><%= number_to_human_size(@total_storage_bytes) %></p>
+          </div>
         </div>
       </div>
 

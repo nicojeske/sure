@@ -76,6 +76,35 @@ class Paperless::DocumentsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/filename="starbucks-receipt\.pdf"/, response.headers["Content-Disposition"])
   end
 
+  test "download uses an imported statement's filename when no receipt link is cached" do
+    statement = AccountStatement.create_from_upload!(
+      family: @connection.family,
+      account: nil,
+      file: uploaded_file(filename: "march_statement.pdf", content_type: "application/pdf", content: "%PDF-1.4 test content")
+    )
+    statement.update!(source: "paperless_import", paperless_connection: @connection, paperless_document_id: 501)
+    Provider::Paperless.any_instance.expects(:file).with("501", kind: :download).returns([ "pdf-bytes", "application/pdf" ])
+
+    get download_paperless_document_path(501)
+
+    assert_response :success
+    assert_match(/filename="march_statement\.pdf"/, response.headers["Content-Disposition"])
+  end
+
+  test "show titles the preview modal from an imported statement when no receipt link is cached" do
+    statement = AccountStatement.create_from_upload!(
+      family: @connection.family,
+      account: nil,
+      file: uploaded_file(filename: "march_statement.pdf", content_type: "application/pdf", content: "%PDF-1.4 test content")
+    )
+    statement.update!(source: "paperless_import", paperless_connection: @connection, paperless_document_id: 501)
+
+    get paperless_document_path(501)
+
+    assert_response :success
+    assert_select "h2", text: "march_statement"
+  end
+
   test "download falls back to no filename when there is no cached receipt link" do
     Provider::Paperless.any_instance.expects(:file).with("999", kind: :download).returns([ "pdf-bytes", "application/pdf" ])
 

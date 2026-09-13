@@ -9,12 +9,24 @@
           </div>
           <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-secondary">
             <%= account_statement_status_badge(@statement) %>
+            <% if @statement.paperless_import? %>
+              <%= render "shared/badge" do %><%= t(".paperless_source") %><% end %>
+            <% end %>
             <span><%= number_to_human_size(@statement.byte_size) %></span>
             <span><%= @statement.content_type %></span>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
+          <% if (paperless_url = @statement.paperless_document_url) %>
+            <%= link_to paperless_url,
+                        class: "inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-hover",
+                        target: "_blank",
+                        rel: "noopener noreferrer" do %>
+              <%= icon("external-link", size: "sm") %>
+              <%= t(".open_in_paperless") %>
+            <% end %>
+          <% end %>
           <% if @statement.original_file.attached? %>
             <%= link_to rails_blob_path(@statement.original_file, disposition: "attachment"),
                         class: "inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-hover",

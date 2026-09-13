@@ -15,7 +15,14 @@ class AccountStatement < ApplicationRecord
       super("Statement file has already been uploaded")
     end
   end
-  InvalidUploadError = Class.new(StandardError)
+  InvalidUploadError = Class.new(StandardError) do
+    attr_reader :reason
+
+    def initialize(reason = :unsupported_type, message = nil)
+      @reason = reason.to_sym
+      super(message || "Statement upload rejected (#{@reason})")
+    end
+  end
 
   PreparedUpload = Data.define(:content, :filename, :content_type, :byte_size, :checksum, :content_sha256)
 
@@ -32,11 +39,12 @@ class AccountStatement < ApplicationRecord
   belongs_to :family
   belongs_to :account, optional: true
   belongs_to :suggested_account, class_name: "Account", optional: true
+  belongs_to :paperless_connection, optional: true
 
   has_many :pdf_imports, -> { where(type: "PdfImport").ordered }, class_name: "PdfImport", dependent: :restrict_with_error
   has_one_attached :original_file, dependent: :purge_later
 
-  enum :source, { manual_upload: "manual_upload" }, validate: true, default: "manual_upload"
+  enum :source, { manual_upload: "manual_upload", paperless_import: "paperless_import" }, validate: true, default: "manual_upload"
   enum :upload_status, { stored: "stored", failed: "failed" }, validate: true, default: "stored"
   enum :review_status, { unmatched: "unmatched", linked: "linked", rejected: "rejected" }, validate: true, default: "unmatched", scopes: false
 
@@ -56,6 +64,7 @@ class AccountStatement < ApplicationRecord
   validates :parser_confidence, :match_confidence, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }, allow_nil: true
   validate :account_belongs_to_family
   validate :suggested_account_belongs_to_family
+  validate :paperless_connection_belongs_to_family
   validate :period_order
   validate :currency_is_valid
   validate :filename_extension_matches_content_type
@@ -81,22 +90,28 @@ class AccountStatement < ApplicationRecord
       create_from_prepared_upload!(family: family, account: account, prepared_upload: prepared_upload)
     end
 
-    def create_from_prepared_upload!(family:, account:, prepared_upload:)
+    # `attributes:` is an internal-only escape hatch (e.g. AccountStatement::PaperlessImporter
+    # setting source/paperless_connection/paperless_document_id and a correspondent-derived
+    # institution_name_hint before MetadataDetector runs) — it must never receive raw request
+    # params.
+    def create_from_prepared_upload!(family:, account:, prepared_upload:, attributes: {})
       statement = nil
       duplicate = duplicate_for(family, prepared_upload)
       raise DuplicateUploadError, duplicate if duplicate
 
       statement = family.account_statements.build(
-        account: account,
-        filename: prepared_upload.filename,
-        content_type: prepared_upload.content_type,
-        byte_size: prepared_upload.byte_size,
-        checksum: prepared_upload.checksum,
-        content_sha256: prepared_upload.content_sha256,
-        source: :manual_upload,
-        upload_status: :stored,
-        review_status: account.present? ? :linked : :unmatched,
-        currency: account&.currency || family.currency
+        {
+          account: account,
+          filename: prepared_upload.filename,
+          content_type: prepared_upload.content_type,
+          byte_size: prepared_upload.byte_size,
+          checksum: prepared_upload.checksum,
+          content_sha256: prepared_upload.content_sha256,
+          source: :manual_upload,
+          upload_status: :stored,
+          review_status: account.present? ? :linked : :unmatched,
+          currency: account&.currency || family.currency
+        }.merge(attributes.symbolize_keys)
       )
 
       statement.original_file.attach(
@@ -133,14 +148,26 @@ class AccountStatement < ApplicationRecord
     end
 
     def prepare_upload!(file)
-      filename = file.original_filename.to_s
-      content = read_upload_content!(file)
-      byte_size = content.bytesize
-      raise InvalidUploadError if byte_size.zero?
+      prepare_content!(
+        content: read_upload_content!(file),
+        filename: file.original_filename.to_s,
+        declared_content_type: file.content_type
+      )
+    end
 
-      content_type = detected_content_type(content:, filename:, declared_content_type: file.content_type)
-      raise InvalidUploadError unless allowed_upload?(filename:, content_type:)
-      raise InvalidUploadError if content_type == "application/pdf" && !valid_pdf_content?(content)
+    # Content-level counterpart of prepare_upload! — same validation, dedupe hashing and
+    # PreparedUpload shape, but for bytes already held in memory (e.g. a Paperless download)
+    # rather than an uploaded-file object. prepare_upload! is the IO adapter in front of this.
+    def prepare_content!(content:, filename:, declared_content_type: nil)
+      content = content.to_s
+      content = content.b unless content.encoding == Encoding::BINARY
+      byte_size = content.bytesize
+      raise InvalidUploadError.new(:empty) if byte_size.zero?
+      raise InvalidUploadError.new(:too_large) if byte_size > MAX_FILE_SIZE
+
+      content_type = detected_content_type(content:, filename:, declared_content_type:)
+      raise InvalidUploadError.new(:unsupported_type) unless allowed_upload?(filename:, content_type:)
+      raise InvalidUploadError.new(:corrupt_pdf) if content_type == "application/pdf" && !valid_pdf_content?(content)
 
       PreparedUpload.new(
         content: content,
@@ -195,7 +222,7 @@ class AccountStatement < ApplicationRecord
 
     def read_upload_content!(file)
       declared_size = declared_upload_size(file)
-      raise InvalidUploadError if declared_size.present? && declared_size > MAX_FILE_SIZE
+      raise InvalidUploadError.new(:too_large) if declared_size.present? && declared_size > MAX_FILE_SIZE
 
       content = +"".b
       loop do
@@ -203,7 +230,7 @@ class AccountStatement < ApplicationRecord
         break if chunk.nil? || chunk.empty?
 
         content << chunk
-        raise InvalidUploadError if content.bytesize > MAX_FILE_SIZE
+        raise InvalidUploadError.new(:too_large) if content.bytesize > MAX_FILE_SIZE
       end
 
       file.rewind if file.respond_to?(:rewind)
@@ -349,6 +376,14 @@ class AccountStatement < ApplicationRecord
     currency.presence || account&.currency || family.currency
   end
 
+  # Resolves through the family's current connection (not the stored `paperless_connection`
+  # directly) so the link keeps working if the connection is ever replaced/reconnected.
+  def paperless_document_url
+    return nil unless paperless_document_id?
+
+    family.paperless_connection&.document_url(paperless_document_id) if family.paperless_configured?
+  end
+
   def pdf?
     content_type.in?(ALLOWED_EXTENSION_CONTENT_TYPES[".pdf"])
   end
@@ -414,6 +449,13 @@ class AccountStatement < ApplicationRecord
       return if suggested_account_valid_for_family?
 
       errors.add(:suggested_account, :invalid)
+    end
+
+    def paperless_connection_belongs_to_family
+      return if paperless_connection.nil?
+      return if paperless_connection.family_id == family_id
+
+      errors.add(:paperless_connection, :invalid)
     end
 
     def clear_invalid_suggested_account

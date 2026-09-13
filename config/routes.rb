@@ -714,6 +714,10 @@ Rails.application.routes.draw do
     resource :sharing, only: [ :show, :update ], controller: "account_sharings"
   end
 
+  namespace :account_statements do
+    resources :paperless_imports, only: %i[new create]
+  end
+
   resources :account_statements, only: %i[index show create update destroy] do
     member do
       patch :link

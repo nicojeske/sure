@@ -190,6 +190,172 @@ class AccountStatementTest < ActiveSupport::TestCase
     end
   end
 
+  test "prepare_content! returns a prepared upload for raw bytes" do
+    content = "%PDF-1.4 test content"
+
+    prepared = AccountStatement.prepare_content!(content: content, filename: "statement.pdf", declared_content_type: "application/pdf")
+
+    assert_equal content, prepared.content
+    assert_equal "statement.pdf", prepared.filename
+    assert_equal "application/pdf", prepared.content_type
+    assert_equal content.bytesize, prepared.byte_size
+    assert_equal Digest::MD5.base64digest(content), prepared.checksum
+    assert_equal Digest::SHA256.hexdigest(content), prepared.content_sha256
+  end
+
+  test "prepare_upload! still delegates to prepare_content! for an uploaded file" do
+    file = uploaded_file(filename: "statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-01,1\n")
+
+    prepared = AccountStatement.prepare_upload!(file)
+
+    assert_equal "date,amount\n2024-01-01,1\n", prepared.content
+    assert_equal "statement.csv", prepared.filename
+    assert_equal "text/csv", prepared.content_type
+  end
+
+  test "prepare_content! rejects empty content" do
+    error = assert_raises(AccountStatement::InvalidUploadError) do
+      AccountStatement.prepare_content!(content: "", filename: "statement.csv", declared_content_type: "text/csv")
+    end
+
+    assert_equal :empty, error.reason
+  end
+
+  test "prepare_content! rejects content over the size limit" do
+    error = assert_raises(AccountStatement::InvalidUploadError) do
+      AccountStatement.prepare_content!(
+        content: "x" * (AccountStatement::MAX_FILE_SIZE + 1),
+        filename: "statement.csv",
+        declared_content_type: "text/csv"
+      )
+    end
+
+    assert_equal :too_large, error.reason
+  end
+
+  test "prepare_content! rejects an unsupported content type" do
+    error = assert_raises(AccountStatement::InvalidUploadError) do
+      AccountStatement.prepare_content!(content: "\x89PNG\r\n\x1a\n".b, filename: "statement.png", declared_content_type: "image/png")
+    end
+
+    assert_equal :unsupported_type, error.reason
+  end
+
+  test "prepare_content! rejects a pdf missing its magic bytes" do
+    AccountStatement.stubs(:detected_content_type).returns("application/pdf")
+
+    error = assert_raises(AccountStatement::InvalidUploadError) do
+      AccountStatement.prepare_content!(content: "not a real pdf", filename: "statement.pdf", declared_content_type: "application/pdf")
+    end
+
+    assert_equal :corrupt_pdf, error.reason
+  end
+
+  test "create_from_prepared_upload! persists paperless attributes and still runs metadata detection and account matching" do
+    connection = paperless_connections(:one)
+    @account.update!(institution_name: "Chase Bank 6789")
+    prepared_upload = AccountStatement.prepare_content!(
+      content: "date,amount\n2024-01-01,1\n",
+      filename: "Chase_Bank_2024-01.csv",
+      declared_content_type: "text/csv"
+    )
+
+    statement = AccountStatement.create_from_prepared_upload!(
+      family: @family,
+      account: nil,
+      prepared_upload: prepared_upload,
+      attributes: {
+        source: :paperless_import,
+        paperless_connection: connection,
+        paperless_document_id: 501
+      }
+    )
+
+    assert statement.paperless_import?
+    assert_equal connection, statement.paperless_connection
+    assert_equal 501, statement.paperless_document_id
+    assert_equal Date.new(2024, 1, 1), statement.period_start_on
+    assert_equal @account, statement.suggested_account
+  end
+
+  test "create_from_prepared_upload! does not let metadata detection clobber a pre-seeded institution hint" do
+    prepared_upload = AccountStatement.prepare_content!(
+      content: "date,amount\n2024-01-01,1\n",
+      filename: "statement.csv",
+      declared_content_type: "text/csv"
+    )
+
+    statement = AccountStatement.create_from_prepared_upload!(
+      family: @family,
+      account: nil,
+      prepared_upload: prepared_upload,
+      attributes: { institution_name_hint: "Correspondent Name" }
+    )
+
+    assert_equal "Correspondent Name", statement.institution_name_hint
+  end
+
+  test "rejects a paperless connection from another family" do
+    other_connection = PaperlessConnection.create!(family: families(:empty), base_url: "https://paperless.example.com", api_token: "token")
+
+    statement = AccountStatement.new(
+      family: @family,
+      filename: "statement.csv",
+      content_type: "text/csv",
+      byte_size: 10,
+      checksum: SecureRandom.base64(16),
+      source: :paperless_import,
+      paperless_connection: other_connection,
+      paperless_document_id: 501
+    )
+
+    assert_not statement.valid?
+    assert_includes statement.errors[:paperless_connection], "is invalid"
+  end
+
+  test "database constraints reject a second import of the same paperless document" do
+    connection = paperless_connections(:one)
+    attrs = {
+      family_id: @family.id,
+      content_type: "text/csv",
+      byte_size: 1,
+      checksum: SecureRandom.base64(16),
+      source: "paperless_import",
+      upload_status: "stored",
+      review_status: "unmatched",
+      paperless_connection_id: connection.id,
+      paperless_document_id: 501
+    }
+
+    AccountStatement.insert_all!([ attrs.merge(filename: "first.csv") ], record_timestamps: true)
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      AccountStatement.transaction(requires_new: true) do
+        AccountStatement.insert_all!([ attrs.merge(filename: "second.csv") ], record_timestamps: true)
+      end
+    end
+  end
+
+  test "database constraints require paperless_import source when a document id is set" do
+    attrs = {
+      family_id: @family.id,
+      filename: "statement.csv",
+      content_type: "text/csv",
+      byte_size: 1,
+      checksum: SecureRandom.base64(16),
+      source: "manual_upload",
+      upload_status: "stored",
+      review_status: "unmatched",
+      paperless_document_id: 501
+    }
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      AccountStatement.transaction(requires_new: true) do
+        AccountStatement.insert_all!([ attrs ], record_timestamps: true)
+      end
+    end
+  end
+
   test "with_account scope keeps account linkage semantics while enum predicate follows review status" do
     linked_statement = AccountStatement.create_from_upload!(
       family: @family,

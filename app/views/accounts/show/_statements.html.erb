@@ -1,4 +1,4 @@
-<%# locals: (account:, coverage:, statements:, reconciliation_statuses:, can_manage_statements:) %>
+<%# locals: (account:, coverage:, statements:, reconciliation_statuses:, can_manage_statements:, paperless_configured:) %>
 
 <div class="space-y-4">
   <div class="rounded-xl bg-container-inset p-1">
@@ -36,6 +36,13 @@
 
   <% if can_manage_statements %>
     <div class="rounded-xl bg-container-inset p-4">
+      <% if paperless_configured %>
+        <div class="flex justify-end mb-3">
+          <%= render DS::Link.new(text: t("account_statements.account_tab.search_paperless"), icon: "search",
+                variant: :outline, size: :sm,
+                href: new_account_statements_paperless_import_path(account_id: account.id), frame: :modal) %>
+        </div>
+      <% end %>
       <%= styled_form_with url: account_statements_path, scope: :account_statement, multipart: true, class: "space-y-3" do |form| %>
         <%= form.hidden_field :account_id, value: account.id %>
         <div>

@@ -11,7 +11,7 @@ class Paperless::DocumentsController < ApplicationController
   # HTTP call happens here). Opened via the eye button as `frame: :modal`.
   def show
     @document_id = params[:id]
-    @receipt_link = receipt_link_for(@document_id)
+    @cached_document = @paperless_connection.cached_document(@document_id)
   end
 
   def thumbnail
@@ -41,20 +41,21 @@ class Paperless::DocumentsController < ApplicationController
       handle_provider_error(e)
     end
 
-    # Falls back to `send_data`'s own default (no filename:) when we don't have a cached title
-    # or can't resolve an extension from the upstream content type.
+    # Falls back to `send_data`'s own default (no filename:) when we don't have a cached name
+    # or can't resolve an extension from the upstream content type. An imported statement's own
+    # stored filename is already human-readable and extension-correct, so it's used verbatim;
+    # a receipt link only cached a title, which still needs parameterizing + an extension.
     def filename_for(kind, content_type)
       return nil unless kind == :download
 
-      title = receipt_link_for(params[:id])&.document_title
+      cached = @paperless_connection.cached_document(params[:id])
+      return nil if cached.nil?
+      return cached.filename if cached.filename.present?
+
       extension = Mime::Type.lookup(content_type)&.symbol
-      return nil if title.blank? || extension.blank?
+      return nil if cached.title.blank? || extension.blank?
 
-      "#{title.parameterize}.#{extension}"
-    end
-
-    def receipt_link_for(document_id)
-      @paperless_connection.receipt_links.where(document_id: document_id).order(created_at: :desc).first
+      "#{cached.title.parameterize}.#{extension}"
     end
 
     def fetch_cached(kind)

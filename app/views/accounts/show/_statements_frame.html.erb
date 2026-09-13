@@ -1,4 +1,4 @@
-<%# locals: (account:, coverage:, statements:, reconciliation_statuses:, can_manage_statements:) %>
+<%# locals: (account:, coverage:, statements:, reconciliation_statuses:, can_manage_statements:, paperless_configured:) %>
 
 <%= turbo_frame_tag dom_id(account, :statements_tab) do %>
   <%= render "accounts/show/statements",
@@ -6,5 +6,6 @@
              coverage: coverage,
              statements: statements,
              reconciliation_statuses: reconciliation_statuses,
-             can_manage_statements: can_manage_statements %>
+             can_manage_statements: can_manage_statements,
+             paperless_configured: paperless_configured %>
 <% end %>

@@ -10,6 +10,9 @@ class PaperlessConnection < ApplicationRecord
   belongs_to :family
   has_many :receipt_links, dependent: :destroy
   has_many :paperless_scans, dependent: :destroy
+  # :nullify, not :destroy — statements are real files the family owns, unlike receipt_links
+  # (pure references). Deleting/replacing the connection must never delete a statement.
+  has_many :account_statements, dependent: :nullify
 
   validates :base_url, presence: true
   validate :base_url_must_be_valid_http_url
@@ -30,6 +33,10 @@ class PaperlessConnection < ApplicationRecord
   MAX_TRANSACTIONS_PER_RUN = 500
   LOOKBACK_WINDOW = 90.days
   RESCAN_AFTER = 7.days
+
+  CachedDocument = Data.define(:title, :filename, :mime_type) do
+    def image? = mime_type.to_s.start_with?("image/")
+  end
 
   def configured?
     base_url.present? && api_token.present?
@@ -54,6 +61,26 @@ class PaperlessConnection < ApplicationRecord
 
   def document_url(document_id)
     "#{base_url}/documents/#{document_id}/details"
+  end
+
+  # Best-known local metadata for a Paperless document id, from whichever of the family's
+  # references cached it — a receipt link (reference only) or an imported account statement
+  # (a real stored file). Used by Paperless::DocumentsController for the preview title and the
+  # download filename; nil when nothing local knows about the document.
+  def cached_document(document_id)
+    if (link = receipt_links.where(document_id: document_id).order(created_at: :desc).first)
+      return CachedDocument.new(title: link.document_title, filename: nil, mime_type: link.document_mime_type)
+    end
+
+    if (statement = account_statements.where(paperless_document_id: document_id).order(created_at: :desc).first)
+      return CachedDocument.new(
+        title: File.basename(statement.filename.to_s, ".*"),
+        filename: statement.filename,
+        mime_type: statement.content_type
+      )
+    end
+
+    nil
   end
 
   # Best-guess field id for a mapping role, used only to pre-fill an unset settings dropdown.

@@ -215,6 +215,28 @@
       "user_input": ":account_id",
       "confidence": "High",
       "note": "account_id is never mass-assigned: build_declared_bill resolves it through Current.user.accessible_accounts.find_by, so a foreign id degrades to no account rather than an association write."
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 4,
+      "fingerprint": "1865377085d22a275c3cc5d2b07d696a257aef330ae19a34c7d653e742888914",
+      "check_name": "LinkToHref",
+      "message": "Potentially unsafe model attribute in `link_to` href",
+      "file": "app/views/account_statements/show.html.erb",
+      "line": 22,
+      "link": "https://brakemanscanner.org/docs/warning_types/link_to_href",
+      "code": "link_to(Current.family.account_statements.with_attached_original_file.includes(:account, :suggested_account).find(params[:id]).paperless_document_url, :class => \"inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-hover\", :target => \"_blank\", :rel => \"noopener noreferrer\")",
+      "render_path": null,
+      "location": {
+        "type": "template",
+        "template": "account_statements/show"
+      },
+      "user_input": "Current.family.account_statements.with_attached_original_file.includes(:account, :suggested_account).find(params[:id]).paperless_document_url",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
+      ],
+      "note": "AccountStatement#paperless_document_url only ever returns base_url + '/documents/' + integer paperless_document_id + '/details' via PaperlessConnection#document_url. base_url is validated on PaperlessConnection (base_url_must_be_valid_http_url) to parse as a URI::HTTP with a present host, so it can never become a javascript:/data: URI; paperless_document_id is an integer column. No request-controlled data reaches this href."
     }
   ],
   "brakeman_version": "7.1.0"
