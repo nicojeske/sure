@@ -35,6 +35,118 @@ class AccountStatementsControllerTest < ActionDispatch::IntegrationTest
     refute_includes response.body, private_account.name
   end
 
+  test "statement vault filters linked statements by account" do
+    other_account = accounts(:credit_card)
+    matching_statement = AccountStatement.create_from_upload!(
+      family: @account.family,
+      account: @account,
+      file: uploaded_file(filename: "matching_statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-01,1\n")
+    )
+    other_statement = AccountStatement.create_from_upload!(
+      family: other_account.family,
+      account: other_account,
+      file: uploaded_file(filename: "other_statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-02,2\n")
+    )
+
+    get account_statements_url, params: { linked_account_id: @account.id }
+
+    assert_response :success
+    assert_includes response.body, matching_statement.filename
+    refute_includes response.body, other_statement.filename
+    assert_select "select[name='linked_account_id'] option[selected='selected']", text: @account.name
+  end
+
+  test "statement vault ignores an inaccessible account filter" do
+    private_account = accounts(:other_asset)
+    private_statement = AccountStatement.create_from_upload!(
+      family: private_account.family,
+      account: private_account,
+      file: uploaded_file(filename: "private_statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-01,1\n")
+    )
+    sign_in users(:family_member)
+
+    get account_statements_url, params: { linked_account_id: private_account.id }
+
+    assert_response :success
+    refute_includes response.body, private_statement.filename
+    refute_includes response.body, private_account.name
+    assert_select "select[name='linked_account_id'] option[selected='selected']", count: 0
+  end
+
+  test "statement vault filters linked statements by account and month" do
+    january_statement = AccountStatement.create_from_upload!(
+      family: @account.family,
+      account: @account,
+      file: uploaded_file(filename: "january_statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-01,1\n")
+    )
+    january_statement.update!(period_start_on: Date.new(2024, 1, 1), period_end_on: Date.new(2024, 1, 31))
+    february_statement = AccountStatement.create_from_upload!(
+      family: @account.family,
+      account: @account,
+      file: uploaded_file(filename: "february_statement.csv", content_type: "text/csv", content: "date,amount\n2024-02-01,2\n")
+    )
+    february_statement.update!(period_start_on: Date.new(2024, 2, 1), period_end_on: Date.new(2024, 2, 29))
+
+    get account_statements_url, params: { linked_account_id: @account.id, linked_month: "2024-02" }
+
+    assert_response :success
+    assert_includes response.body, february_statement.filename
+    refute_includes response.body, january_statement.filename
+    assert_includes response.body, I18n.t("account_statements.index.filter_account_month", account: @account.name, month: "Feb 2024")
+  end
+
+  test "statement vault ignores a malformed month filter" do
+    statement = AccountStatement.create_from_upload!(
+      family: @account.family,
+      account: @account,
+      file: uploaded_file(filename: "statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-01,1\n")
+    )
+
+    [ "2024-13", "2024-00", "garbage", "2024-2", "" ].each do |month|
+      get account_statements_url, params: { linked_account_id: @account.id, linked_month: month }
+
+      assert_response :success
+      assert_includes response.body, statement.filename
+    end
+  end
+
+  test "statement vault month filter is ignored without an account filter" do
+    statement = AccountStatement.create_from_upload!(
+      family: @account.family,
+      account: @account,
+      file: uploaded_file(filename: "statement.csv", content_type: "text/csv", content: "date,amount\n2024-01-01,1\n")
+    )
+    statement.update!(period_start_on: Date.new(2024, 1, 1), period_end_on: Date.new(2024, 1, 31))
+
+    get account_statements_url, params: { linked_month: "2024-02" }
+
+    assert_response :success
+    assert_includes response.body, statement.filename
+  end
+
+  test "statement vault account filter preserves the unmatched pager without a linked page field" do
+    get account_statements_url, params: { unmatched_page: 2, linked_account_id: @account.id }
+
+    assert_response :success
+    assert_select "form input[type=hidden][name='unmatched_page'][value='2']"
+    assert_select "form input[name='linked_page']", count: 0
+  end
+
+  test "statement vault offers a clear filter link when a filter is active" do
+    get account_statements_url, params: { linked_account_id: @account.id }
+
+    assert_response :success
+    assert_select "a[href='#{account_statements_path}']", text: I18n.t("account_statements.index.clear_filter")
+  end
+
+  test "statement vault shows a filtered empty state" do
+    get account_statements_url, params: { linked_account_id: @account.id }
+
+    assert_response :success
+    assert_includes response.body, I18n.t("account_statements.index.empty_linked_filtered")
+    refute_includes response.body, I18n.t("account_statements.index.empty_linked")
+  end
+
   test "non manager cannot open statement vault" do
     sign_in family_guest
 

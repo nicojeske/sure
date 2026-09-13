@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class AccountStatementsController < ApplicationController
+  LINKED_MONTH_FORMAT = /\A\d{4}-(0[1-9]|1[0-2])\z/
+
   before_action :set_statement, only: %i[show update destroy link unlink reject]
   before_action :ensure_statement_manager!, only: %i[index create update destroy link unlink reject]
 
@@ -15,10 +17,26 @@ class AccountStatementsController < ApplicationController
       .or(Current.family.account_statements.where(account_id: accessible_account_ids))
     linked_statement_scope = account_statements.with_account.where(account_id: accessible_account_ids)
 
+    @linked_account = linked_filter_account
+    @linked_month = @linked_account ? linked_filter_month : nil
+
+    if @linked_account
+      linked_statement_scope = linked_statement_scope.where(account_id: @linked_account.id)
+
+      if @linked_month
+        linked_statement_scope = linked_statement_scope.where(
+          "period_start_on <= :month_end AND period_end_on >= :month_start",
+          month_start: @linked_month,
+          month_end: @linked_month.end_of_month
+        )
+      end
+    end
+
     @unmatched_pagy, @unmatched_statements = pagy(account_statements.unmatched, limit: safe_per_page, page_param: :unmatched_page)
     @linked_pagy, @linked_statements = pagy(linked_statement_scope, limit: safe_per_page, page_param: :linked_page)
     @total_storage_bytes = visible_storage_scope.sum(:byte_size)
     @accounts = Current.user.accessible_accounts.visible.alphabetically
+    @linked_filter_accounts = linked_filter_accounts
     @breadcrumbs = [
       [ t("breadcrumbs.home"), root_path ],
       [ t("account_statements.index.title"), account_statements_path ]
@@ -189,6 +207,29 @@ class AccountStatementsController < ApplicationController
 
     def statement_account_id
       params.fetch(:account_statement, ActionController::Parameters.new)[:account_id]
+    end
+
+    def linked_filter_account
+      account_id = params[:linked_account_id]
+      return nil if account_id.blank?
+
+      Current.user.accessible_accounts.find_by(id: account_id)
+    end
+
+    def linked_filter_month
+      value = params[:linked_month]
+      return nil unless value.is_a?(String) && value.match?(LINKED_MONTH_FORMAT)
+
+      Date.strptime(value, "%Y-%m")
+    rescue Date::Error
+      nil
+    end
+
+    # `linked_statement_scope` is not `.visible`, so a disabled account's statements can still
+    # appear in the linked list. Keep such an account representable in the dropdown when it's the
+    # active filter — at most one extra row, and only when a filter is active.
+    def linked_filter_accounts
+      (@accounts.to_a + [ @linked_account ].compact).uniq.sort_by { |account| account.name.to_s.downcase }
     end
 
     def statement_account_id_provided?

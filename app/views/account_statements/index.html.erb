@@ -118,6 +118,34 @@
         <p><%= @linked_pagy.count %></p>
       </div>
 
+      <div class="px-3 pb-2 space-y-2">
+        <%= form_tag account_statements_path, method: :get, class: "flex flex-wrap items-end gap-3", data: { controller: "auto-submit-form" } do %>
+          <%= hidden_field_tag :unmatched_page, params[:unmatched_page] if params[:unmatched_page].present? %>
+          <%= hidden_field_tag :per_page, params[:per_page] if params[:per_page].present? %>
+          <div>
+            <%= label_tag :linked_account_id, t(".filter_account_label"), class: "form-field__label" %>
+            <%= select_tag :linked_account_id,
+                           options_from_collection_for_select(@linked_filter_accounts, :id, :name, @linked_account&.id),
+                           include_blank: t(".all_accounts"),
+                           class: "bg-container border border-secondary rounded-lg px-3 py-2 text-sm pr-7 cursor-pointer text-primary focus-ring",
+                           data: { "auto-submit-form-target": "auto" } %>
+          </div>
+        <% end %>
+
+        <% if @linked_account.present? %>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs text-secondary">
+              <%= @linked_month.present? ?
+                    t(".filter_account_month", account: @linked_account.name, month: account_statement_month_label(@linked_month)) :
+                    t(".filter_account", account: @linked_account.name) %>
+            </p>
+            <%= link_to t(".clear_filter"),
+                        account_statements_path(unmatched_page: params[:unmatched_page].presence, per_page: params[:per_page].presence),
+                        class: "text-xs font-medium text-link hover:underline" %>
+          </div>
+        <% end %>
+      </div>
+
       <div class="bg-container rounded-lg shadow-border-xs overflow-x-auto">
         <% if @linked_statements.any? %>
           <table class="w-full">
@@ -157,7 +185,9 @@
             </tbody>
           </table>
         <% else %>
-          <p class="text-sm text-secondary text-center py-8 font-medium"><%= t(".empty_linked") %></p>
+          <p class="text-sm text-secondary text-center py-8 font-medium">
+            <%= @linked_account.present? ? t(".empty_linked_filtered") : t(".empty_linked") %>
+          </p>
         <% end %>
       </div>
       <% if @linked_pagy.pages > 1 %>

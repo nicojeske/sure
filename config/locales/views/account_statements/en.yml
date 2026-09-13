@@ -38,9 +38,15 @@ en:
       inbox_upload: Upload
     index:
       account_label: Account
+      all_accounts: All accounts
+      clear_filter: Clear filter
       confidence: "%{confidence} match"
       empty_linked: No linked statements yet.
+      empty_linked_filtered: No linked statements match this filter.
       empty_unmatched: The statement inbox is clear.
+      filter_account: Showing statements for %{account}.
+      filter_account_label: Filter by account
+      filter_account_month: Showing statements for %{account}, %{month}.
       leave_unmatched: Leave unmatched
       linked_title: Linked statements
       no_suggestion: No suggestion
