@@ -386,6 +386,139 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "coverage month with one statement links straight to it" do
+    account = Account.create!(
+      family: @user.family,
+      owner: @user,
+      name: "Historical Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    statement = AccountStatement.create_from_upload!(
+      family: @user.family,
+      account: account,
+      file: uploaded_file(filename: "historical.csv", content_type: "text/csv")
+    )
+    statement.update!(period_start_on: Date.new(2024, 2, 1), period_end_on: Date.new(2024, 2, 29))
+
+    travel_to Date.new(2026, 5, 6) do
+      get account_url(account, tab: "statements", statement_year: 2024)
+
+      assert_response :success
+      assert_select "a[href='#{account_statement_path(statement)}'][data-turbo-frame='_top'] p", text: "Feb 2024"
+    end
+  end
+
+  test "coverage month with multiple statements links to the filtered statement vault" do
+    account = Account.create!(
+      family: @user.family,
+      owner: @user,
+      name: "Historical Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    first_statement = AccountStatement.create_from_upload!(
+      family: @user.family,
+      account: account,
+      file: uploaded_file(filename: "historical_1.csv", content_type: "text/csv", content: "date,amount\n2024-02-01,1\n")
+    )
+    first_statement.update!(period_start_on: Date.new(2024, 2, 1), period_end_on: Date.new(2024, 2, 29))
+    second_statement = AccountStatement.create_from_upload!(
+      family: @user.family,
+      account: account,
+      file: uploaded_file(filename: "historical_2.csv", content_type: "text/csv", content: "date,amount\n2024-02-02,2\n")
+    )
+    second_statement.update!(period_start_on: Date.new(2024, 2, 1), period_end_on: Date.new(2024, 2, 29))
+
+    travel_to Date.new(2026, 5, 6) do
+      get account_url(account, tab: "statements", statement_year: 2024)
+
+      assert_response :success
+      assert_select "p", text: "Duplicate"
+      assert_select "a[href='#{account_statements_path(linked_account_id: account.id, linked_month: '2024-02')}'][data-turbo-frame='_top'] p", text: "Feb 2024"
+    end
+  end
+
+  test "coverage months without statements are not links" do
+    account = Account.create!(
+      family: @user.family,
+      owner: @user,
+      name: "Historical Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    statement = AccountStatement.create_from_upload!(
+      family: @user.family,
+      account: account,
+      file: uploaded_file(filename: "historical.csv", content_type: "text/csv")
+    )
+    statement.update!(period_start_on: Date.new(2024, 2, 1), period_end_on: Date.new(2024, 2, 29))
+
+    travel_to Date.new(2026, 5, 6) do
+      get account_url(account, tab: "statements", statement_year: 2024)
+
+      assert_response :success
+      assert_select "p", text: "Jan 2024"
+      assert_select "a p", text: "Jan 2024", count: 0
+      assert_select "a p", text: "Feb 2024", count: 1
+    end
+  end
+
+  test "coverage month with a single suggested statement links to the inbox statement" do
+    account = Account.create!(
+      family: @user.family,
+      owner: @user,
+      name: "Historical Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    suggested = AccountStatement.create_from_upload!(
+      family: @user.family,
+      account: nil,
+      file: uploaded_file(filename: "suggested.csv", content_type: "text/csv")
+    )
+    suggested.update!(suggested_account: account, match_confidence: 0.9, period_start_on: Date.new(2024, 3, 1), period_end_on: Date.new(2024, 3, 31))
+
+    travel_to Date.new(2026, 5, 6) do
+      get account_url(account, tab: "statements", statement_year: 2024)
+
+      assert_response :success
+      assert_select "p", text: "Ambiguous"
+      assert_select "a[href='#{account_statement_path(suggested)}'][data-turbo-frame='_top'] p", text: "Mar 2024"
+    end
+  end
+
+  test "coverage month with multiple suggested statements is not a link" do
+    account = Account.create!(
+      family: @user.family,
+      owner: @user,
+      name: "Historical Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    { "suggested_1.csv" => 1, "suggested_2.csv" => 2 }.each do |filename, amount|
+      suggested = AccountStatement.create_from_upload!(
+        family: @user.family,
+        account: nil,
+        file: uploaded_file(filename: filename, content_type: "text/csv", content: "date,amount\n2024-03-01,#{amount}\n")
+      )
+      suggested.update!(suggested_account: account, match_confidence: 0.9, period_start_on: Date.new(2024, 3, 1), period_end_on: Date.new(2024, 3, 31))
+    end
+
+    travel_to Date.new(2026, 5, 6) do
+      get account_url(account, tab: "statements", statement_year: 2024)
+
+      assert_response :success
+      assert_select "p", text: "Ambiguous"
+      assert_select "a p", text: "Mar 2024", count: 0
+    end
+  end
+
   test "statements tab hides upload for read only account access" do
     sign_in users(:family_member)
 

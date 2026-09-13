@@ -29,6 +29,31 @@ module AccountStatementsHelper
     end
   end
 
+  # Where a coverage cell navigates, or nil when the month has nothing to show.
+  #
+  # Linked statements win over ambiguous ones: `ambiguous_statements` are UNMATCHED inbox
+  # statements merely *suggested* for this account, so they'd never appear in a filtered linked
+  # list (see AccountStatement::Coverage#build_month).
+  def account_statement_coverage_link_path(account, month)
+    statements = month.statements.presence || month.ambiguous_statements
+    return nil if statements.blank?
+    return account_statement_path(statements.first) if statements.one?
+
+    # Several statements, none linked -> they're all ambiguous, and the filtered vault would be
+    # empty. Leave the cell inert rather than dumping the user on an unfiltered inbox.
+    return nil if month.statements.blank?
+
+    account_statements_path(linked_account_id: account.id, linked_month: month.date.strftime("%Y-%m"))
+  end
+
+  def account_statement_coverage_aria_label(month)
+    t(
+      "account_statements.account_tab.coverage_link_label",
+      month: account_statement_coverage_label(month),
+      status: t("account_statements.coverage.status.#{month.status}")
+    )
+  end
+
   def account_statement_period(statement)
     if statement.period_start_on.present? && statement.period_end_on.present?
       "#{format_date(statement.period_start_on)} - #{format_date(statement.period_end_on)}"

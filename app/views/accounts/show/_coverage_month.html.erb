@@ -1,0 +1,23 @@
+<%# locals: (account:, month:) %>
+
+<% href = account_statement_coverage_link_path(account, month) %>
+<% cell_classes = class_names(
+     "block rounded-lg ring px-3 py-2",
+     account_statement_coverage_classes(month.status),
+     "focus-ring transition-opacity hover:opacity-80" => href.present?
+   ) %>
+<% cell_body = capture do %>
+  <p class="text-xs font-medium"><%= account_statement_coverage_label(month) %></p>
+  <p class="text-xs capitalize"><%= t("account_statements.coverage.status.#{month.status}") %></p>
+<% end %>
+
+<% if href.present? %>
+  <%= link_to href,
+              class: cell_classes,
+              data: { turbo_frame: "_top" },
+              aria: { label: account_statement_coverage_aria_label(month) } do %>
+    <%= cell_body %>
+  <% end %>
+<% else %>
+  <%= tag.div cell_body, class: cell_classes %>
+<% end %>

@@ -29,10 +29,7 @@
 
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 bg-container rounded-lg shadow-border-xs p-3">
       <% coverage.months.each do |month| %>
-        <div class="rounded-lg ring px-3 py-2 <%= account_statement_coverage_classes(month.status) %>">
-          <p class="text-xs font-medium"><%= account_statement_coverage_label(month) %></p>
-          <p class="text-xs capitalize"><%= t("account_statements.coverage.status.#{month.status}") %></p>
-        </div>
+        <%= render "accounts/show/coverage_month", account: account, month: month %>
       <% end %>
     </div>
   </div>
