@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_14_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -93,11 +93,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
     t.check_constraint "currency IS NULL OR char_length(currency::text) <= 3", name: "chk_account_statements_currency_length"
     t.check_constraint "institution_name_hint IS NULL OR char_length(institution_name_hint::text) <= 200", name: "chk_account_statements_institution_hint_length"
     t.check_constraint "match_confidence IS NULL OR match_confidence >= 0::numeric AND match_confidence <= 1::numeric", name: "chk_account_statements_match_confidence"
-    t.check_constraint "paperless_document_id IS NULL OR source = 'paperless_import'::text", name: "chk_account_statements_paperless_document_source"
+    t.check_constraint "paperless_document_id IS NULL OR source::text = 'paperless_import'::text", name: "chk_account_statements_paperless_document_source"
     t.check_constraint "parser_confidence IS NULL OR parser_confidence >= 0::numeric AND parser_confidence <= 1::numeric", name: "chk_account_statements_parser_confidence"
     t.check_constraint "period_start_on IS NULL OR period_end_on IS NULL OR period_start_on <= period_end_on", name: "chk_account_statements_period_order"
     t.check_constraint "review_status::text = ANY (ARRAY['unmatched'::character varying::text, 'linked'::character varying::text, 'rejected'::character varying::text])", name: "chk_account_statements_review_status"
-    t.check_constraint "source::text = ANY (ARRAY['manual_upload'::character varying::text, 'paperless_import'::character varying::text])", name: "chk_account_statements_source"
+    t.check_constraint "source::text = ANY (ARRAY['manual_upload'::character varying, 'paperless_import'::character varying]::text[])", name: "chk_account_statements_source"
     t.check_constraint "upload_status::text = ANY (ARRAY['stored'::character varying::text, 'failed'::character varying::text])", name: "chk_account_statements_upload_status"
   end
 
@@ -888,6 +888,50 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
     t.index ["merchant_id"], name: "index_family_merchant_associations_on_merchant_id"
   end
 
+  create_table "fio_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "bank_id"
+    t.string "bic"
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.decimal "current_balance", precision: 19, scale: 4
+    t.string "fio_account_id"
+    t.uuid "fio_item_id", null: false
+    t.date "history_synced_from"
+    t.string "iban"
+    t.boolean "ignored", default: false, null: false
+    t.jsonb "institution_metadata"
+    t.string "name", null: false
+    t.jsonb "raw_payload"
+    t.jsonb "raw_transactions_payload"
+    t.date "sync_start_date"
+    t.date "transactions_synced_through"
+    t.datetime "updated_at", null: false
+    t.index ["fio_item_id", "fio_account_id"], name: "index_fio_accounts_on_item_and_account_id", unique: true, where: "(fio_account_id IS NOT NULL)"
+    t.index ["fio_item_id"], name: "index_fio_accounts_on_fio_item_id"
+  end
+
+  create_table "fio_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.datetime "history_unlock_required_at"
+    t.string "institution_color"
+    t.string "institution_domain"
+    t.string "institution_id"
+    t.string "institution_name"
+    t.string "institution_url"
+    t.string "name"
+    t.boolean "pending_account_setup", default: false, null: false
+    t.jsonb "raw_institution_payload"
+    t.jsonb "raw_payload"
+    t.boolean "scheduled_for_deletion", default: false, null: false
+    t.string "status", default: "good", null: false
+    t.date "sync_start_date"
+    t.text "token"
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_fio_items_on_family_id"
+    t.index ["status"], name: "index_fio_items_on_status"
+  end
+
   create_table "goal_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.decimal "allocated_amount", precision: 19, scale: 4
@@ -1360,9 +1404,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
     t.decimal "interest_rate", precision: 10, scale: 3
     t.jsonb "locked_attributes", default: {}
     t.string "rate_type"
+    t.date "start_date"
     t.string "subtype"
     t.integer "term_months"
     t.datetime "updated_at", null: false
+    t.jsonb "variable_rate_schedule", default: {}, null: false
   end
 
   create_table "lunchflow_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1781,6 +1827,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
 
   create_table "push_subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "device_key_digest"
     t.string "environment", null: false
     t.datetime "last_registered_at", null: false
     t.string "platform", default: "ios", null: false
@@ -2802,6 +2849,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
   add_foreign_key "family_exports", "families"
   add_foreign_key "family_merchant_associations", "families"
   add_foreign_key "family_merchant_associations", "merchants"
+  add_foreign_key "fio_accounts", "fio_items"
+  add_foreign_key "fio_items", "families"
   add_foreign_key "goal_accounts", "accounts", on_delete: :restrict
   add_foreign_key "goal_accounts", "goals", on_delete: :cascade
   add_foreign_key "goal_pledges", "accounts", on_delete: :restrict
