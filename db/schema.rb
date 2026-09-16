@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_16_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1727,7 +1727,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_130000) do
     t.text "last_error"
     t.datetime "last_error_at"
     t.integer "match_window_days", default: 3, null: false
-    t.decimal "min_auto_link_score", precision: 4, scale: 3, default: "0.9", null: false
+    t.decimal "min_auto_link_score", precision: 4, scale: 3, default: "0.7", null: false
     t.integer "net_amount_field_id"
     t.integer "reference_field_id"
     t.integer "structured_match_window_days", default: 30, null: false

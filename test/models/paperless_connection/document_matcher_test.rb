@@ -2,7 +2,7 @@ require "test_helper"
 
 class PaperlessConnection::DocumentMatcherTest < ActiveSupport::TestCase
   setup do
-    @connection = paperless_connections(:one) # sweep_window_days: 30 (schema default), min_auto_link_score: 0.9
+    @connection = paperless_connections(:one) # sweep_window_days: 30 (schema default), min_auto_link_score: 0.7
     @account = accounts(:depository)
     @matcher = PaperlessConnection::DocumentMatcher.new(@connection)
   end
@@ -26,6 +26,20 @@ class PaperlessConnection::DocumentMatcherTest < ActiveSupport::TestCase
     assert_equal "auto", link.source
     assert_equal 501, link.document_id
     assert_equal :linked, result.outcome
+  end
+
+  # The whole point of the 0.9 -> 0.7 default change: an OCR amount match plus an exact date no
+  # longer needs a correspondent match on top to clear the auto-link bar (0.45 + 0.25 = 0.70).
+  test "amount and exact date alone, with no correspondent signal, clears the lowered auto-link threshold" do
+    transaction = build_transaction(amount: 88.20, name: "Unknown Shop", date: Date.current)
+    stub_correspondents({})
+    doc = document(id: 507, content: "Total: 88.20", created: Date.current, correspondent: nil)
+
+    result = @matcher.match!(doc)
+
+    assert_equal :linked, result.outcome
+    link = transaction.receipt_links.sole
+    assert_equal 0.70, link.score
   end
 
   test "does not stamp receipt_scanned_at" do

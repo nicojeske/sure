@@ -120,13 +120,16 @@ you've dismissed also never comes back automatically. In short: running the swee
 night, or both, all converge to the same result — feel free to press the button as often as you
 like.
 
-**A backlog run producing mostly suggestions rather than automatic links is expected**, especially
-without mapped custom fields (§3): the OCR-only matching ceiling is `0.45` (amount) + `0.25` (exact
-date) + `0.20` (exact correspondent match) = `0.90` — exactly the default auto-link threshold — so
-it takes a *perfect* date and correspondent match to auto-link without structured data. Reviewing
-and confirming the resulting suggestions on the Receipts page is the normal way to work through a
-backlog; lowering **Minimum auto-link score** is the supported way to auto-link more aggressively if
-you're comfortable with the added risk of a wrong match.
+**A confident amount match plus an exact or near-exact date auto-links even with no correspondent
+match at all.** Without mapped custom fields, the OCR-only amount signal is worth `0.45` and an
+exact-date match is worth `0.25` — `0.45 + 0.25 = 0.70`, exactly the default **Minimum auto-link
+score** — so correspondent similarity (`0.20`) is a bonus that helps a slightly-off date still clear
+the bar, not a hard requirement. A backlog run can still produce plenty of suggestions rather than
+automatic links — a document a few days off from its transaction, or with an amount that doesn't
+appear verbatim in the OCR text, won't reach `0.70` on its own — and reviewing/confirming those on
+the Receipts page is the normal way to work through the rest of a backlog. Raising or lowering
+**Minimum auto-link score** trades off how aggressively Sure auto-links against the risk of a wrong
+match.
 
 ## 7. Turning It Off
 

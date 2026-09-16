@@ -5,4 +5,4 @@ one:
   verify_ssl: true
   auto_link_enabled: true
   match_window_days: 3
-  min_auto_link_score: 0.9
+  min_auto_link_score: 0.7
