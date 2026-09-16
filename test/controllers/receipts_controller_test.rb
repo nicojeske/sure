@@ -134,8 +134,80 @@ class ReceiptsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[disabled]", count: 2
   end
 
+  test "index unmatched lists Paperless documents with no linked ReceiptLink" do
+    stub_search([
+      unmatched_document(id: 1, title: "Unlinked Receipt"),
+      unmatched_document(id: 2, title: "Already Linked")
+    ])
+    stub_correspondents({})
+    ReceiptLink.create!(
+      transaction_record: transactions(:one), paperless_connection: @connection,
+      document_id: 2, status: "linked"
+    )
+
+    get receipts_path(status: "unmatched")
+
+    assert_response :success
+    assert_select "body", text: /Unlinked Receipt/
+    assert_select "body", text: /Already Linked/, count: 0
+  end
+
+  test "index unmatched hides the source filter" do
+    stub_search([])
+    stub_correspondents({})
+
+    get receipts_path(status: "unmatched")
+
+    assert_response :success
+    assert_select "nav[aria-label=?]", "Filter by how the match was made", count: 0
+  end
+
+  test "index unmatched shows an empty state when there is nothing left to match" do
+    stub_search([])
+    stub_correspondents({})
+
+    get receipts_path(status: "unmatched")
+
+    assert_response :success
+    assert_select "body", text: /Nothing unmatched/
+  end
+
+  test "index unmatched degrades gracefully on a provider error" do
+    Provider::Paperless.any_instance.stubs(:search_documents).raises(Provider::Paperless::Error.new("boom", :unreachable))
+
+    get receipts_path(status: "unmatched")
+
+    assert_response :success
+    assert_select "body", text: /Could not reach Paperless/
+  end
+
+  test "index unmatched shows a load more link when Paperless reports another page" do
+    stub_search([ unmatched_document(id: 3) ], next_page: true)
+    stub_correspondents({})
+
+    get receipts_path(status: "unmatched")
+
+    assert_response :success
+    assert_select "a[href=?]", receipts_path(status: "unmatched", page: 2)
+  end
+
   private
     def rendered_links
       @controller.view_assigns["receipt_links"].to_a
+    end
+
+    def unmatched_document(id:, title: "Document #{id}")
+      { "id" => id, "title" => title, "content" => "", "created" => Date.current.iso8601, "correspondent" => nil, "custom_fields" => [] }
+    end
+
+    def stub_search(documents, next_page: false)
+      Provider::Paperless.any_instance.stubs(:search_documents).returns(
+        "results" => documents,
+        "next" => next_page ? "https://paperless.example.com/api/documents/?page=2" : nil
+      )
+    end
+
+    def stub_correspondents(hash)
+      Provider::Paperless.any_instance.stubs(:correspondents).returns(hash)
     end
 end

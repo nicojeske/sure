@@ -21,19 +21,28 @@
         <% end %>
       </nav>
 
-      <nav class="flex items-center gap-1" aria-label="<%= t(".source_filter_label") %>">
-        <% ReceiptLinkListing::SOURCES.each do |source| %>
-          <%= link_to t(".source_filter.#{source}"),
-                receipts_path(status: @status, source: source),
-                class: class_names(
-                  "text-xs px-2 py-1 rounded-md focus-ring",
-                  "bg-container-inset text-primary font-medium": @source == source,
-                  "text-secondary hover:bg-surface-hover": @source != source
-                ) %>
-        <% end %>
-      </nav>
+      <%# Source (auto/manual) only makes sense once something has actually been matched — the
+          "Unmatched" tab lists raw Paperless documents, which have no ReceiptLink and so no
+          source. %>
+      <% unless @status == "unmatched" %>
+        <nav class="flex items-center gap-1" aria-label="<%= t(".source_filter_label") %>">
+          <% ReceiptLinkListing::SOURCES.each do |source| %>
+            <%= link_to t(".source_filter.#{source}"),
+                  receipts_path(status: @status, source: source),
+                  class: class_names(
+                    "text-xs px-2 py-1 rounded-md focus-ring",
+                    "bg-container-inset text-primary font-medium": @source == source,
+                    "text-secondary hover:bg-surface-hover": @source != source
+                  ) %>
+          <% end %>
+        </nav>
+      <% end %>
     </div>
 
-    <%= render "receipts/list" %>
+    <% if @status == "unmatched" %>
+      <%= render "receipts/unmatched_list" %>
+    <% else %>
+      <%= render "receipts/list" %>
+    <% end %>
   </div>
 </div>

@@ -1,0 +1,36 @@
+<%# Paperless documents with no linked ReceiptLink at all — a different data source from
+    "receipts/list" (which renders ReceiptLink rows), so it gets its own container id and its own
+    simple next-page link rather than Pagy (the post-filter count isn't known up front; see
+    ReceiptsController#load_unmatched_documents). %>
+<div id="receipts_list">
+  <% if @paperless_connection.nil? %>
+    <%= render "receipts/empty", configured: false %>
+  <% elsif @unmatched_error_message.present? %>
+    <div class="p-4">
+      <%= render DS::Alert.new(message: @unmatched_error_message, variant: :error) %>
+    </div>
+  <% elsif @unmatched_documents.blank? %>
+    <div class="p-8 text-center space-y-1">
+      <p class="text-primary font-medium text-sm"><%= t(".unmatched_empty_title") %></p>
+      <p class="text-secondary text-sm"><%= t(".unmatched_empty_body") %></p>
+    </div>
+  <% else %>
+    <div class="divide-y divide-subdued">
+      <%= render partial: "receipts/unmatched_row",
+            collection: @unmatched_documents,
+            as: :document,
+            locals: { correspondents: @correspondents, document_facts: @document_facts } %>
+    </div>
+
+    <% if @unmatched_next_page %>
+      <div class="p-4 border-t border-subdued flex justify-center">
+        <%= render DS::Link.new(
+              text: t(".load_more"),
+              variant: :outline,
+              size: :sm,
+              href: receipts_path(status: "unmatched", page: @unmatched_next_page)
+            ) %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

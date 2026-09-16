@@ -1,0 +1,39 @@
+<%# locals: (document:, correspondents:, document_facts:) %>
+<div class="flex items-center justify-between gap-3 p-3">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-surface-inset">
+      <%= image_tag thumbnail_paperless_document_path(document["id"]), class: "w-full h-full object-cover" %>
+    </div>
+    <div class="min-w-0 flex-1 space-y-0.5">
+      <p class="text-sm font-medium text-primary truncate"><%= document["title"] %></p>
+      <p class="text-xs text-secondary truncate">
+        <%= [ correspondents[document["correspondent"]], ReceiptLink.parse_document_date(document["created"])&.strftime("%b %d, %Y") ]
+              .compact.join(" · ") %>
+      </p>
+      <% facts = document_facts[document["id"]] %>
+      <%= render "receipt_links/document_amount", total: facts&.total, reference: facts&.reference, entry: nil %>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-1.5 shrink-0">
+    <%= render DS::Link.new(
+          href: paperless_document_path(document["id"]),
+          variant: :outline,
+          size: :sm,
+          icon: "eye",
+          text: "",
+          frame: :modal,
+          aria: { label: t("receipts.row.preview") }
+        ) %>
+
+    <%= render DS::Link.new(
+          href: @paperless_connection.document_url(document["id"]),
+          target: "_blank",
+          variant: :outline,
+          size: :sm,
+          icon: "external-link",
+          text: "",
+          aria: { label: t(".open_in_paperless") }
+        ) %>
+  </div>
+</div>

@@ -7,7 +7,11 @@
 module ReceiptLinkListing
   extend ActiveSupport::Concern
 
-  STATUSES = %w[linked suggested dismissed all].freeze
+  # "unmatched" is not a ReceiptLink status — it means "a Paperless document with no `linked`
+  # ReceiptLink at all" and is handled entirely differently by ReceiptsController#index (it lists
+  # Paperless documents, not receipt_links). It's included here anyway so `set_list_filters`
+  # remains the one place that validates `params[:status]` for every controller in this concern.
+  STATUSES = %w[linked suggested dismissed all unmatched].freeze
   SOURCES = %w[all auto manual].freeze
   PER_PAGE = 25
 

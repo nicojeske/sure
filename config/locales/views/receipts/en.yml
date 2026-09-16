@@ -11,6 +11,7 @@ en:
         suggested: Suggested
         dismissed: Dismissed
         all: All
+        unmatched: Unmatched
       source_filter:
         all: Any source
         auto: Automatic
@@ -23,6 +24,15 @@ en:
         auto: Auto
         manual: Manual
       time_ago: "%{time} ago"
+      unmatched_errors:
+        unauthorized: Paperless rejected the API token.
+        not_found: Paperless resource not found.
+        rate_limited: Paperless rate limit exceeded. Try again shortly.
+        server_error: Paperless returned a server error.
+        unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+        parse_error: Could not parse the response from Paperless.
+        untrusted_host: Paperless returned a link to an unexpected host.
+        unknown: Unexpected response from Paperless.
     list:
       header:
         document: Document
@@ -35,6 +45,12 @@ en:
       confirm: Confirm this match
       dismiss: Dismiss this match
       remove: Remove this match
+    unmatched_row:
+      open_in_paperless: Open in Paperless
+    unmatched_list:
+      unmatched_empty_title: Nothing unmatched
+      unmatched_empty_body: Every Paperless document is either linked to a transaction or hasn't been checked yet. Run "Match unlinked receipts" above to check for new ones.
+      load_more: Load more
     empty:
       no_matches_title: No receipts here yet
       no_matches_body: Nothing matches the current filters. Run a scan to look for receipts against your recent transactions, or try a different filter.
