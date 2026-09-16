@@ -1,0 +1,31 @@
+<%= render DS::Dialog.new(variant: "modal") do |dialog| %>
+  <% dialog.with_header(title: t(".title")) %>
+
+  <% dialog.with_body do %>
+    <% if @load_error_message.present? %>
+      <%= render DS::Alert.new(message: @load_error_message, variant: :error) %>
+    <% else %>
+      <div class="mb-4">
+        <%= render "receipts/document_links/document_summary" %>
+      </div>
+
+      <% if @candidates.present? %>
+        <div class="mb-4 space-y-2">
+          <p class="text-xs font-medium uppercase text-secondary"><%= t(".best_candidates") %></p>
+          <%= render partial: "receipts/document_links/candidate", collection: @candidates, as: :candidate %>
+        </div>
+      <% end %>
+
+      <p class="text-xs font-medium uppercase text-secondary mb-2"><%= t(".search_title") %></p>
+      <%= form_with url: new_receipts_document_link_path(document_id: @document_id), method: :get,
+            data: { turbo_frame: "transaction_picker_results" },
+            class: "mb-4" do %>
+        <%= render DS::SearchInput.new(name: "q", value: @query, placeholder: t(".search_placeholder")) %>
+      <% end %>
+
+      <%= turbo_frame_tag "transaction_picker_results", class: "block max-h-[360px] overflow-y-auto -mx-1 px-1" do %>
+        <%= render "receipts/document_links/search_results" %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

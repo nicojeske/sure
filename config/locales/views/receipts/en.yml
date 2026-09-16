@@ -47,10 +47,31 @@ en:
       remove: Remove this match
     unmatched_row:
       open_in_paperless: Open in Paperless
+      link_to_transaction: Link to transaction
     unmatched_list:
       unmatched_empty_title: Nothing unmatched
       unmatched_empty_body: Every Paperless document is either linked to a transaction or hasn't been checked yet. Run "Match unlinked receipts" above to check for new ones.
       load_more: Load more
+    document_links:
+      new:
+        title: Link this receipt to a transaction
+        best_candidates: Best candidates
+        search_title: Or search for a transaction
+        search_placeholder: Search transactions…
+        errors:
+          unauthorized: Paperless rejected the API token.
+          not_found: Paperless resource not found.
+          rate_limited: Paperless rate limit exceeded. Try again shortly.
+          server_error: Paperless returned a server error.
+          unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+          parse_error: Could not parse the response from Paperless.
+          untrusted_host: Paperless returned a link to an unexpected host.
+          unknown: Unexpected response from Paperless.
+      candidate:
+        link: Link
+      search_results:
+        no_results: No transactions found.
+        load_more: Load more
     empty:
       no_matches_title: No receipts here yet
       no_matches_body: Nothing matches the current filters. Run a scan to look for receipts against your recent transactions, or try a different filter.

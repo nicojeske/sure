@@ -17,6 +17,15 @@
 
   <div class="flex items-center gap-1.5 shrink-0">
     <%= render DS::Link.new(
+          text: t(".link_to_transaction"),
+          icon: "link",
+          variant: :outline,
+          size: :sm,
+          href: new_receipts_document_link_path(document_id: document["id"]),
+          frame: :modal
+        ) %>
+
+    <%= render DS::Link.new(
           href: paperless_document_path(document["id"]),
           variant: :outline,
           size: :sm,

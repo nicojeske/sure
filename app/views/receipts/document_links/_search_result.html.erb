@@ -1,0 +1,24 @@
+<%# locals: (transaction:) %>
+<% entry = transaction.entry %>
+<div class="flex items-center justify-between gap-2 p-3 border border-subdued rounded-lg bg-container">
+  <div class="min-w-0 flex-1">
+    <p class="text-sm font-medium text-primary truncate"><%= entry.name %></p>
+    <p class="text-xs text-secondary">
+      <%= l(entry.date, format: :long) %>
+      &middot;
+      <span class="privacy-sensitive"><%= format_money(-entry.amount_money) %></span>
+      <% if transaction.merchant.present? %>
+        &middot; <%= transaction.merchant.name %>
+      <% end %>
+    </p>
+  </div>
+
+  <%= render DS::Button.new(
+        text: t("receipts.document_links.candidate.link"),
+        icon: "link",
+        variant: :outline,
+        size: :sm,
+        href: receipts_document_links_path(document_id: @document_id, entry_id: entry.id),
+        method: :post
+      ) %>
+</div>

@@ -1,0 +1,31 @@
+<%# locals: (candidate:) %>
+<% transaction = candidate.transaction %>
+<% entry = transaction.entry %>
+<% reason_labels = {
+     "amount" => t("receipt_links.suggestion.reason_amount"),
+     "amount_secondary" => t("receipt_links.suggestion.reason_amount_secondary"),
+     "date" => t("receipt_links.suggestion.reason_date"),
+     "correspondent" => t("receipt_links.suggestion.reason_correspondent")
+   } %>
+
+<div class="flex items-center justify-between gap-2 p-3 border border-primary rounded-lg bg-container">
+  <div class="min-w-0 flex-1">
+    <p class="text-sm font-medium text-primary truncate"><%= entry.name %></p>
+    <p class="text-xs text-secondary">
+      <%= l(entry.date, format: :long) %>
+      &middot;
+      <span class="privacy-sensitive"><%= format_money(-entry.amount_money) %></span>
+    </p>
+    <% matched_reasons = candidate.reasons.keys.filter_map { |key| reason_labels[key] } %>
+    <p class="text-xs text-subdued truncate"><%= matched_reasons.join(" · ") %></p>
+  </div>
+
+  <%= render DS::Button.new(
+        text: t(".link"),
+        icon: "link",
+        variant: :outline,
+        size: :sm,
+        href: receipts_document_links_path(document_id: @document_id, entry_id: entry.id),
+        method: :post
+      ) %>
+</div>

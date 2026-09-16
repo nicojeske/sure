@@ -1,0 +1,21 @@
+<% if @transactions.blank? %>
+  <p class="text-sm text-secondary px-1 py-2"><%= t(".no_results") %></p>
+<% else %>
+  <div class="space-y-2">
+    <% @transactions.each do |transaction| %>
+      <%= render "receipts/document_links/search_result", transaction: transaction %>
+    <% end %>
+  </div>
+
+  <% if @search_next_page %>
+    <div class="pt-3 text-center">
+      <%= render DS::Link.new(
+            text: t(".load_more"),
+            variant: :outline,
+            size: :sm,
+            href: new_receipts_document_link_path(document_id: @document_id, q: @query, page: @search_next_page),
+            data: { turbo_frame: "transaction_picker_results" }
+          ) %>
+    </div>
+  <% end %>
+<% end %>
