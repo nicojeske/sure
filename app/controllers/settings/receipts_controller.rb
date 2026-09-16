@@ -106,7 +106,7 @@ class Settings::ReceiptsController < ApplicationController
       params.require(:paperless_connection).permit(
         :base_url, :api_token, :verify_ssl, :auto_link_enabled, :match_window_days, :min_auto_link_score,
         :total_amount_field_id, :net_amount_field_id, :tax_amount_field_id, :reference_field_id,
-        :structured_match_window_days
+        :structured_match_window_days, :sweep_window_days
       )
     end
 

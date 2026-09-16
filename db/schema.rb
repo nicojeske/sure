@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_14_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1731,6 +1731,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_200000) do
     t.integer "net_amount_field_id"
     t.integer "reference_field_id"
     t.integer "structured_match_window_days", default: 30, null: false
+    t.integer "sweep_window_days", default: 30, null: false
     t.integer "tax_amount_field_id"
     t.integer "total_amount_field_id"
     t.datetime "updated_at", null: false
