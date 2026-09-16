@@ -48,6 +48,26 @@ class Receipts::ScansControllerTest < ActionDispatch::IntegrationTest
     assert_equal "failed", stale.reload.status
   end
 
+  test "create with mode documents starts a document sweep instead" do
+    assert_difference "PaperlessScan.count", 1 do
+      assert_enqueued_jobs 1, only: PaperlessSweepDocumentsJob do
+        post receipts_scan_path(mode: "documents"), as: :turbo_stream
+      end
+    end
+
+    assert_response :success
+    scan = PaperlessScan.recent.first
+    assert_equal "documents", scan.mode
+  end
+
+  test "create with an unrecognized mode falls back to a transaction scan" do
+    assert_enqueued_jobs 1, only: PaperlessScanFamilyJob do
+      post receipts_scan_path(mode: "bogus"), as: :turbo_stream
+    end
+
+    assert_equal "transactions", PaperlessScan.recent.first.mode
+  end
+
   test "create redirects when Paperless is not configured" do
     @connection.destroy
 

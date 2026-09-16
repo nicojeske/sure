@@ -11,6 +11,7 @@ en:
         suggested: Suggested
         dismissed: Dismissed
         all: All
+        unmatched: Unmatched
       source_filter:
         all: Any source
         auto: Automatic
@@ -23,6 +24,15 @@ en:
         auto: Auto
         manual: Manual
       time_ago: "%{time} ago"
+      unmatched_errors:
+        unauthorized: Paperless rejected the API token.
+        not_found: Paperless resource not found.
+        rate_limited: Paperless rate limit exceeded. Try again shortly.
+        server_error: Paperless returned a server error.
+        unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+        parse_error: Could not parse the response from Paperless.
+        untrusted_host: Paperless returned a link to an unexpected host.
+        unknown: Unexpected response from Paperless.
     list:
       header:
         document: Document
@@ -35,6 +45,33 @@ en:
       confirm: Confirm this match
       dismiss: Dismiss this match
       remove: Remove this match
+    unmatched_row:
+      open_in_paperless: Open in Paperless
+      link_to_transaction: Link to transaction
+    unmatched_list:
+      unmatched_empty_title: Nothing unmatched
+      unmatched_empty_body: Every Paperless document is either linked to a transaction or hasn't been checked yet. Run "Match unlinked receipts" above to check for new ones.
+      load_more: Load more
+    document_links:
+      new:
+        title: Link this receipt to a transaction
+        best_candidates: Best candidates
+        search_title: Or search for a transaction
+        search_placeholder: Search transactions…
+        errors:
+          unauthorized: Paperless rejected the API token.
+          not_found: Paperless resource not found.
+          rate_limited: Paperless rate limit exceeded. Try again shortly.
+          server_error: Paperless returned a server error.
+          unreachable: Could not reach Paperless. Check the URL and that the instance is running.
+          parse_error: Could not parse the response from Paperless.
+          untrusted_host: Paperless returned a link to an unexpected host.
+          unknown: Unexpected response from Paperless.
+      candidate:
+        link: Link
+      search_results:
+        no_results: No transactions found.
+        load_more: Load more
     empty:
       no_matches_title: No receipts here yet
       no_matches_body: Nothing matches the current filters. Run a scan to look for receipts against your recent transactions, or try a different filter.
@@ -46,16 +83,23 @@ en:
       never_run: No scan has run yet
       never_run_hint: Scans run automatically each night, or start one now.
       running: "Scanning transactions… %{processed} of %{total}"
-      completed: "Last scan finished %{time} ago"
-      failed: Last scan failed
+      running_documents: "Matching receipts… %{processed} of %{total}"
+      completed: "Last run finished %{time} ago"
+      failed: Last run failed
       summary: "%{scanned} scanned · %{linked} linked · %{suggested} suggested"
-      scan_now: Scan for receipts
+      scan_now: Scan recent transactions
+      sweep_now: Match unlinked receipts
       scanning: Scanning…
-      error: "The scan stopped early: %{error}"
+      sweeping: Matching…
+      error: "The run stopped early: %{error}"
       partial_errors:
         one: 1 transaction could not be scanned. Check the debug log for details.
         other: "%{count} transactions could not be scanned. Check the debug log for details."
+      partial_errors_documents:
+        one: 1 receipt could not be matched. Check the debug log for details.
+        other: "%{count} receipts could not be matched. Check the debug log for details."
       capped: "Stopped after the %{limit}-transaction limit for one run. Scan again to continue through the backlog."
+      capped_documents: "Stopped after the %{limit}-receipt limit for one run. Run it again to continue through the backlog."
     scans:
       create:
         not_configured: Connect a Paperless-ngx instance before scanning for receipts.

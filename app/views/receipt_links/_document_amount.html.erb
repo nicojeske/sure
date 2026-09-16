@@ -1,4 +1,6 @@
-<%# locals: (total:, reference:, entry:) %>
+<%# locals: (total:, reference:, entry: nil) %>
+<%# entry is nil when there's no target transaction to compare against yet (the /receipts
+    "Unmatched" tab) — the amount/reference still render but the comparison pill is skipped. %>
 
 <% if total.present? || reference.present? %>
   <div class="flex items-center gap-2 flex-wrap">
@@ -10,7 +12,7 @@
       <span class="text-xs text-subdued truncate">#<%= reference %></span>
     <% end %>
 
-    <% if total.present? %>
+    <% if total.present? && entry.present? %>
       <% if total.currency.iso_code == entry.currency && total.amount.round(2) == entry.amount.abs.round(2) %>
         <%= render DS::Pill.new(label: t(".same_amount"), tone: :success, icon: "check", marker: false, size: :sm) %>
       <% else %>

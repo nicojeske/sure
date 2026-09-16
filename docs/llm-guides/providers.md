@@ -136,14 +136,39 @@ pending state, so it is deliberately absent from `Transaction::PENDING_PROVIDERS
   found" from "never checked" — this is what lets the nightly
   `PaperlessScanAllJob` (`config/schedule.yml`) skip already-scanned
   transactions cheaply, and what the drawer checks before auto-triggering a
-  scan.
-- **Matching:** [`PaperlessConnection::Matcher`](../../app/models/paperless_connection/matcher.rb)
-  scores candidates on amount (from a mapped Paperless custom field when
-  configured, else an OCR-content regex fallback — never both required),
-  date proximity, and correspondent similarity; a document is auto-linked
-  only when exactly one candidate clears `min_auto_link_score`, otherwise
-  suggestions are shown.
+  scan. The document-first sweep below deliberately never sets this column —
+  it only ever examines the transactions inside one document's date window,
+  never a transaction's full candidate set, so stamping it there would
+  incorrectly suppress the transaction-first scan.
+- **Matching runs in two directions**, sharing scoring logic via
+  [`PaperlessConnection::Scoring`](../../app/models/paperless_connection/scoring.rb)
+  (amount/date/correspondent weights, `persist_link`) so they can't drift:
+  - [`PaperlessConnection::Matcher`](../../app/models/paperless_connection/matcher.rb)
+    (transaction → candidate documents, the original direction): scores
+    candidates on amount (from a mapped Paperless custom field when
+    configured, else an OCR-content regex fallback — never both required),
+    date proximity, and correspondent similarity.
+  - [`PaperlessConnection::DocumentMatcher`](../../app/models/paperless_connection/document_matcher.rb)
+    (document → candidate transactions, added to find receipts for
+    historical/backlog transactions the 90-day-bounded forward scan will
+    never revisit): same scoring, but additionally **requires an amount
+    signal** on every candidate — it searches across the whole family
+    rather than one already-known transaction, so without that guard,
+    date+correspondent alone would surface every nearby transaction as
+    noise.
+  - Both use the same decision table: a document is auto-linked only when
+    exactly one candidate clears `min_auto_link_score`, otherwise
+    suggestions are shown.
+- **Jobs:** `PaperlessScanFamilyJob`/`PaperlessScanAllJob` drive the
+  transaction-first direction; `PaperlessSweepDocumentsJob`/`PaperlessSweepAllJob`
+  drive the document-first direction. Both family-wide jobs share one
+  `PaperlessScan` row shape (distinguished by `mode`) and the
+  `PaperlessScanReporting` job concern (`app/jobs/concerns/`) for
+  progress/broadcast/finish — see that file before changing either job's
+  reporting behavior.
 - **Settings:** `/settings/receipts` (admin only) — connection details,
-  optional custom-field mapping, and matching thresholds.
+  optional custom-field mapping, and matching thresholds, including
+  `sweep_window_days` (the document-first direction's date window, much
+  wider by default than the forward `match_window_days`).
 - See [the hosting guide](../hosting/paperless.md) for the end-user setup
   guide.

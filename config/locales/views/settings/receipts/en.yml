@@ -26,6 +26,7 @@ en:
         review_matches: Review matches
         review_matches_description: See what has been matched recently, and scan your recent transactions on demand.
         structured_match_window_days_label: Amount search window (days)
+        sweep_window_days_label: Receipt sweep window (days)
         custom_fields_title: Custom fields
         custom_fields_subtitle: Map Paperless-ngx custom fields so Sure can read structured receipt data instead of guessing from OCR text.
         total_amount_field_id_label: Total amount field

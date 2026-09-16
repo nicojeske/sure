@@ -23,7 +23,8 @@
             <% if scan.nil? %>
               <%= t("receipts.scan_status.never_run") %>
             <% elsif scan.in_progress? %>
-              <%= t("receipts.scan_status.running", processed: scan.processed_count, total: scan.total_count) %>
+              <%= t("receipts.scan_status.#{scan.documents_mode? ? 'running_documents' : 'running'}",
+                    processed: scan.processed_count, total: scan.total_count) %>
             <% elsif scan.failed? %>
               <%= t("receipts.scan_status.failed") %>
             <% else %>
@@ -45,13 +46,22 @@
         </div>
       </div>
 
-      <div class="shrink-0">
+      <div class="shrink-0 flex items-center gap-2">
         <% if scan&.in_progress? %>
           <%= render DS::Button.new(
-                text: t("receipts.scan_status.scanning"),
+                text: t("receipts.scan_status.#{scan.documents_mode? ? 'sweeping' : 'scanning'}"),
                 variant: "outline",
                 size: "sm",
                 icon: "loader-circle",
+                disabled: true
+              ) %>
+          <%# Only one scan runs per family at a time (regardless of mode), so the action that
+              isn't running is disabled too rather than offered as if it could start immediately. %>
+          <%= render DS::Button.new(
+                text: t("receipts.scan_status.#{scan.documents_mode? ? 'scan_now' : 'sweep_now'}"),
+                variant: "outline",
+                size: "sm",
+                icon: scan.documents_mode? ? "refresh-cw" : "receipt-text",
                 disabled: true
               ) %>
         <% else %>
@@ -61,6 +71,14 @@
                 size: "sm",
                 icon: "refresh-cw",
                 href: receipts_scan_path,
+                method: :post
+              ) %>
+          <%= render DS::Button.new(
+                text: t("receipts.scan_status.sweep_now"),
+                variant: "outline",
+                size: "sm",
+                icon: "receipt-text",
+                href: receipts_scan_path(mode: "documents"),
                 method: :post
               ) %>
         <% end %>
@@ -78,13 +96,13 @@
 
     <% if scan.present? && scan.error_count.positive? && !scan.failed? %>
       <p class="text-warning text-xs mt-3">
-        <%= t("receipts.scan_status.partial_errors", count: scan.error_count) %>
+        <%= t("receipts.scan_status.#{scan.documents_mode? ? 'partial_errors_documents' : 'partial_errors'}", count: scan.error_count) %>
       </p>
     <% end %>
 
     <% if scan&.capped? && scan.completed? %>
       <p class="text-secondary text-xs mt-3">
-        <%= t("receipts.scan_status.capped", limit: scan.total_count) %>
+        <%= t("receipts.scan_status.#{scan.documents_mode? ? 'capped_documents' : 'capped'}", limit: scan.total_count) %>
       </p>
     <% end %>
   </div>

@@ -28,7 +28,7 @@ class Provider::Paperless
     get("/api/documents/", page_size: 1)["count"].to_i
   end
 
-  def search_documents(query: nil, created_from: nil, created_to: nil, page: 1, page_size: DEFAULT_PAGE_SIZE, ordering: "-created", custom_field_query: nil)
+  def search_documents(query: nil, created_from: nil, created_to: nil, added_from: nil, page: 1, page_size: DEFAULT_PAGE_SIZE, ordering: "-created", custom_field_query: nil)
     get(
       "/api/documents/",
       page: page,
@@ -37,6 +37,7 @@ class Provider::Paperless
       query: query,
       created__date__gte: created_from&.to_s,
       created__date__lte: created_to&.to_s,
+      added__date__gte: added_from&.to_s,
       custom_field_query: custom_field_query&.to_json
     )
   end

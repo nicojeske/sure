@@ -570,6 +570,7 @@ Rails.application.routes.draw do
         patch :dismiss
       end
     end
+    resources :document_links, only: %i[new create]
   end
 
   resources :transactions, only: %i[index new create show update destroy] do

@@ -4,6 +4,7 @@
 # member; configuring the connection stays admin-only over in Settings::ReceiptsController.
 class ReceiptsController < ApplicationController
   include ReceiptLinkListing
+  include UnmatchedDocumentsListing
 
   before_action :set_paperless_connection
 
@@ -14,6 +15,14 @@ class ReceiptsController < ApplicationController
     ]
 
     @scan = @paperless_connection&.latest_scan
-    load_receipt_link_list
+    set_list_filters
+
+    # "unmatched" lists Paperless documents with no linked ReceiptLink at all, not a filtered
+    # ReceiptLink query — a completely different data source from every other status value.
+    if @status == "unmatched"
+      load_unmatched_documents
+    else
+      load_receipt_link_list
+    end
   end
 end

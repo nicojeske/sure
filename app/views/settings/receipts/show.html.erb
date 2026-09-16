@@ -138,6 +138,12 @@
                          max: 365,
                          data: { "auto-submit-form-target": "auto" } %>
 
+    <%= form.number_field :sweep_window_days,
+                         label: t(".sweep_window_days_label"),
+                         min: 0,
+                         max: 365,
+                         data: { "auto-submit-form-target": "auto" } %>
+
     <%= form.number_field :min_auto_link_score,
                          label: t(".min_auto_link_score_label"),
                          min: 0,
