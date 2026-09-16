@@ -116,6 +116,24 @@ class ReceiptsControllerTest < ActionDispatch::IntegrationTest
     assert_select "body", text: /Paperless-ngx is not connected/
   end
 
+  test "index offers both a transaction scan and a document sweep when nothing is running" do
+    get receipts_path
+
+    assert_response :success
+    assert_select "form[action=?]", receipts_scan_path
+    assert_select "form[action=?]", receipts_scan_path(mode: "documents")
+  end
+
+  test "index disables both actions while a document sweep is in progress" do
+    PaperlessScan.create!(family_id: @connection.family_id, paperless_connection: @connection, status: "running", mode: "documents")
+
+    get receipts_path
+
+    assert_response :success
+    assert_select "body", text: /Matching receipts…/
+    assert_select "button[disabled]", count: 2
+  end
+
   private
     def rendered_links
       @controller.view_assigns["receipt_links"].to_a
