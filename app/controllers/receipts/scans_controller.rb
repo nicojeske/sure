@@ -4,6 +4,12 @@
 # scanning is already available to any member (TransactionsController#match_receipt), and the
 # progress partial is broadcast to the whole family stream so it cannot vary by viewer.
 class Receipts::ScansController < ApplicationController
+  MODES = %w[transactions documents].freeze
+  JOB_FOR_MODE = {
+    "transactions" => PaperlessScanFamilyJob,
+    "documents" => PaperlessSweepDocumentsJob
+  }.freeze
+
   def create
     connection = Current.family.paperless_connection
 
@@ -20,12 +26,15 @@ class Receipts::ScansController < ApplicationController
       return render_scan_status
     end
 
+    mode = MODES.include?(params[:mode]) ? params[:mode] : "transactions"
+
     @scan = PaperlessScan.create!(
       family_id: Current.family.id,
       paperless_connection: connection,
-      trigger: "manual"
+      trigger: "manual",
+      mode: mode
     )
-    PaperlessScanFamilyJob.perform_later(@scan.id)
+    JOB_FOR_MODE.fetch(mode).perform_later(@scan.id)
 
     render_scan_status
   rescue ActiveRecord::RecordNotUnique

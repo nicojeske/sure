@@ -7,6 +7,8 @@
 # report progress at all, and it reuses one Matcher, whose memoized `correspondents` and
 # `custom_fields` would otherwise be refetched from Paperless for every transaction.
 class PaperlessScanFamilyJob < ApplicationJob
+  include PaperlessScanReporting
+
   queue_as :low_priority
 
   # Progress pushes, not one per transaction — 500 broadcasts would swamp the stream.
@@ -87,48 +89,7 @@ class PaperlessScanFamilyJob < ApplicationJob
       end
     end
 
-    def complete_scan!(scan)
-      scan.update!(status: "completed", completed_at: Time.current)
-      finish(scan)
-    end
-
-    def fail_scan!(scan, message)
-      scan.update!(status: "failed", error: message, completed_at: Time.current)
-      finish(scan)
-      nil
-    end
-
-    def finish(scan)
-      broadcast_progress(scan)
-
-      # The match list itself can't be broadcast: it's scoped by Account.accessible_by(Current.user)
-      # and Current.user is nil in a job. A morph refresh re-renders each viewer's page in their own
-      # request context, so the new rows show up with the right permissions.
-      scan.family.broadcast_refresh
-    end
-
-    def broadcast_progress(scan)
-      Turbo::StreamsChannel.broadcast_replace_to(
-        scan.family,
-        target: "paperless_scan_status",
-        partial: "receipts/scan_status",
-        locals: { scan: scan }
-      )
-    end
-
     def log_transaction_error(scan, transaction, error)
-      DebugLogEntry.capture(
-        category: "provider_sync",
-        level: "error",
-        message: "Paperless scan failed for a transaction: #{error.message}",
-        source: self.class.name,
-        provider_key: "paperless",
-        family: scan.family,
-        metadata: {
-          error_type: error.error_type,
-          transaction_id: transaction.id,
-          paperless_scan_id: scan.id
-        }
-      )
+      log_scan_error(scan, error, transaction_id: transaction.id)
     end
 end

@@ -175,6 +175,16 @@ class Provider::PaperlessTest < ActiveSupport::TestCase
     assert_requested stub
   end
 
+  test "search_documents sends added_from as added__date__gte" do
+    stub = stub_request(:get, "https://paperless.example.com/api/documents/")
+      .with(query: { "page" => "1", "page_size" => "25", "ordering" => "-added", "added__date__gte" => "2026-09-01" })
+      .to_return(status: 200, body: documents_response_body)
+
+    @provider.search_documents(added_from: Date.new(2026, 9, 1), ordering: "-added")
+
+    assert_requested stub
+  end
+
   test "file returns raw bytes and the upstream content type without JSON parsing" do
     stub_request(:get, "https://paperless.example.com/api/documents/7/thumb/")
       .to_return(status: 200, body: "\xFF\xD8\xFF".b, headers: { "Content-Type" => "image/webp" })

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1740,6 +1740,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_120000) do
   end
 
   create_table "paperless_scans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.date "added_from"
     t.boolean "capped", default: false, null: false
     t.datetime "completed_at"
     t.datetime "created_at", null: false
@@ -1747,6 +1748,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_120000) do
     t.integer "error_count", default: 0, null: false
     t.uuid "family_id", null: false
     t.integer "linked_count", default: 0, null: false
+    t.string "mode", default: "transactions", null: false
     t.uuid "paperless_connection_id", null: false
     t.integer "processed_count", default: 0, null: false
     t.datetime "started_at"
@@ -1758,6 +1760,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_120000) do
     t.index ["family_id", "created_at"], name: "index_paperless_scans_on_family_id_and_created_at"
     t.index ["family_id"], name: "index_paperless_scans_on_family_id_in_progress", unique: true, where: "((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying])::text[]))"
     t.index ["paperless_connection_id"], name: "index_paperless_scans_on_paperless_connection_id"
+    t.check_constraint "mode::text = ANY (ARRAY['transactions'::character varying, 'documents'::character varying]::text[])", name: "chk_paperless_scans_mode"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "chk_paperless_scans_status"
   end
 

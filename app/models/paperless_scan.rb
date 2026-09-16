@@ -19,6 +19,7 @@ class PaperlessScan < ApplicationRecord
   def completed? = status == "completed"
   def failed? = status == "failed"
   def in_progress? = pending? || running?
+  def documents_mode? = mode == "documents"
 
   def stale? = in_progress? && (started_at || created_at) < STALE_AFTER.ago
 
