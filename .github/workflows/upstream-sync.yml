@@ -62,11 +62,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Use the REST API (`gh api`) rather than `gh issue list`/`gh issue create`:
+          # those go through GraphQL, and the Actions GITHUB_TOKEN can't call the
+          # createIssue mutation even with `issues: write` permission granted.
           TITLE="Upstream sync conflict — manual resolution required"
-          EXISTING=$(gh issue list --state open --search "$TITLE" --json number --jq '.[0].number')
+          EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" \
+            --jq ".[] | select(.title == \"$TITLE\") | .number" | head -1)
           if [ -z "$EXISTING" ]; then
             BODY=$'The daily upstream sync with [we-promise/sure](https://github.com/we-promise/sure) failed due to merge conflicts. Please resolve manually:\n\n```bash\ngit remote add upstream https://github.com/we-promise/sure.git\ngit fetch upstream\ngit merge upstream/main\n# resolve conflicts, commit, then:\ngit push origin main\n```\n\nClose this issue once resolved — the next sync attempt will re-open it if conflicts persist.'
-            gh issue create --title "$TITLE" --body "$BODY"
+            gh api "repos/${GITHUB_REPOSITORY}/issues" --method POST -f title="$TITLE" -f body="$BODY"
           else
             echo "Conflict issue #$EXISTING already open — skipping."
           fi
