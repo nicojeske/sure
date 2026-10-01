@@ -148,7 +148,7 @@
   in that manifest, so the browser would 404 it and the button would be dead on
   the running image. An inline script is served with the HTML and re-runs
   automatically when the surrounding Turbo frame re-renders (e.g. on a period
-  change). Carries a CSP nonce for compliance.
+  change). Includes a nonce for CSP compliance.
 %>
 <% if balance_sheet.classification_groups.any? { |cg| cg.account_groups.any? } %>
 <script nonce="<%= content_security_policy_nonce %>">
