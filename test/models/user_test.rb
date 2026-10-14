@@ -485,6 +485,32 @@ class UserTest < ActiveSupport::TestCase
     @user.family.update!(assistant_type: "builtin")
   end
 
+  test "ai_available? is false when the assistant type is mcp_only, even with a provider configured" do
+    previous = Setting.openai_access_token
+    @user.family.update!(assistant_type: "mcp_only")
+    with_env_overrides OPENAI_ACCESS_TOKEN: nil do
+      Setting.openai_access_token = "token"
+
+      Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+      assert_not @user.ai_available?
+      assert_not @user.ai_enabled?
+
+      Rails.application.config.app_mode.stubs(:self_hosted?).returns(false)
+      assert_not @user.ai_available?
+    end
+  ensure
+    Setting.openai_access_token = previous
+  end
+
+  test "ASSISTANT_TYPE=mcp_only overrides the family assistant type" do
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    @user.family.update!(assistant_type: "external")
+    with_env_overrides ASSISTANT_TYPE: "mcp_only", EXTERNAL_ASSISTANT_URL: "http://localhost:18789/v1/chat", EXTERNAL_ASSISTANT_TOKEN: "test-token", EXTERNAL_ASSISTANT_MODEL: "openclaw/main" do
+      assert_not @user.ai_available?
+      assert_not @user.family.assistant_enabled?
+    end
+  end
+
   test "intro layout collapses sidebars and enables ai" do
     user = User.new(
       family: families(:empty),
@@ -680,6 +706,31 @@ class UserTest < ActiveSupport::TestCase
     @user.reload
 
     assert_equal new_order, @user.dashboard_section_order
+  end
+
+  test "update_dashboard_section_hidden hides and re-adds a section without touching other preferences" do
+    @user.update!(preferences: { "section_order" => %w[balance_sheet net_worth_chart] })
+    assert_equal [], @user.dashboard_hidden_sections
+
+    @user.update_dashboard_section_hidden("net_worth_chart", true)
+    @user.update_dashboard_section_hidden("net_worth_chart", true)
+    @user.update_dashboard_section_hidden("balance_sheet", true)
+    assert_equal %w[net_worth_chart balance_sheet], @user.reload.dashboard_hidden_sections
+
+    @user.update_dashboard_section_hidden("net_worth_chart", false)
+    assert_equal %w[balance_sheet], @user.reload.dashboard_hidden_sections
+    assert_equal %w[balance_sheet net_worth_chart], @user.dashboard_section_order
+  end
+
+  test "update_dashboard_preferences keeps a hidden section's place when the rest are reordered" do
+    @user.update!(preferences: {
+      "section_order" => %w[cashflow_sankey net_worth_chart balance_sheet outflows_donut],
+      "hidden_sections" => %w[net_worth_chart]
+    })
+
+    @user.update_dashboard_preferences({ "section_order" => %w[outflows_donut cashflow_sankey balance_sheet] })
+
+    assert_equal %w[outflows_donut cashflow_sankey net_worth_chart balance_sheet], @user.reload.dashboard_section_order
   end
 
   test "dashboard_section_height returns stored preset or nil" do
