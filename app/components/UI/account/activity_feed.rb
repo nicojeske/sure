@@ -1,10 +1,10 @@
 class UI::Account::ActivityFeed < ApplicationComponent
-  attr_reader :feed_data, :pagy, :search, :selected_year, :selected_month
+  attr_reader :feed_data, :pagy, :q, :selected_year, :selected_month
 
-  def initialize(feed_data:, pagy:, search: nil, selected_year: nil, selected_month: nil)
+  def initialize(feed_data:, pagy:, q: {}, selected_year: nil, selected_month: nil)
     @feed_data = feed_data
     @pagy = pagy
-    @search = search
+    @q = q || {}
     @selected_year = selected_year
     @selected_month = selected_month
   end

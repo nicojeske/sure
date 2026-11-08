@@ -4,6 +4,8 @@
       chart_period: @chart_period,
       loan_chart: @loan_chart,
       loan_projection: @loan_projection,
+      loan_extra_projection: @loan_extra_projection,
+      extra_repayment: @extra_repayment,
       as_of: @as_of,
       active_tab: @tab,
       statement_coverage: @statement_coverage,
@@ -15,7 +17,7 @@
   <%= account_page.with_activity_feed(
         feed_data: @activity_feed_data,
         pagy: @pagy,
-        search: @q[:search],
+        q: @q,
         selected_year: @activity_year,
         selected_month: @activity_month
       ) %>
