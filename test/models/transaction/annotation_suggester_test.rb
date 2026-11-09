@@ -1,0 +1,217 @@
+require "test_helper"
+
+class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
+  include EntriesTestHelper
+
+  Suggester = Transaction::AnnotationSuggester
+  Annotation = Provider::LlmConcept::TransactionAnnotation
+  Part = Provider::LlmConcept::TransactionAnnotationSplit
+
+  setup do
+    @user = users(:family_admin)
+    @family = @user.family
+    @entry = create_transaction(name: "AMAZON MKTPL 123", amount: 20, currency: "USD")
+    @kitchen = @family.categories.create!(name: "Kitchen", color: "#00ff00")
+    @outdoor = @family.categories.create!(name: "Outdoor", color: "#0000ff")
+    @provider = mock("llm")
+    Provider::Registry.stubs(:preferred_llm_provider).returns(@provider)
+  end
+
+  test "resolves names to the family's own records and drops unknown ones" do
+    stub_annotation(annotation(
+      category_name: "kitchen", merchant_name: "amazon", tag_names: [ "Trips", "Invented" ]
+    ))
+
+    payload = suggester.suggest_from_hint(@entry, "corer").payload
+
+    assert_equal @kitchen.id, payload["category_id"]
+    assert_equal merchants(:amazon).id, payload["merchant_id"]
+    assert_nil payload["new_merchant_name"]
+    assert_equal [ tags(:one).id ], payload["tag_ids"]
+  end
+
+  test "an unknown merchant is proposed as new and an invented category is dropped" do
+    stub_annotation(annotation(category_name: "Gadgets", merchant_name: "Manufactum"))
+
+    payload = suggester.suggest_from_hint(@entry, "corer").payload
+
+    assert_nil payload["category_id"]
+    assert_nil payload["merchant_id"]
+    assert_equal "Manufactum", payload["new_merchant_name"]
+  end
+
+  test "keeps a split that adds up across two categories" do
+    stub_annotation(annotation(split: [ part("Corer", 12, "Kitchen"), part("Hand warmer", 8, "Outdoor") ]))
+
+    split = suggester.suggest_from_hint(@entry, "Corer 12 + Hand warmer 8").payload["split"]
+
+    assert_equal [ "12.0", "8.0" ], split.map { |row| row["amount"] }
+    assert_equal [ @kitchen.id, @outdoor.id ], split.map { |row| row["category_id"] }
+  end
+
+  test "spreads a small difference across split parts in proportion" do
+    stub_annotation(annotation(split: [ part("Corer", 12, "Kitchen"), part("Hand warmer", 7.6, "Outdoor") ]))
+
+    split = suggester.suggest_from_hint(@entry, "Corer 12 + Hand warmer 7.60").payload["split"]
+
+    assert_equal BigDecimal("20"), split.sum { |row| row["amount"].to_d }
+  end
+
+  test "drops a split that is one category, does not add up, or is on a split part" do
+    stub_annotation(annotation(split: [ part("A", 12, "Kitchen"), part("B", 8, "Kitchen") ]))
+    assert_nil suggester.suggest_from_hint(@entry, "a").payload["split"]
+
+    stub_annotation(annotation(split: [ part("A", 12, "Kitchen"), part("B", 3, "Outdoor") ]))
+    assert_nil suggester.suggest_from_hint(@entry, "b").payload["split"]
+
+    child = @entry.split!([ { name: "x", amount: 10 }, { name: "y", amount: 10 } ]).first
+    stub_annotation(annotation(split: [ part("A", 5, "Kitchen"), part("B", 5, "Outdoor") ]))
+    assert_nil suggester.suggest_from_hint(child, "c").payload["split"]
+  end
+
+  test "the same hint is answered from the stored suggestion without a second call" do
+    @provider.expects(:suggest_transaction_annotation).once.returns(success(annotation(name: "Corer")))
+
+    first = suggester.suggest_from_hint(@entry, "Corer")
+    second = suggester.suggest_from_hint(@entry, "  corer ")
+
+    assert_equal first, second
+    assert first.ready?
+  end
+
+  test "passes reviewed transactions with the same name or merchant as examples" do
+    reviewed = create_transaction(name: "AMAZON MKTPL 123", category: @kitchen, notes: "Kitchen stuff")
+    reviewed.mark_reviewed!(@user)
+    create_transaction(name: "AMAZON MKTPL 123")
+    create_transaction(name: "Something else").mark_reviewed!(@user)
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal [ { name: "AMAZON MKTPL 123", category: "Kitchen", tags: [], notes: "Kitchen stuff" } ], args[:examples]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
+  test "a provider failure is recorded on the suggestion and in the debug log" do
+    @provider.stubs(:suggest_transaction_annotation).returns(Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("boom")))
+
+    suggestion = assert_difference "DebugLogEntry.count", 1 do
+      suggester.suggest_from_hint(@entry, "corer")
+    end
+
+    assert suggestion.failed?
+    assert_match "boom", suggestion.error
+  end
+
+  test "sends redacted, truncated receipt text and the hint wins in one call" do
+    link = receipt_links(:linked_one)
+    entry = link.transaction_record.entry
+    ocr = "Starbucks DE89 3704 0044 0532 0130 00 mail: a.b@example.com Tel. +49 351 1234567 " + ("x" * 7_000)
+    Provider::Paperless.any_instance.expects(:document).with(101).returns({ "id" => 101, "content" => ocr })
+    Provider::Paperless.any_instance.expects(:file).never
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal "latte", args[:hint]
+      assert_operator args[:receipt_text].length, :<=, Suggester::MAX_RECEIPT_CHARS
+      assert_no_match(/DE89|example\.com|1234567/, args[:receipt_text])
+      assert_includes args[:receipt_text], "[redacted]"
+      true
+    end.returns(success(annotation))
+
+    suggestion = suggester.suggest_from_hint(entry, "latte")
+
+    assert suggestion.hint?
+    assert_equal link, suggestion.receipt_link
+  end
+
+  test "a receipt whose total differs from the transaction is flagged and gets no split" do
+    link = receipt_links(:linked_one)
+    entry = link.transaction_record.entry
+    link.update!(document_amount: 25, document_currency: "USD")
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "Total 25.00" })
+    stub_annotation(annotation(split: [ part("A", 5, "Kitchen"), part("B", 5, "Outdoor") ]))
+
+    payload = suggester.suggest_from_receipt(entry, link).payload
+
+    assert payload["receipt_amount_mismatch"]
+    assert_nil payload["split"]
+  end
+
+  test "a receipt total read by the model counts within the tolerance" do
+    link = receipt_links(:linked_one)
+    entry = link.transaction_record.entry
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "Total 10.40" })
+    stub_annotation(annotation(receipt_total: 10.4))
+
+    assert_not suggester.suggest_from_receipt(entry, link).payload["receipt_amount_mismatch"]
+  end
+
+  test "receipt choice prefers the linked receipt, then a clear-cut suggestion" do
+    transaction = @entry.transaction
+    connection = paperless_connections(:one)
+    top = transaction.receipt_links.create!(paperless_connection: connection, document_id: 1, status: "suggested", score: 0.8)
+    transaction.receipt_links.create!(paperless_connection: connection, document_id: 2, status: "suggested", score: 0.5)
+
+    assert_equal top, Suggester.receipt_choice(transaction).link
+
+    close = transaction.receipt_links.create!(paperless_connection: connection, document_id: 3, status: "suggested", score: 0.75)
+    choice = Suggester.receipt_choice(transaction)
+    assert_nil choice.link
+    assert_equal [ top, close ], choice.candidates
+
+    linked = transaction.receipt_links.create!(paperless_connection: connection, document_id: 4, status: "linked", score: 0.1)
+    assert_equal linked, Suggester.receipt_choice(transaction).link
+  end
+
+  test "redacts IBANs, card numbers, emails and phone numbers" do
+    text = "IBAN DE89 3704 0044 0532 0130 00\nCard 4111 1111 1111 1111\nshop@example.de\nTel: 0351 / 123 456\nTotal 12,99"
+
+    redacted = Suggester.redact(text)
+
+    assert_equal "IBAN [redacted]\nCard [redacted]\n[redacted]\nTel: [redacted]\nTotal 12,99", redacted
+  end
+
+  test "learned suggestion uses the usual category for the exact name without an LLM call" do
+    create_transaction(name: "AMAZON MKTPL 123", category: @kitchen)
+    @provider.expects(:suggest_transaction_annotation).never
+
+    suggestion = suggester.learned_suggestion(@entry)
+
+    assert suggestion.learned?
+    assert suggestion.ready?
+    assert_equal @kitchen.id, suggestion.payload["category_id"]
+  end
+
+  test "learned suggestion falls back to Bayes and is nil without an answer" do
+    Family::BayesCategorizer.any_instance.stubs(:classify).returns([ @outdoor.id, 0.9 ])
+    assert_equal @outdoor.id, suggester.learned_suggestion(@entry).payload["category_id"]
+
+    Family::BayesCategorizer.any_instance.stubs(:classify).returns(nil)
+    assert_nil suggester.learned_suggestion(create_transaction(name: "Unknown shop"))
+  end
+
+  private
+    def suggester
+      Suggester.new(@family, user: @user)
+    end
+
+    def stub_annotation(result)
+      @provider.stubs(:suggest_transaction_annotation).returns(success(result))
+    end
+
+    def success(data)
+      Provider::Response.new(success?: true, data: data, error: nil)
+    end
+
+    def annotation(**attributes)
+      Annotation.new(**{
+        name: nil, merchant_name: nil, category_name: nil, tag_names: [], notes: nil,
+        receipt_total: nil, split: nil, confidence: 0.8, rationale: nil
+      }.merge(attributes))
+    end
+
+    def part(name, amount, category_name)
+      Part.new(name: name, amount: amount, category_name: category_name, tag_names: [], notes: nil)
+    end
+end
