@@ -104,6 +104,55 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_match "boom", suggestion.error
   end
 
+  test "an unexpected error marks the suggestion failed and is logged with its provider" do
+    @provider.stubs(:suggest_transaction_annotation).raises(Faraday::ConnectionFailed.new("down"))
+
+    suggestion = suggester.suggest_from_hint(@entry, "corer")
+
+    assert suggestion.failed?
+    assert_match "down", suggestion.error
+    log = DebugLogEntry.order(:created_at).last
+    assert_equal "ai_annotation", log.category
+    assert log.provider_key.present?
+    assert_equal suggestion.id, log.metadata["suggestion_id"]
+  end
+
+  test "a Paperless failure is logged under the paperless provider key" do
+    link = receipt_links(:linked_one)
+    Provider::Paperless.any_instance.stubs(:document).raises(Provider::Paperless::Error.new("unreachable", :unreachable))
+
+    suggestion = suggester.suggest_from_receipt(link.transaction_record.entry, link)
+
+    assert suggestion.failed?
+    assert_equal "paperless", DebugLogEntry.order(:created_at).last.provider_key
+  end
+
+  test "rejects a receipt that belongs to another transaction" do
+    @provider.expects(:suggest_transaction_annotation).never
+
+    assert_raises(Suggester::Error) do
+      suggester.suggest_from_receipt(@entry, receipt_links(:linked_one))
+    end
+  end
+
+  test "rejects a receipt from another family's Paperless connection" do
+    other = families(:empty).create_paperless_connection!(base_url: "https://other.example.com", api_token: "t")
+    link = @entry.transaction.receipt_links.create!(paperless_connection: other, document_id: 5, status: "linked")
+
+    assert_raises(Suggester::Error) { suggester.suggest_from_hint(@entry, "x") }
+    assert_raises(Suggester::Error) { suggester.suggest_from_receipt(@entry, link) }
+  end
+
+  test "a concurrent insert of the same input returns the existing suggestion" do
+    hash = TransactionAnnotationSuggestion.input_hash_for(:hint, "corer")
+    existing = @entry.annotation_suggestions.create!(family: @family, source: "hint", status: "ready", input_hash: hash)
+    ActiveRecord::Validations::UniquenessValidator.any_instance.stubs(:validate_each)
+    TransactionAnnotationSuggestion.stubs(:find_by).returns(nil)
+    @provider.expects(:suggest_transaction_annotation).never
+
+    assert_equal existing, suggester.suggest_from_hint(@entry, "corer")
+  end
+
   test "sends redacted, truncated receipt text and the hint wins in one call" do
     link = receipt_links(:linked_one)
     entry = link.transaction_record.entry

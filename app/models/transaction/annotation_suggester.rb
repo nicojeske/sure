@@ -76,8 +76,10 @@ class Transaction::AnnotationSuggester
     category_id, confidence = learned_category(entry)
     return nil if category_id.nil? || category_id == entry.transaction.category_id
 
-    suggestion = entry.annotation_suggestions.find_or_initialize_by(
-      input_hash: TransactionAnnotationSuggestion.input_hash_for(:learned, "#{entry.name}|#{category_id}")
+    suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
+      entry,
+      input_hash: TransactionAnnotationSuggestion.input_hash_for(:learned, "#{entry.name}|#{category_id}"),
+      family: family, source: "learned"
     )
     return suggestion if suggestion.applied?
 
@@ -90,9 +92,13 @@ class Transaction::AnnotationSuggester
 
   private
     def run(entry, source:, receipt_link:, hint:)
+      verify_receipt_link!(entry, receipt_link) if receipt_link
+
       input = [ receipt_link&.document_id, hint.presence ].compact.join("|")
-      suggestion = entry.annotation_suggestions.find_or_initialize_by(
-        input_hash: TransactionAnnotationSuggestion.input_hash_for(source, input)
+      suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
+        entry,
+        input_hash: TransactionAnnotationSuggestion.input_hash_for(source, input),
+        family: family, source: source.to_s
       )
       return suggestion if suggestion.ready? || suggestion.applied? || suggestion.reverted?
 
@@ -101,19 +107,30 @@ class Transaction::AnnotationSuggester
       begin
         payload = normalize(entry, request_annotation(entry, receipt_link, hint), receipt_link)
         suggestion.update!(status: "ready", payload: payload)
-      rescue Error, Provider::Paperless::Error => e
-        suggestion.update!(status: "failed", error: e.message)
+      rescue StandardError => e
+        suggestion.update!(status: "failed", error: e.message.to_s.truncate(1_000))
         capture_failure(entry, suggestion, e)
       end
 
       suggestion
     end
 
-    def request_annotation(entry, receipt_link, hint)
-      provider = Provider::Registry.preferred_llm_provider
-      raise Error, "No LLM provider configured" unless provider
+    def verify_receipt_link!(entry, receipt_link)
+      return if receipt_link.transaction_id == entry.entryable_id &&
+        receipt_link.paperless_connection.family_id == family.id &&
+        entry.account.family_id == family.id
 
-      response = provider.suggest_transaction_annotation(
+      raise Error, "Receipt link #{receipt_link.id} does not belong to this transaction"
+    end
+
+    def llm_provider
+      @llm_provider ||= Provider::Registry.preferred_llm_provider
+    end
+
+    def request_annotation(entry, receipt_link, hint)
+      raise Error, "No LLM provider configured" unless llm_provider
+
+      response = llm_provider.suggest_transaction_annotation(
         transaction: transaction_context(entry),
         receipt_text: receipt_link && receipt_text(receipt_link),
         hint: hint.presence,
@@ -283,15 +300,31 @@ class Transaction::AnnotationSuggester
     end
 
     def capture_failure(entry, suggestion, error)
+      paperless = error.is_a?(Provider::Paperless::Error)
+
       DebugLogEntry.capture(
         category: "ai_annotation",
         level: "warn",
-        message: "Transaction annotation suggestion failed: #{error.message}",
+        message: "Transaction annotation suggestion failed: #{error.class}: #{error.message}",
         source: self.class.name,
         family: family,
         account: entry.account,
         user: user,
-        metadata: { entry_id: entry.id, suggestion_id: suggestion.id, source: suggestion.source, receipt_link_id: suggestion.receipt_link_id }
+        provider_key: paperless ? "paperless" : llm_provider_key,
+        metadata: {
+          entry_id: entry.id,
+          suggestion_id: suggestion.id,
+          suggestion_source: suggestion.source,
+          receipt_link_id: suggestion.receipt_link_id,
+          error_class: error.class.name,
+          llm_provider: llm_provider_key,
+          paperless_connection_id: suggestion.receipt_link&.paperless_connection_id,
+          paperless_document_id: suggestion.receipt_link&.document_id
+        }.compact
       )
+    end
+
+    def llm_provider_key
+      llm_provider && llm_provider.class.name.demodulize.underscore
     end
 end
