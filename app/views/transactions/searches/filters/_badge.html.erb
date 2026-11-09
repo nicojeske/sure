@@ -68,6 +68,11 @@
       <%= icon("paperclip", size: "sm") %>
       <p><%= t(".attachment_#{param_value}") %></p>
     </div>
+  <% elsif param_key == "review_status" %>
+    <div class="flex items-center gap-2 px-1">
+      <%= icon(param_value == "reviewed" ? "circle-check" : "circle-dashed", size: "sm") %>
+      <p><%= t(".review_#{param_value}") %></p>
+    </div>
   <% else %>
     <div class="flex items-center gap-2 px-1">
       <p><%= param_value %></p>

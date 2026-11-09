@@ -890,7 +890,7 @@ class TransactionsController < ApplicationController
     end
 
     # Permitted search filters from the q param, with blank values and
-    # unsupported ai_status / attachment_status values dropped.
+    # unsupported ai_status / attachment_status / review_status values dropped.
     def search_params
       cleaned_params = params.fetch(:q, {})
               .permit(
@@ -898,7 +898,7 @@ class TransactionsController < ApplicationController
                 :amount_operator, :active_accounts_only,
                 accounts: [], account_ids: [],
                 categories: [], merchants: [], types: [], tags: [], status: [], receipt: [], ai_status: [],
-                attachment_status: []
+                attachment_status: [], review_status: []
               )
               .to_h
               .compact_blank
@@ -913,6 +913,11 @@ class TransactionsController < ApplicationController
       if cleaned_params[:attachment_status]
         cleaned_params[:attachment_status] &= Transaction::Search::ATTACHMENT_STATUSES
         cleaned_params.delete(:attachment_status) if cleaned_params[:attachment_status].empty?
+      end
+
+      if cleaned_params[:review_status]
+        cleaned_params[:review_status] &= Transaction::Search::REVIEW_STATUSES
+        cleaned_params.delete(:review_status) if cleaned_params[:review_status].empty?
       end
 
       cleaned_params

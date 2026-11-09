@@ -368,6 +368,8 @@ en:
           ai_history: AI history
           attachment_with: With attachment
           attachment_without: Without attachment
+          review_reviewed: Reviewed
+          review_unreviewed: Not reviewed
         attachment_filter:
           with: With attachment
           without: Without attachment

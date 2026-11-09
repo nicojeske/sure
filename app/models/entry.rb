@@ -20,10 +20,13 @@ class Entry < ApplicationRecord
   belongs_to :import, optional: true
   belongs_to :parent_entry, class_name: "Entry", optional: true
   belongs_to :reconciled_by_statement, class_name: "AccountStatement", optional: true
+  belongs_to :reviewed_by, class_name: "User", optional: true
 
   # Mirrors chk_entries_reconciled_at_present_when_statement_set so a direct
   # assignment surfaces a validation error rather than a StatementInvalid.
   validates :reconciled_at, presence: true, if: -> { reconciled_by_statement_id.present? }
+
+  has_many :annotation_suggestions, class_name: "TransactionAnnotationSuggestion", dependent: :destroy
 
   has_many :child_entries, class_name: "Entry", foreign_key: :parent_entry_id, dependent: :destroy
   # Read side only, so a transaction can say which bills it paid. The foreign key
@@ -58,6 +61,9 @@ class Entry < ApplicationRecord
   }
 
   before_destroy :prevent_individual_child_deletion, if: :split_child?
+  # A review vouches for the amount and date the user saw, so changing either
+  # sends the entry back into the monthly review queue.
+  before_update :clear_review, if: -> { reviewed_at.present? && (will_save_change_to_amount? || will_save_change_to_date?) }
   after_save :track_earliest_saved_date, if: :saved_change_to_date?
 
   scope :visible, -> {
@@ -86,6 +92,9 @@ class Entry < ApplicationRecord
   scope :reconciled, -> { where.not(reconciled_at: nil) }
   scope :unreconciled, -> { where(reconciled_at: nil) }
   scope :reconciled_by, ->(statement) { where(reconciled_by_statement_id: statement) }
+
+  scope :reviewed, -> { where.not(reviewed_at: nil) }
+  scope :unreviewed, -> { where(reviewed_at: nil) }
 
   # Pending transaction scopes - check Transaction.extra for provider pending flags
   # Works with any provider that stores pending status in extra["provider_name"]["pending"]
@@ -503,6 +512,20 @@ class Entry < ApplicationRecord
     end
   end
 
+  # update_columns on purpose: marking an entry reviewed is not an edit, so it
+  # must not lock attributes, flag the entry as user-modified or trigger a sync.
+  def mark_reviewed!(user)
+    update_columns(reviewed_at: Time.current, reviewed_by_id: user&.id)
+  end
+
+  def unmark_reviewed!
+    update_columns(reviewed_at: nil, reviewed_by_id: nil)
+  end
+
+  def reviewed?
+    reviewed_at.present?
+  end
+
   def split_parent?
     child_entries.exists?
   end
@@ -693,6 +716,11 @@ class Entry < ApplicationRecord
   end
 
   private
+    def clear_review
+      self.reviewed_at = nil
+      self.reviewed_by_id = nil
+    end
+
     # Takes FOR UPDATE on the transaction row, then on this entry (lock! also reloads both), always
     # in that order so the split methods can't deadlock each other. Yields the transaction, or nil
     # for other entryables.
