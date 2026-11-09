@@ -150,6 +150,22 @@ module Enrichable
     locked_attributes[attr.to_s].present?
   end
 
+  # A locked attribute is the user's own value unless an automated source
+  # (AI, Bayes, rule, provider, similar) recorded exactly this value: those
+  # sources lock what they set too, so the lock alone can't tell them apart.
+  def set_by_user?(attr)
+    return false unless locked?(attr)
+
+    current = respond_to?(attr.to_sym) ? send(attr.to_sym) : self[attr.to_s]
+    data_enrichments.where(attribute_name: attr.to_s).none? do |enrichment|
+      if current.is_a?(Array)
+        Array(enrichment.value).map(&:to_s).sort == current.map(&:to_s).sort
+      else
+        enrichment.value.to_s == current.to_s
+      end
+    end
+  end
+
   def enrichable?(attr)
     !locked?(attr)
   end

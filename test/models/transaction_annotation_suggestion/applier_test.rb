@@ -37,6 +37,28 @@ class TransactionAnnotationSuggestion::ApplierTest < ActiveSupport::TestCase
     assert_equal true, selection["split"]
   end
 
+  test "a category or merchant locked by automation still starts on" do
+    transaction = @entry.transaction
+    transaction.enrich_attribute(:category_id, @outdoor.id, source: "ai")
+    transaction.lock_attr!(:category_id)
+    transaction.enrich_attribute(:merchant_id, merchants(:netflix).id, source: "similar")
+    transaction.lock_attr!(:merchant_id)
+
+    selection = @suggestion.reload.default_selection(@owner)
+
+    assert_equal true, selection["category"]
+    assert_equal true, selection["merchant"]
+  end
+
+  test "a category the user changed after automation set it starts off" do
+    transaction = @entry.transaction
+    transaction.enrich_attribute(:category_id, @outdoor.id, source: "bayes")
+    transaction.update!(category: categories(:food_and_drink))
+    transaction.lock_attr!(:category_id)
+
+    assert_equal false, @suggestion.reload.default_selection(@owner)["category"]
+  end
+
   test "unchanged fields are not proposed" do
     @entry.update!(name: "Corer and hand warmer")
 
@@ -98,6 +120,31 @@ class TransactionAnnotationSuggestion::ApplierTest < ActiveSupport::TestCase
     assert_not @entry.reviewed?
     assert link.reload.suggested?
     assert @suggestion.reload.reverted?
+  end
+
+  test "revert leaves fields the apply did not change, and later manual edits" do
+    @suggestion.apply!(user: @owner, fields: %w[name category])
+    @entry.reload.update!(notes: "edited later")
+    @entry.transaction.update!(category: categories(:food_and_drink))
+
+    @suggestion.revert!(user: @owner)
+
+    @entry.reload
+    assert_equal "AMAZON MKTPL 123", @entry.name
+    assert_equal "edited later", @entry.notes
+    assert_equal categories(:food_and_drink), @entry.transaction.category
+  end
+
+  test "a stale copy cannot apply or revert twice" do
+    stale = TransactionAnnotationSuggestion.find(@suggestion.id)
+    @suggestion.apply!(user: @owner, fields: %w[category])
+
+    assert_raises(TransactionAnnotationSuggestion::Applier::Error) { stale.apply!(user: @owner, fields: %w[name]) }
+    assert_equal "AMAZON MKTPL 123", @entry.reload.name
+
+    stale_applied = TransactionAnnotationSuggestion.find(@suggestion.id)
+    @suggestion.revert!(user: @owner)
+    assert_raises(TransactionAnnotationSuggestion::Applier::Error) { stale_applied.revert!(user: @owner) }
   end
 
   test "a read_write share can annotate but neither rename nor split" do

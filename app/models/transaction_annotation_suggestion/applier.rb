@@ -10,6 +10,7 @@ class TransactionAnnotationSuggestion::Applier
 
   ANNOTATE_FIELDS = %w[merchant category tags notes].freeze
   FULL_CONTROL = %i[owner full_control].freeze
+  FIELD_ATTRIBUTES = TransactionAnnotationSuggestion::FIELD_ATTRIBUTES
 
   def self.permitted_fields(entry, user)
     case entry.account.permission_for(user)
@@ -32,39 +33,33 @@ class TransactionAnnotationSuggestion::Applier
   end
 
   def apply!(fields:, split: false)
-    raise Error, "Suggestion is #{suggestion.status}, not applicable" unless suggestion.applicable?
-
     permitted = self.class.permitted_fields(entry, user)
     raise Error, "Not allowed to annotate this transaction" if permitted.empty?
 
-    fields = Array(fields).map(&:to_s) & suggestion.proposed_fields & permitted
-    split = split && suggestion.split.present? && self.class.can_split?(entry, user)
-    payload = suggestion.payload
-    transaction = entry.transaction
-
     Entry.transaction do
+      suggestion.lock!
+      raise Error, "Suggestion is #{suggestion.status}, not applicable" unless suggestion.applicable?
+
+      entry.reload
+      fields = Array(fields).map(&:to_s) & suggestion.proposed_fields & permitted
+      split = split && suggestion.split.present? && self.class.can_split?(entry, user)
+      payload = suggestion.payload
+      transaction = entry.transaction
       snapshot = take_snapshot
-      merchant_id, created_merchant_id = resolve_merchant(payload) if fields.include?("merchant")
+
+      values = fields.to_h { |field| [ FIELD_ATTRIBUTES[field], payload[FIELD_ATTRIBUTES[field]] ] }
+      values["merchant_id"], created_merchant_id = resolve_merchant(payload) if fields.include?("merchant")
 
       if fields.include?("name") && transaction.extra["original_name"].blank?
         transaction.update!(extra: transaction.extra.merge("original_name" => entry.name))
       end
 
       if fields.any?
-        Entry.where(id: entry.id).bulk_update!(
-          {
-            name: (payload["name"] if fields.include?("name")),
-            notes: (payload["notes"] if fields.include?("notes")),
-            category_id: (payload["category_id"] if fields.include?("category")),
-            merchant_id: merchant_id,
-            tag_ids: (payload["tag_ids"] if fields.include?("tags"))
-          },
-          update_tags: fields.include?("tags")
-        )
-        lock_applied_attributes(fields)
+        Entry.where(id: entry.id).bulk_update!(values.symbolize_keys, update_tags: fields.include?("tags"))
+        lock_applied_attributes(fields, snapshot)
       end
 
-      if split && !entry.split_once!(split_rows(payload["split"], merchant_id), lock_attributes: true)
+      if split && !entry.split_once!(split_rows(payload["split"], values["merchant_id"]), lock_attributes: true)
         raise Error, "Transaction can no longer be split"
       end
 
@@ -77,56 +72,48 @@ class TransactionAnnotationSuggestion::Applier
         snapshot: snapshot,
         applied_fields: {
           "fields" => fields,
+          "values" => values,
           "split" => split,
           "confirmed_receipt_link_id" => confirmed_link&.id,
           "created_merchant_id" => created_merchant_id
         }
       )
+      @split_applied = split
     end
 
-    entry.sync_account_later if split
+    entry.sync_account_later if @split_applied
     suggestion
   end
 
+  # Restores only what the apply changed, and only where the value is still
+  # the applied one, so edits made after accepting survive the undo.
   def revert!
-    raise Error, "Suggestion is #{suggestion.status}, not applied" unless suggestion.applied?
-
-    applied = suggestion.applied_fields || {}
     raise Error, "Not allowed to annotate this transaction" if self.class.permitted_fields(entry, user).empty?
-    raise Error, "Not allowed to undo a split" if applied["split"] && !entry.account.permission_for(user).in?(FULL_CONTROL)
-
-    snapshot = suggestion.snapshot
 
     Entry.transaction do
+      suggestion.lock!
+      raise Error, "Suggestion is #{suggestion.status}, not applied" unless suggestion.applied?
+
+      applied = suggestion.applied_fields || {}
+      raise Error, "Not allowed to undo a split" if applied["split"] && !entry.account.permission_for(user).in?(FULL_CONTROL)
+
       entry.unsplit_once! if applied["split"]
+      entry.reload
 
-      entry.reload.update!(
-        name: snapshot["name"],
-        notes: snapshot["notes"],
-        user_modified: snapshot["user_modified"],
-        locked_attributes: snapshot["entry_locked_attributes"]
-      )
-
-      transaction = entry.transaction
-      extra = transaction.extra.except("original_name")
-      extra["original_name"] = snapshot["original_name"] if snapshot["original_name"]
-      transaction.update!(
-        category_id: snapshot["category_id"],
-        merchant_id: snapshot["merchant_id"],
-        tag_ids: snapshot["tag_ids"],
-        locked_attributes: snapshot["transaction_locked_attributes"],
-        extra: extra
-      )
+      fields = Array(applied["fields"])
+      restorable = fields.select { |field| unchanged_since_apply?(field, applied["values"] || {}) }
+      restore_fields(restorable, all_restored: restorable.size == fields.size)
 
       if (link_id = applied["confirmed_receipt_link_id"])
-        transaction.receipt_links.where(id: link_id).update_all(status: "suggested", updated_at: Time.current)
+        entry.transaction.receipt_links.where(id: link_id).update_all(status: "suggested", updated_at: Time.current)
       end
 
       entry.unmark_reviewed!
       suggestion.update!(status: "reverted")
+      @split_reverted = applied["split"]
     end
 
-    entry.sync_account_later if applied["split"]
+    entry.sync_account_later if @split_reverted
     suggestion
   end
 
@@ -147,18 +134,54 @@ class TransactionAnnotationSuggestion::Applier
       }
     end
 
-    # bulk_update! locks only what its last save changed, which misses the
-    # entry's fields once tags are saved after them.
-    def lock_applied_attributes(fields)
-      entry.reload
-      entry_locks = { "name" => "name", "notes" => "notes" }.slice(*fields).values
-      transaction_locks = { "category" => "category_id", "merchant" => "merchant_id", "tags" => "tag_ids" }.slice(*fields).values
-      now = Time.current
+    def record_for(field)
+      TransactionAnnotationSuggestion.record_for(field, entry)
+    end
 
-      entry.update!(locked_attributes: entry.locked_attributes.merge(entry_locks.index_with { now })) if entry_locks.any?
-      if transaction_locks.any?
-        entry.transaction.update!(locked_attributes: entry.transaction.locked_attributes.merge(transaction_locks.index_with { now }))
+    # Sets the locks to what they were plus the applied attributes.
+    # bulk_update!'s own locking misses the entry's fields once tags are saved
+    # after them, and locks "locked_attributes" itself after the tag lock.
+    def lock_applied_attributes(fields, snapshot)
+      entry.reload
+      now = Time.current
+      locks_before = { entry => snapshot["entry_locked_attributes"], entry.transaction => snapshot["transaction_locked_attributes"] }
+
+      locks_before.each do |record, before|
+        record_fields = fields.select { |field| record_for(field) == record }
+        locks = before.merge(record_fields.map { |field| FIELD_ATTRIBUTES[field] }.index_with { now })
+        record.update!(locked_attributes: locks) if locks != record.locked_attributes
       end
+    end
+
+    def unchanged_since_apply?(field, values)
+      attribute = FIELD_ATTRIBUTES[field]
+      current = record_for(field).public_send(attribute)
+      applied = values[attribute]
+
+      current.is_a?(Array) ? current.map(&:to_s).sort == Array(applied).map(&:to_s).sort : current.to_s == applied.to_s
+    end
+
+    def restore_fields(fields, all_restored:)
+      snapshot = suggestion.snapshot
+      locks_before = {
+        entry => snapshot["entry_locked_attributes"] || {},
+        entry.transaction => snapshot["transaction_locked_attributes"] || {}
+      }
+
+      fields.group_by { |field| record_for(field) }.each do |record, record_fields|
+        attributes = record_fields.map { |field| FIELD_ATTRIBUTES[field] }
+        locks = record.locked_attributes.except(*attributes).merge(locks_before[record].slice(*attributes))
+        record.update!(attributes.index_with { |attribute| snapshot[attribute] }.merge(locked_attributes: locks))
+      end
+
+      if fields.include?("name")
+        transaction = entry.transaction
+        extra = transaction.extra.except("original_name")
+        extra["original_name"] = snapshot["original_name"] if snapshot["original_name"]
+        transaction.update!(extra: extra)
+      end
+
+      entry.update!(user_modified: snapshot["user_modified"]) if all_restored
     end
 
     # [merchant_id, id of a merchant created for it or nil]

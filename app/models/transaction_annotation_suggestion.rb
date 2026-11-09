@@ -7,7 +7,12 @@
 # and split: nil or [{ name, amount (signed decimal string), category_id,
 # tag_ids, notes }] that adds up to the entry amount.
 class TransactionAnnotationSuggestion < ApplicationRecord
-  FIELDS = %w[name merchant category tags notes].freeze
+  # Review field => attribute it sets, which is also its payload key.
+  FIELD_ATTRIBUTES = {
+    "name" => "name", "merchant" => "merchant_id", "category" => "category_id", "tags" => "tag_ids", "notes" => "notes"
+  }.freeze
+  FIELDS = FIELD_ATTRIBUTES.keys.freeze
+  ENTRY_FIELDS = %w[name notes].freeze
 
   belongs_to :entry
   belongs_to :family
@@ -25,6 +30,21 @@ class TransactionAnnotationSuggestion < ApplicationRecord
     Digest::SHA256.hexdigest("#{source}:#{normalized}")
   end
 
+  # The record a field's attribute lives on: the entry or its transaction.
+  def self.record_for(field, entry)
+    ENTRY_FIELDS.include?(field) ? entry : entry.transaction
+  end
+
+  # Returns the suggestion for this input, creating it when missing; a
+  # concurrent insert of the same input loses on the unique index and gets
+  # the winner's row instead.
+  def self.find_or_create_for!(entry, input_hash:, **attributes)
+    find_by(entry_id: entry.id, input_hash: input_hash) ||
+      transaction(requires_new: true) { create!(entry: entry, input_hash: input_hash, **attributes) }
+  rescue ActiveRecord::RecordNotUnique
+    where(entry_id: entry.id, input_hash: input_hash).take!
+  end
+
   def split
     payload["split"].presence
   end
@@ -35,15 +55,16 @@ class TransactionAnnotationSuggestion < ApplicationRecord
 
   # The FIELDS whose proposed value differs from the entry's current one.
   def proposed_fields
-    transaction = entry.transaction
-
     FIELDS.select do |field|
+      attribute = FIELD_ATTRIBUTES[field]
+      proposed = payload[attribute]
+      current = self.class.record_for(field, entry).public_send(attribute)
+
       case field
-      when "name" then payload["name"].present? && payload["name"] != entry.name
-      when "notes" then payload["notes"].present? && payload["notes"] != entry.notes
-      when "category" then payload["category_id"].present? && payload["category_id"] != transaction.category_id && transaction.category_editable?
-      when "merchant" then payload["new_merchant_name"].present? || (payload["merchant_id"].present? && payload["merchant_id"] != transaction.merchant_id)
-      when "tags" then payload["tag_ids"].present? && payload["tag_ids"].sort != transaction.tag_ids.sort
+      when "merchant" then payload["new_merchant_name"].present? || (proposed.present? && proposed != current)
+      when "tags" then proposed.present? && proposed.sort != current.sort
+      when "category" then proposed.present? && proposed != current && entry.transaction.category_editable?
+      else proposed.present? && proposed != current
       end
     end
   end
@@ -51,7 +72,7 @@ class TransactionAnnotationSuggestion < ApplicationRecord
   # { field => checked } for the fields this user may apply, plus "split"
   # when a split is proposed and allowed. A field starts checked when it is
   # empty or was set automatically (AI, Bayes, provider, rule); a value the
-  # user set is locked and starts unchecked.
+  # user set starts unchecked (see Enrichable#set_by_user?).
   def default_selection(user)
     permitted = Applier.permitted_fields(entry, user)
     selection = (proposed_fields & permitted).index_with { |field| default_checked?(field) }
@@ -69,14 +90,9 @@ class TransactionAnnotationSuggestion < ApplicationRecord
 
   private
     def default_checked?(field)
-      transaction = entry.transaction
+      record = self.class.record_for(field, entry)
+      attribute = FIELD_ATTRIBUTES[field]
 
-      case field
-      when "name" then !entry.locked?(:name)
-      when "notes" then entry.notes.blank? || !entry.locked?(:notes)
-      when "category" then transaction.category_id.nil? || !transaction.locked?(:category_id)
-      when "merchant" then transaction.merchant_id.nil? || !transaction.locked?(:merchant_id)
-      when "tags" then transaction.tag_ids.empty? || !transaction.locked?(:tag_ids)
-      end
+      record.public_send(attribute).blank? || !record.set_by_user?(attribute)
     end
 end
