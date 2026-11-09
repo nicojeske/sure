@@ -13,6 +13,9 @@
 # to apply as-is.
 class Transaction::AnnotationSuggester
   Error = Class.new(StandardError)
+  # The receipt cannot be used (wrong transaction or family, no OCR text);
+  # the LLM is not involved.
+  ReceiptError = Class.new(Error)
 
   MAX_RECEIPT_CHARS = 6_000
   MAX_EXAMPLES = 5
@@ -53,6 +56,12 @@ class Transaction::AnnotationSuggester
     TransactionAnnotationSuggestion.input_hash_for(source, [ receipt_link&.document_id, hint.presence ].compact.join("|"))
   end
 
+  # Whether a suggestion failure points at the LLM provider rather than at
+  # Paperless or the receipt itself.
+  def self.llm_failure?(error)
+    !error.is_a?(ReceiptError) && !error.is_a?(Provider::Paperless::Error)
+  end
+
   def self.redact(text)
     REDACTIONS.reduce(text.to_s) { |redacted, pattern| redacted.gsub(pattern, REDACTED) }
   end
@@ -61,7 +70,8 @@ class Transaction::AnnotationSuggester
     [ AMOUNT_TOLERANCE_MIN, entry.amount.abs * AMOUNT_TOLERANCE_RATIO ].max
   end
 
-  attr_reader :family, :user
+  # The error behind the last failed suggestion this instance ran, if any.
+  attr_reader :family, :user, :last_error
 
   def initialize(family, user:)
     @family = family
@@ -97,8 +107,7 @@ class Transaction::AnnotationSuggester
 
   private
     def run(entry, source:, receipt_link:, hint:)
-      verify_receipt_link!(entry, receipt_link) if receipt_link
-
+      @last_error = nil
       suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
         entry,
         input_hash: self.class.input_hash(source, receipt_link: receipt_link, hint: hint),
@@ -106,12 +115,18 @@ class Transaction::AnnotationSuggester
       )
       return suggestion if suggestion.ready? || suggestion.applied? || suggestion.reverted?
 
-      suggestion.update!(family: family, source: source.to_s, receipt_link: receipt_link, hint_text: hint.presence, status: "pending", error: nil)
+      suggestion.update!(family: family, source: source.to_s, hint_text: hint.presence, status: "pending", error: nil)
 
       begin
+        if receipt_link
+          verify_receipt_link!(entry, receipt_link)
+          suggestion.update!(receipt_link: receipt_link)
+        end
+
         payload = normalize(entry, request_annotation(entry, receipt_link, hint), receipt_link)
         suggestion.update!(status: "ready", payload: payload)
       rescue StandardError => e
+        @last_error = e
         suggestion.update!(status: "failed", error: e.message.to_s.truncate(1_000))
         capture_failure(entry, suggestion, e)
       end
@@ -124,7 +139,7 @@ class Transaction::AnnotationSuggester
         receipt_link.paperless_connection.family_id == family.id &&
         entry.account.family_id == family.id
 
-      raise Error, "Receipt link #{receipt_link.id} does not belong to this transaction"
+      raise ReceiptError, "Receipt link #{receipt_link.id} does not belong to this transaction"
     end
 
     def llm_provider
@@ -154,7 +169,7 @@ class Transaction::AnnotationSuggester
       connection = receipt_link.paperless_connection
       client = Provider::Paperless.new(base_url: connection.base_url, api_token: connection.api_token, verify_ssl: connection.verify_ssl)
       content = client.document(receipt_link.document_id)["content"]
-      raise Error, "Receipt #{receipt_link.document_id} has no OCR text" if content.blank?
+      raise ReceiptError, "Receipt #{receipt_link.document_id} has no OCR text" if content.blank?
 
       self.class.redact(content).first(MAX_RECEIPT_CHARS)
     end
@@ -304,7 +319,7 @@ class Transaction::AnnotationSuggester
     end
 
     def capture_failure(entry, suggestion, error)
-      paperless = error.is_a?(Provider::Paperless::Error)
+      paperless = !self.class.llm_failure?(error)
 
       DebugLogEntry.capture(
         category: "ai_annotation",

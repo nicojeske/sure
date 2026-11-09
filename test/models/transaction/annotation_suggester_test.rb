@@ -127,20 +127,41 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal "paperless", DebugLogEntry.order(:created_at).last.provider_key
   end
 
-  test "rejects a receipt that belongs to another transaction" do
+  test "a receipt that belongs to another transaction fails only that suggestion" do
     @provider.expects(:suggest_transaction_annotation).never
 
-    assert_raises(Suggester::Error) do
-      suggester.suggest_from_receipt(@entry, receipt_links(:linked_one))
-    end
+    instance = suggester
+    suggestion = instance.suggest_from_receipt(@entry, receipt_links(:linked_one))
+
+    assert suggestion.failed?
+    assert_nil suggestion.receipt_link
+    assert_kind_of Suggester::ReceiptError, instance.last_error
   end
 
-  test "rejects a receipt from another family's Paperless connection" do
+  test "a receipt from another family's Paperless connection is never read" do
     other = families(:empty).create_paperless_connection!(base_url: "https://other.example.com", api_token: "t")
     link = @entry.transaction.receipt_links.create!(paperless_connection: other, document_id: 5, status: "linked")
+    Provider::Paperless.any_instance.expects(:document).never
+    @provider.expects(:suggest_transaction_annotation).never
 
-    assert_raises(Suggester::Error) { suggester.suggest_from_hint(@entry, "x") }
-    assert_raises(Suggester::Error) { suggester.suggest_from_receipt(@entry, link) }
+    assert suggester.suggest_from_hint(@entry, "x").failed?
+    assert suggester.suggest_from_receipt(@entry, link).failed?
+  end
+
+  test "classifies failures as LLM or receipt failures" do
+    assert Suggester.llm_failure?(Suggester::Error.new("Provider failed"))
+    assert_not Suggester.llm_failure?(Suggester::ReceiptError.new("no OCR"))
+    assert_not Suggester.llm_failure?(Provider::Paperless::Error.new("gone", :not_found))
+  end
+
+  test "an empty OCR text is a receipt failure" do
+    link = receipt_links(:linked_one)
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "" })
+    @provider.expects(:suggest_transaction_annotation).never
+    instance = suggester
+
+    assert instance.suggest_from_receipt(link.transaction_record.entry, link).failed?
+    assert_kind_of Suggester::ReceiptError, instance.last_error
   end
 
   test "a concurrent insert of the same input returns the existing suggestion" do
