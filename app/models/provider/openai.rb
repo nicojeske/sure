@@ -275,7 +275,7 @@ class Provider::Openai < Provider
         client,
         model: effective_model,
         prompt: prompt,
-          custom_provider: custom_provider?,
+        custom_provider: custom_provider?,
         langfuse_trace: trace,
         family: family
       ).suggest

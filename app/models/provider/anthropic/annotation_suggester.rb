@@ -15,7 +15,7 @@ class Provider::Anthropic::AnnotationSuggester
   end
 
   def suggest
-    span = langfuse_trace&.generation(name: "suggest_transaction_annotation_api_call", model: model, input: usage_metadata)
+    span = langfuse_trace&.generation(name: "suggest_transaction_annotation_api_call", model: model, input: prompt.usage_metadata)
 
     response = create_structured_message(
       tool_name: TOOL_NAME,
@@ -30,21 +30,17 @@ class Provider::Anthropic::AnnotationSuggester
 
     result = Provider::TransactionAnnotationPrompt.annotation_from(extract_input(response))
 
-    record_usage(model, response.usage, operation: "suggest_transaction_annotation", metadata: usage_metadata)
+    record_usage(model, response.usage, operation: "suggest_transaction_annotation", metadata: prompt.usage_metadata)
 
     span&.end(output: result.to_h, usage: usage_hash(response.usage))
     result
   rescue => e
     span&.end(output: { error: e.message }, level: "ERROR")
-    record_usage_error(model, operation: "suggest_transaction_annotation", error: e, metadata: usage_metadata)
+    record_usage_error(model, operation: "suggest_transaction_annotation", error: e, metadata: prompt.usage_metadata)
     raise
   end
 
   private
-    def usage_metadata
-      { receipt: prompt.receipt_text.present?, hint: prompt.hint.present?, example_count: prompt.examples.size }
-    end
-
     def instructions
       "#{prompt.rules}\n\nReport the proposal via the #{TOOL_NAME} tool."
     end

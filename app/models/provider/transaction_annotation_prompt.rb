@@ -103,6 +103,12 @@ class Provider::TransactionAnnotationPrompt
     RULES
   end
 
+  # What traces and usage records may know about a request: never the
+  # receipt text or hint themselves.
+  def usage_metadata
+    { receipt: receipt_text.present?, hint: hint.present?, example_count: examples.size }
+  end
+
   def user_message
     sections = []
     sections << "TRANSACTION:\n#{transaction.to_json}"

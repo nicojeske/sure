@@ -1,6 +1,7 @@
 class Provider::Openai::AnnotationSuggester
   include Provider::Openai::Concerns::UsageRecorder
 
+  # custom_provider is read by UsageRecorder when it cannot price the model.
   attr_reader :client, :model, :prompt, :custom_provider, :langfuse_trace, :family
 
   def initialize(client, model:, prompt:, custom_provider: false, langfuse_trace: nil, family: nil)
@@ -23,7 +24,7 @@ class Provider::Openai::AnnotationSuggester
 
   private
     def suggest_with_format(response_format)
-      span = langfuse_trace&.generation(name: "suggest_transaction_annotation_api_call", model: model, input: usage_metadata)
+      span = langfuse_trace&.generation(name: "suggest_transaction_annotation_api_call", model: model, input: prompt.usage_metadata)
 
       params = {
         model: model,
@@ -37,17 +38,13 @@ class Provider::Openai::AnnotationSuggester
       response = client.chat(parameters: params)
       result = Provider::TransactionAnnotationPrompt.annotation_from(parse_json_flexibly(response.dig("choices", 0, "message", "content")))
 
-      record_usage(model, response.dig("usage"), operation: "suggest_transaction_annotation", metadata: usage_metadata)
+      record_usage(model, response.dig("usage"), operation: "suggest_transaction_annotation", metadata: prompt.usage_metadata)
 
       span&.end(output: result.to_h, usage: response.dig("usage"))
       result
     rescue => e
       span&.end(output: { error: e.message }, level: "ERROR")
       raise
-    end
-
-    def usage_metadata
-      { receipt: prompt.receipt_text.present?, hint: prompt.hint.present?, example_count: prompt.examples.size }
     end
 
     def instructions
