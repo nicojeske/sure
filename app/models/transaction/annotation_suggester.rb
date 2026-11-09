@@ -48,6 +48,11 @@ class Transaction::AnnotationSuggester
     ReceiptChoice.new(link: nil, candidates: suggested.select { |link| top.score.to_f - link.score.to_f < CLEAR_CUT_MARGIN })
   end
 
+  # The input_hash a proposal from this receipt and/or hint is stored under.
+  def self.input_hash(source, receipt_link: nil, hint: nil)
+    TransactionAnnotationSuggestion.input_hash_for(source, [ receipt_link&.document_id, hint.presence ].compact.join("|"))
+  end
+
   def self.redact(text)
     REDACTIONS.reduce(text.to_s) { |redacted, pattern| redacted.gsub(pattern, REDACTED) }
   end
@@ -94,10 +99,9 @@ class Transaction::AnnotationSuggester
     def run(entry, source:, receipt_link:, hint:)
       verify_receipt_link!(entry, receipt_link) if receipt_link
 
-      input = [ receipt_link&.document_id, hint.presence ].compact.join("|")
       suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
         entry,
-        input_hash: TransactionAnnotationSuggestion.input_hash_for(source, input),
+        input_hash: self.class.input_hash(source, receipt_link: receipt_link, hint: hint),
         family: family, source: source.to_s
       )
       return suggestion if suggestion.ready? || suggestion.applied? || suggestion.reverted?

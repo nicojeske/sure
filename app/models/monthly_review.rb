@@ -62,6 +62,26 @@ class MonthlyReview < ApplicationRecord
     Progress.new(total: scope.count, reviewed: scope.reviewed.count)
   end
 
+  # Queues a background run of receipt-backed suggestions for `user`'s queue.
+  # Opening the review only starts one when the last run began more than
+  # PREFETCH_INTERVAL ago; `force` (the refresh button) always does. Returns
+  # whether a job was enqueued.
+  def prefetch_suggestions_later(user, include_transfers: false, force: false)
+    now = Time.current
+    claim = self.class.where(id: id)
+    claim = claim.where("prefetched_at IS NULL OR prefetched_at < ?", now - PREFETCH_INTERVAL) unless force
+    return false unless claim.update_all(prefetched_at: now) == 1
+
+    self.prefetched_at = now
+    clear_attribute_changes([ :prefetched_at ])
+    PrefetchSuggestionsJob.perform_later(self, user, include_transfers: include_transfers)
+    true
+  end
+
+  def prefetch_suggestions(user, include_transfers: false, &block)
+    SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers).run(&block)
+  end
+
   def completed?
     completed_at.present?
   end
@@ -78,6 +98,8 @@ class MonthlyReview < ApplicationRecord
     def remaining = total - reviewed
     def done? = remaining.zero?
   end
+
+  PREFETCH_INTERVAL = 10.minutes
 
   QUEUE_ORDER = %w[entries.date entries.created_at entries.id].freeze
   private_constant :QUEUE_ORDER

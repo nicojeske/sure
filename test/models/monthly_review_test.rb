@@ -1,7 +1,7 @@
 require "test_helper"
 
 class MonthlyReviewTest < ActiveSupport::TestCase
-  include EntriesTestHelper
+  include EntriesTestHelper, ActiveJob::TestHelper
 
   setup do
     @family = families(:dylan_family)
@@ -94,5 +94,28 @@ class MonthlyReviewTest < ActiveSupport::TestCase
 
     @review.reopen!
     assert_not @review.completed?
+  end
+
+  test "prefetch_suggestions_later enqueues once per interval unless forced" do
+    user = users(:family_admin)
+
+    assert_enqueued_with(job: MonthlyReview::PrefetchSuggestionsJob, args: [ @review, user, { include_transfers: true } ]) do
+      assert @review.prefetch_suggestions_later(user, include_transfers: true)
+    end
+    assert_not_nil @review.prefetched_at
+
+    assert_no_enqueued_jobs(only: MonthlyReview::PrefetchSuggestionsJob) do
+      assert_not MonthlyReview.find(@review.id).prefetch_suggestions_later(user)
+    end
+
+    assert_enqueued_jobs(1, only: MonthlyReview::PrefetchSuggestionsJob) do
+      assert @review.prefetch_suggestions_later(user, force: true)
+    end
+
+    travel MonthlyReview::PREFETCH_INTERVAL + 1.minute do
+      assert_enqueued_jobs(1, only: MonthlyReview::PrefetchSuggestionsJob) do
+        assert @review.prefetch_suggestions_later(user)
+      end
+    end
   end
 end
