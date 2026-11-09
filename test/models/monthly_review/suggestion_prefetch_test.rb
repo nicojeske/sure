@@ -2,6 +2,7 @@ require "test_helper"
 
 class MonthlyReview::SuggestionPrefetchTest < ActiveSupport::TestCase
   include EntriesTestHelper
+  include SqlQueryCapture
 
   setup do
     @user = users(:family_admin)
@@ -57,6 +58,38 @@ class MonthlyReview::SuggestionPrefetchTest < ActiveSupport::TestCase
     assert_empty prefetch.run
   end
 
+  test "reclaims a pending suggestion whose run died" do
+    entry = entry_with_receipt("Stale", document_id: 1)
+    stale = existing_suggestion(entry, entry.transaction.receipt_links.first, status: "pending")
+    stale.update_columns(updated_at: (TransactionAnnotationSuggestion::PENDING_STALE_AFTER + 1.minute).ago)
+    expect_llm_calls(1)
+
+    assert_equal [ stale ], prefetch.run
+    assert stale.reload.ready?
+  end
+
+  test "retries failed suggestions only when forced" do
+    entry = entry_with_receipt("Failed", document_id: 1)
+    failed = existing_suggestion(entry, entry.transaction.receipt_links.first, status: "failed")
+    expect_llm_calls(1)
+
+    assert_empty prefetch.run
+    assert_equal [ failed ], prefetch(retry_failed: true).run
+    assert failed.reload.ready?
+  end
+
+  test "a receipt failure fails only its entry and does not trip the breaker" do
+    entries = 5.times.map { |i| entry_with_receipt("Entry #{i}", document_id: i + 1, date: Date.new(2026, 10, i + 1)) }
+    Provider::Paperless.any_instance.stubs(:document).raises(Provider::Paperless::Error.new("gone", :not_found))
+    Provider::Paperless.any_instance.stubs(:document).with(5).returns({ "content" => "Total 20.00" })
+    expect_llm_calls(1)
+
+    suggestions = prefetch.run
+
+    assert_equal entries, suggestions.map(&:entry)
+    assert_equal %w[failed failed failed failed ready], suggestions.map(&:status)
+  end
+
   test "stops at the limit" do
     3.times { |i| entry_with_receipt("Entry #{i}", document_id: i + 1, date: Date.new(2026, 10, i + 1)) }
     expect_llm_calls(2)
@@ -69,10 +102,26 @@ class MonthlyReview::SuggestionPrefetchTest < ActiveSupport::TestCase
     @provider.expects(:suggest_transaction_annotation).times(MonthlyReview::SuggestionPrefetch::MAX_CONSECUTIVE_FAILURES)
       .returns(Provider::Response.new(success?: false, data: nil, error: StandardError.new("down")))
 
-    suggestions = prefetch.run
+    suggestions = nil
+    assert_difference -> { DebugLogEntry.where(source: "MonthlyReview::SuggestionPrefetch").count }, 1 do
+      suggestions = prefetch.run
+    end
 
     assert_equal MonthlyReview::SuggestionPrefetch::MAX_CONSECUTIVE_FAILURES, suggestions.size
     assert suggestions.all?(&:failed?)
+    log = DebugLogEntry.where(source: "MonthlyReview::SuggestionPrefetch").last
+    assert_equal Transaction::AnnotationSuggester.new(@family, user: @user).llm_provider_key, log.provider_key
+    assert_equal @review.id, log.metadata["monthly_review_id"]
+    assert_equal MonthlyReview::SuggestionPrefetch::MAX_CONSECUTIVE_FAILURES, log.metadata["consecutive_failures"]
+  end
+
+  test "query count does not grow with the number of finished entries" do
+    expect_llm_calls(0)
+    queries_for_finished_entries(1) # warm up one-off lookups
+    one = queries_for_finished_entries(1)
+    three = queries_for_finished_entries(3)
+
+    assert_equal one, three
   end
 
   test "does nothing without an LLM provider or Paperless connection" do
@@ -96,6 +145,17 @@ class MonthlyReview::SuggestionPrefetchTest < ActiveSupport::TestCase
   end
 
   private
+    def queries_for_finished_entries(count)
+      @family.accounts.each { |account| account.entries.delete_all }
+      count.times do |i|
+        entry = entry_with_receipt("Done #{i}", document_id: i + 1, date: Date.new(2026, 10, i + 1))
+        entry.transaction.receipt_links.create!(paperless_connection: @connection, document_id: i + 100, status: "suggested", score: 0.2)
+        existing_suggestion(entry, entry.transaction.receipt_links.linked.first, status: "ready")
+      end
+
+      capture_sql_queries { prefetch.run }.size
+    end
+
     def prefetch(**options)
       MonthlyReview::SuggestionPrefetch.new(@review, user: @user, **options)
     end

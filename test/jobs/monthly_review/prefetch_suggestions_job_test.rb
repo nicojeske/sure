@@ -15,6 +15,14 @@ class MonthlyReview::PrefetchSuggestionsJobTest < ActiveJob::TestCase
     MonthlyReview::PrefetchSuggestionsJob.perform_now(@review, @user, include_transfers: true)
   end
 
+  test "a forced run retries failed suggestions" do
+    MonthlyReview::SuggestionPrefetch.expects(:new)
+      .with(@review, user: @user, include_transfers: false, retry_failed: true)
+      .returns(stub(run: []))
+
+    MonthlyReview::PrefetchSuggestionsJob.perform_now(@review, @user, force: true)
+  end
+
   test "ignores a user from another family" do
     MonthlyReview::SuggestionPrefetch.any_instance.expects(:run).never
 

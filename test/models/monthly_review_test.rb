@@ -99,7 +99,7 @@ class MonthlyReviewTest < ActiveSupport::TestCase
   test "prefetch_suggestions_later enqueues once per interval unless forced" do
     user = users(:family_admin)
 
-    assert_enqueued_with(job: MonthlyReview::PrefetchSuggestionsJob, args: [ @review, user, { include_transfers: true } ]) do
+    assert_enqueued_with(job: MonthlyReview::PrefetchSuggestionsJob, args: [ @review, user, { include_transfers: true, force: false } ]) do
       assert @review.prefetch_suggestions_later(user, include_transfers: true)
     end
     assert_not_nil @review.prefetched_at
@@ -108,7 +108,7 @@ class MonthlyReviewTest < ActiveSupport::TestCase
       assert_not MonthlyReview.find(@review.id).prefetch_suggestions_later(user)
     end
 
-    assert_enqueued_jobs(1, only: MonthlyReview::PrefetchSuggestionsJob) do
+    assert_enqueued_with(job: MonthlyReview::PrefetchSuggestionsJob, args: [ @review, user, { include_transfers: false, force: true } ]) do
       assert @review.prefetch_suggestions_later(user, force: true)
     end
 

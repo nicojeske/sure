@@ -64,8 +64,8 @@ class MonthlyReview < ApplicationRecord
 
   # Queues a background run of receipt-backed suggestions for `user`'s queue.
   # Opening the review only starts one when the last run began more than
-  # PREFETCH_INTERVAL ago; `force` (the refresh button) always does. Returns
-  # whether a job was enqueued.
+  # PREFETCH_INTERVAL ago; `force` (the refresh button) always does and also
+  # retries failed suggestions. Returns whether a job was enqueued.
   def prefetch_suggestions_later(user, include_transfers: false, force: false)
     now = Time.current
     claim = self.class.where(id: id)
@@ -74,12 +74,12 @@ class MonthlyReview < ApplicationRecord
 
     self.prefetched_at = now
     clear_attribute_changes([ :prefetched_at ])
-    PrefetchSuggestionsJob.perform_later(self, user, include_transfers: include_transfers)
+    PrefetchSuggestionsJob.perform_later(self, user, include_transfers: include_transfers, force: force)
     true
   end
 
-  def prefetch_suggestions(user, include_transfers: false, &block)
-    SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers).run(&block)
+  def prefetch_suggestions(user, include_transfers: false, retry_failed: false, &block)
+    SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers, retry_failed: retry_failed).run(&block)
   end
 
   def completed?

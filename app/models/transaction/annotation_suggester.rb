@@ -40,11 +40,13 @@ class Transaction::AnnotationSuggester
   # when none is clear-cut (link is then nil).
   ReceiptChoice = Data.define(:link, :candidates)
 
+  # Works on preloaded receipt_links without further queries.
   def self.receipt_choice(transaction)
-    linked = transaction.receipt_links.linked.ordered.first
+    links = transaction.receipt_links.sort_by { |link| [ link.score ? 1 : 0, -link.score.to_f, -link.created_at.to_f ] }
+    linked = links.find(&:linked?)
     return ReceiptChoice.new(link: linked, candidates: []) if linked
 
-    suggested = transaction.receipt_links.suggested.ordered.to_a
+    suggested = links.select(&:suggested?)
     top, runner_up = suggested
     return ReceiptChoice.new(link: top, candidates: []) if runner_up.nil? || top.score.to_f - runner_up.score.to_f >= CLEAR_CUT_MARGIN
 
@@ -103,6 +105,11 @@ class Transaction::AnnotationSuggester
       payload: { "category_id" => category_id, "confidence" => confidence&.round(3) }
     )
     suggestion
+  end
+
+  # The provider_key failures are logged under, e.g. "openai".
+  def llm_provider_key
+    llm_provider && llm_provider.class.name.demodulize.underscore
   end
 
   private
@@ -341,9 +348,5 @@ class Transaction::AnnotationSuggester
           paperless_document_id: suggestion.receipt_link&.document_id
         }.compact
       )
-    end
-
-    def llm_provider_key
-      llm_provider && llm_provider.class.name.demodulize.underscore
     end
 end

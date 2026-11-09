@@ -13,6 +13,8 @@ class TransactionAnnotationSuggestion < ApplicationRecord
   }.freeze
   FIELDS = FIELD_ATTRIBUTES.keys.freeze
   ENTRY_FIELDS = %w[name notes].freeze
+  # A pending row untouched for this long lost its worker and may be run again.
+  PENDING_STALE_AFTER = 10.minutes
 
   belongs_to :entry
   belongs_to :family
@@ -43,6 +45,30 @@ class TransactionAnnotationSuggestion < ApplicationRecord
       transaction(requires_new: true) { create!(entry: entry, input_hash: input_hash, **attributes) }
   rescue ActiveRecord::RecordNotUnique
     where(entry_id: entry.id, input_hash: input_hash).take!
+  end
+
+  # Claims the right to run this input in the background: creates its pending
+  # row, or takes over a stale pending one (and a failed one when
+  # `retry_failed`). Returns nil when the input already has a result or
+  # another run owns it.
+  def self.claim_for(entry, input_hash:, retry_failed: false, **attributes)
+    suggestion = find_or_create_for!(entry, input_hash: input_hash, status: "pending", **attributes)
+    return suggestion if suggestion.previously_new_record?
+
+    reclaimable = where(status: "pending", updated_at: ...PENDING_STALE_AFTER.ago)
+    reclaimable = reclaimable.or(where(status: "failed")) if retry_failed
+    claimed = where(id: suggestion.id).and(reclaimable).update_all(status: "pending", error: nil, updated_at: Time.current)
+    claimed == 1 ? suggestion.reload : nil
+  end
+
+  # A pending row some run is still working on.
+  def in_flight?
+    pending? && updated_at > PENDING_STALE_AFTER.ago
+  end
+
+  # Whether a background run may claim this row (see claim_for).
+  def reclaimable?(retry_failed: false)
+    (pending? && !in_flight?) || (failed? && retry_failed)
   end
 
   def split
