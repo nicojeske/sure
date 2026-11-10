@@ -102,6 +102,7 @@ class TransactionAnnotationSuggestion::ApplierTest < ActiveSupport::TestCase
     @suggestion.apply!(user: @owner, fields: %w[name category tags], split: true)
 
     assert @entry.reload.split_parent?
+    assert @entry.child_entries.all?(&:reviewed?)
     assert_equal [ @kitchen.id, @outdoor.id ].sort, @entry.child_entries.map { |child| child.transaction.category_id }.sort
     assert link.reload.linked?
 

@@ -61,6 +61,18 @@ class TransactionAnnotationSuggestion < ApplicationRecord
     claimed == 1 ? suggestion.reload : nil
   end
 
+  # The suggestion whose apply marked `entry` reviewed, or nil when the entry
+  # was marked reviewed some other way (or reviewed again after it). For a
+  # split part that is the split parent's suggestion that split it.
+  def self.applied_in_review_of(entry)
+    return nil unless entry.reviewed?
+
+    owner = entry.split_child? ? entry.parent_entry : entry
+    suggestions = owner.annotation_suggestions.applied.where(updated_at: entry.reviewed_at..)
+    suggestions = suggestions.where("applied_fields ->> 'split' = 'true'") if owner != entry
+    suggestions.order(updated_at: :desc).first
+  end
+
   # A pending row some run is still working on.
   def in_flight?
     pending? && updated_at > PENDING_STALE_AFTER.ago

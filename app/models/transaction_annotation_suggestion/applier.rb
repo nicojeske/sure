@@ -67,6 +67,9 @@ class TransactionAnnotationSuggestion::Applier
       confirmed_link&.confirm!
 
       entry.mark_reviewed!(user)
+      # The parts were reviewed together with the proposal; they would
+      # otherwise come back as new cards in the queue.
+      entry.child_entries.each { |child| child.mark_reviewed!(user) } if split
       suggestion.update!(
         status: "applied",
         snapshot: snapshot,

@@ -82,6 +82,22 @@ class MonthlyReview < ApplicationRecord
     SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers, retry_failed: retry_failed).run(&block)
   end
 
+  # Undoes a card's review (Q15): reverts the proposal that marked it reviewed,
+  # or only clears "reviewed" when it was marked without one. Undoing a split
+  # part reverts the split, which removes the part. Returns the entry the
+  # review continues with: `entry`, or its split parent.
+  def undo_review!(entry, user)
+    return entry unless entry.reviewed?
+
+    if (suggestion = TransactionAnnotationSuggestion.applied_in_review_of(entry))
+      suggestion.revert!(user: user)
+      suggestion.entry
+    else
+      entry.unmark_reviewed!
+      entry
+    end
+  end
+
   def completed?
     completed_at.present?
   end

@@ -118,4 +118,42 @@ class MonthlyReviewTest < ActiveSupport::TestCase
       end
     end
   end
+
+  test "undo_review! reverts the proposal that reviewed the entry, or only clears reviewed" do
+    user = users(:family_admin)
+    entry = create_transaction(account: @account, date: Date.new(2026, 10, 5), name: "Bank text")
+    suggestion = TransactionAnnotationSuggestion.create!(
+      entry: entry, family: @family, source: "hint", status: "ready", input_hash: "abc", payload: { "name" => "Coffee" }
+    )
+    suggestion.apply!(user: user, fields: %w[name])
+
+    assert_equal entry, @review.undo_review!(entry.reload, user)
+    assert suggestion.reload.reverted?
+    assert_equal "Bank text", entry.reload.name
+
+    entry.mark_reviewed!(user)
+    assert_equal entry, @review.undo_review!(entry, user)
+    assert_not entry.reload.reviewed?
+    assert suggestion.reload.reverted?
+  end
+
+  test "undo_review! on a split part reverts the split and continues with the parent" do
+    user = users(:family_admin)
+    entry = create_transaction(account: @account, date: Date.new(2026, 10, 5), amount: 20)
+    other = @family.categories.create!(name: "Other")
+    suggestion = TransactionAnnotationSuggestion.create!(
+      entry: entry, family: @family, source: "hint", status: "ready", input_hash: "abc",
+      payload: { "split" => [
+        { "name" => "A", "amount" => "12.0", "category_id" => categories(:food_and_drink).id, "tag_ids" => [] },
+        { "name" => "B", "amount" => "8.0", "category_id" => other.id, "tag_ids" => [] }
+      ] }
+    )
+    suggestion.apply!(user: user, fields: [], split: true)
+    part = entry.reload.child_entries.first
+    assert part.reviewed?
+
+    assert_equal entry, @review.undo_review!(part, user)
+    assert_not entry.reload.split_parent?
+    assert_not entry.reviewed?
+  end
 end
