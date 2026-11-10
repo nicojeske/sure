@@ -115,21 +115,16 @@ class ReceiptLinksController < ApplicationController
       )
     end
 
-    def provider
-      @provider ||= Provider::Paperless.new(
-        base_url: @paperless_connection.base_url,
-        api_token: @paperless_connection.api_token,
-        verify_ssl: @paperless_connection.verify_ssl
-      )
+    def receipt_search
+      @receipt_search ||= PaperlessConnection::ReceiptSearch.new(@paperless_connection, @entry)
     end
 
     def load_search_results
-      response = provider.search_documents(query: @query, page: @page, page_size: 25, ordering: "-created")
-      @documents = response["results"] || []
-      @next_page = response["next"].present? ? @page + 1 : nil
-      @correspondents = provider.correspondents
-      @document_facts = @documents.index_by { |document| document["id"] }.transform_values { |document| facts_builder.for(document) }
-      @documents = sort_by_amount_match(@documents)
+      result = receipt_search.search(query: @query, page: @page)
+      @documents = result.documents
+      @next_page = result.next_page
+      @correspondents = result.correspondents
+      @document_facts = result.facts
     rescue Provider::Paperless::Error => e
       capture_paperless_error(e, source: "ReceiptLinksController#new")
       @documents = []
@@ -139,59 +134,12 @@ class ReceiptLinksController < ApplicationController
       @search_error_message = t(".errors.#{ERROR_TYPE_MESSAGE_KEYS.fetch(e.error_type, :unknown)}")
     end
 
-    # Stable-sorts documents whose mapped total matches the transaction amount to the front,
-    # without removing anything from the list — a document with no custom fields keeps its place.
-    def sort_by_amount_match(documents)
-      documents.sort_by.with_index { |document, index| [ same_amount_match?(document) ? 0 : 1, index ] }
-    end
-
-    def same_amount_match?(document)
-      total = @document_facts[document["id"]]&.total
-      total.present? && total.currency.iso_code == @entry.currency && total.amount.round(2) == @entry.amount.abs.round(2)
-    end
-
     def link_document(document_id)
       return if document_id.blank?
 
-      document = provider.document(document_id)
-
-      link = ReceiptLink.find_or_initialize_by(
-        transaction_record: @entry.transaction,
-        paperless_connection: @paperless_connection,
-        document_id: document["id"]
-      )
-      link.status = "linked"
-      link.source = "manual"
-      link.apply_document_metadata(
-        document,
-        correspondent_name: provider.correspondents[document["correspondent"]],
-        facts: facts_builder.for(document)
-      )
-      link.save!
+      receipt_search.link!(document_id)
     rescue Provider::Paperless::Error => e
       capture_paperless_error(e, source: "ReceiptLinksController#create")
-    end
-
-    # Named distinctly from the `@document_facts` ivar `new`/`load_search_results` builds (a
-    # { document_id => Facts } hash for the view) — this is the PaperlessConnection::DocumentFacts
-    # service object itself, memoized so `link_document` only builds/looks up custom_fields once.
-    def facts_builder
-      @facts_builder ||= PaperlessConnection::DocumentFacts.new(@paperless_connection, custom_fields)
-    end
-
-    # Skipped entirely when the connection has no field mapped, so linking a document never pays
-    # for an extra request in the common case where Paperless custom fields aren't configured.
-    def custom_fields
-      return {} unless any_field_mapped?
-
-      provider.custom_fields
-    end
-
-    def any_field_mapped?
-      [
-        @paperless_connection.total_amount_field_id, @paperless_connection.net_amount_field_id,
-        @paperless_connection.tax_amount_field_id, @paperless_connection.reference_field_id
-      ].any?
     end
 
     def capture_paperless_error(error, source:)
