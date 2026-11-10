@@ -9,6 +9,7 @@ class MonthlyReviews::CardsController < ApplicationController
 
   def show
     @monthly_review.prefetch_suggestions_later(Current.user, include_transfers: include_transfers?) unless turbo_frame_request?
+    set_review_breadcrumbs([ t("breadcrumbs.monthly_review_cards"), nil ])
 
     @list = @monthly_review.card_list(Current.annotatable_entries, include_transfers: include_transfers?)
     @entry = @list.current_entry(entry_id: params[:entry_id], finished: params[:finished].present?)

@@ -1,0 +1,20 @@
+<% content_for :title, t(".title") %>
+
+<div class="@container/page space-y-6 pb-6 lg:pb-12">
+  <header class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-semibold text-primary"><%= t(".title") %></h1>
+        <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
+      </div>
+      <p class="mt-1 text-sm text-secondary"><%= t(".subtitle") %></p>
+    </div>
+    <%= render "monthly_reviews/transfers_toggle", href: monthly_reviews_path(include_transfers: (include_transfers? ? nil : "1")) %>
+  </header>
+
+  <%= render DS::Section.new(title: t(".months"), count: @overview.months.size) do %>
+    <% @overview.months.each do |month| %>
+      <%= render "monthly_reviews/month", month: month %>
+    <% end %>
+  <% end %>
+</div>

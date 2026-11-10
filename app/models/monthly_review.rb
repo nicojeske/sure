@@ -15,6 +15,18 @@ class MonthlyReview < ApplicationRecord
       family.monthly_reviews.find_by(start_date: start_date) ||
         family.monthly_reviews.create_or_find_by!(start_date: start_date) { |review| review.end_date = end_date }
     end
+
+    # The transaction entries in `dates` that belong in a review, unordered.
+    # `entries` is the caller's access-scoped relation.
+    def reviewable_entries(entries, dates, include_transfers: false)
+      scope = entries
+        .where(entryable_type: "Transaction", date: dates, excluded: false)
+        .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id")
+        .merge(Entry.excluding_split_parents)
+        .merge(Entry.excluding_pending)
+
+      include_transfers ? scope : scope.where.not(transactions: { kind: Transaction::TRANSFER_KINDS })
+    end
   end
 
   def to_param
@@ -25,14 +37,11 @@ class MonthlyReview < ApplicationRecord
   # not. `entries` is the caller's access-scoped relation (normally
   # Current.annotatable_entries) so share permissions stay with the caller.
   def month_entries(entries, include_transfers: false)
-    scope = entries
-      .where(entryable_type: "Transaction", date: start_date..end_date, excluded: false)
-      .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id")
-      .merge(Entry.excluding_split_parents)
-      .merge(Entry.excluding_pending)
+    self.class.reviewable_entries(entries, period.date_range, include_transfers: include_transfers).order(*QUEUE_ORDER)
+  end
 
-    scope = scope.where.not(transactions: { kind: Transaction::TRANSFER_KINDS }) unless include_transfers
-    scope.order(*QUEUE_ORDER)
+  def period
+    Period.custom(start_date: start_date, end_date: end_date)
   end
 
   def queue(entries, include_transfers: false)

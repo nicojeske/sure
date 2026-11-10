@@ -117,6 +117,15 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "[data-review-card-state='finished']"
+    assert_select "[data-review-card-state='finished'] a[href=?][data-turbo-frame='_top']", monthly_review_path(@review)
+  end
+
+  test "the breadcrumbs lead back to the month's summary and the overview" do
+    get monthly_review_card_url(@review)
+
+    assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path, text: I18n.t("breadcrumbs.monthly_reviews")
+    assert_select "[data-breadcrumbs] a[href=?]", monthly_review_path(@review), text: "October 2026"
+    assert_select "[data-breadcrumbs] > span:last-child", text: I18n.t("breadcrumbs.monthly_review_cards")
   end
 
   test "accept applies the selected fields, marks reviewed and goes to the next card" do

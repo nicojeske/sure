@@ -1,0 +1,118 @@
+<% month = review_month_label(@monthly_review) %>
+<% progress = @summary.progress %>
+<% content_for :title, t(".title", month: month) %>
+
+<div class="@container/page space-y-6 pb-6 lg:pb-12">
+  <header class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-2xl font-semibold text-primary"><%= t(".heading", month: month) %></h1>
+        <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
+        <%= review_status_pill(@monthly_review, progress) %>
+      </div>
+      <p class="mt-1 text-sm text-secondary">
+        <%= t(".period", from: l(@monthly_review.start_date, format: :long), to: l(@monthly_review.end_date, format: :long)) %>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= render "monthly_reviews/transfers_toggle", href: monthly_review_path(@monthly_review, include_transfers: (include_transfers? ? nil : "1")) %>
+      <% if progress.total.positive? %>
+        <%= render DS::Link.new(
+              text: progress.done? ? t(".open_cards") : (progress.reviewed.zero? ? t(".start") : t(".continue", count: progress.remaining)),
+              variant: progress.done? ? :outline : :primary,
+              icon: "list-checks",
+              href: review_card_path
+            ) %>
+      <% end %>
+    </div>
+  </header>
+
+  <div class="grid grid-cols-1 @3xl/page:grid-cols-2 gap-4">
+    <%= render DS::Card.new(class: "gap-4") do %>
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-sm font-medium text-primary"><%= t(".money.title") %></h2>
+        <%= render DS::Link.new(
+              text: t(".money.report"),
+              variant: :ghost,
+              size: :sm,
+              href: reports_path(period_type: :custom, start_date: @monthly_review.start_date.iso8601, end_date: @monthly_review.end_date.iso8601)
+            ) %>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <%= render "monthly_reviews/figure", label: t(".money.income"), icon: "trending-up", value: format_money(@summary.income) %>
+        <%= render "monthly_reviews/figure", label: t(".money.expense"), icon: "trending-down", value: format_money(@summary.expense) %>
+      </div>
+      <dl>
+        <%= render DS::DetailRow.new(label: t(".money.net"), value: format_money(@summary.net), align: :center, value_class: "privacy-sensitive font-medium") %>
+      </dl>
+    <% end %>
+
+    <%= render DS::Card.new(class: "gap-4") do %>
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-sm font-medium text-primary"><%= t(".review.title") %></h2>
+        <% if @summary.unreviewed_entries.any? %>
+          <%= render DS::Link.new(
+                text: t(".review.in_transactions"),
+                variant: :ghost,
+                size: :sm,
+                href: transactions_path(q: { start_date: @monthly_review.start_date.iso8601, end_date: @monthly_review.end_date.iso8601, review_status: [ "unreviewed" ] })
+              ) %>
+        <% end %>
+      </div>
+      <div class="flex items-center gap-5">
+        <%= render DS::ProgressRing.new(
+              percent: review_progress_percent(progress),
+              size: 72,
+              tone: review_progress_tone(progress),
+              label: t(".review.progress", reviewed: progress.reviewed, total: progress.total)
+            ) %>
+        <dl class="flex-1 space-y-2">
+          <%= render DS::DetailRow.new(label: t(".review.reviewed"), value: t(".review.progress", reviewed: progress.reviewed, total: progress.total), align: :center) %>
+          <%= render DS::DetailRow.new(label: t(".review.skipped"), value: @summary.skipped_count.to_s, align: :center) %>
+          <%= render DS::DetailRow.new(label: t(".review.open"), value: @summary.open_count.to_s, align: :center) %>
+        </dl>
+      </div>
+    <% end %>
+  </div>
+
+  <%= render DS::Card.new(class: "gap-4") do %>
+    <h2 class="text-sm font-medium text-primary"><%= t(".note.title") %></h2>
+    <%= styled_form_with model: @monthly_review, url: monthly_review_path(@monthly_review, transfers_param), method: :patch, class: "space-y-4" do |f| %>
+      <%= f.text_area :notes, label: t(".note.label"), rows: 4, placeholder: t(".note.placeholder") %>
+      <% if @monthly_review.completed? %>
+        <p class="text-sm text-secondary"><%= t(".completed_on", date: l(@monthly_review.completed_at.to_date, format: :long)) %></p>
+      <% elsif @summary.unreviewed_entries.any? %>
+        <p class="text-sm text-secondary"><%= t(".unreviewed_hint", count: @summary.unreviewed_entries.size) %></p>
+      <% end %>
+      <div class="flex flex-wrap justify-end gap-2">
+        <% if @monthly_review.completed? %>
+          <%= render DS::Button.new(text: t(".reopen"), variant: :ghost, type: :submit, name: "completion", value: "reopen") %>
+          <%= render DS::Button.new(text: t(".note.save"), type: :submit) %>
+        <% else %>
+          <%= render DS::Button.new(text: t(".note.save"), variant: :secondary, type: :submit) %>
+          <%= render DS::Button.new(text: t(".complete"), icon: "circle-check", type: :submit, name: "completion", value: "complete") %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if @summary.unreviewed_entries.any? %>
+    <%= render DS::Section.new(title: t(".unreviewed"), count: @summary.unreviewed_entries.size, divided: false) do |section| %>
+      <% section.with_aside do %>
+        <div class="flex items-center gap-3 text-xs text-secondary">
+          <% %w[skipped pending].each do |status| %>
+            <%= tag.span class: "group/item flex items-center gap-1.5", data: { status: status } do %>
+              <%= render "monthly_reviews/cards/status_dot" %>
+              <%= t(".legend.#{status}") %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+      <ol class="divide-y divide-subdued py-1">
+        <% @summary.unreviewed_entries.each do |entry| %>
+          <%= render "monthly_reviews/cards/list_row", entry: entry, status: @summary.status(entry) %>
+        <% end %>
+      </ol>
+    <% end %>
+  <% end %>
+</div>

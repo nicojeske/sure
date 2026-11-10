@@ -630,7 +630,7 @@ Rails.application.routes.draw do
     resources :document_links, only: %i[new create]
   end
 
-  resources :monthly_reviews, only: [], param: :month_year do
+  resources :monthly_reviews, only: %i[index show update], param: :month_year do
     scope module: :monthly_reviews do
       resource :card, only: %i[show update]
       resources :hints, only: :create

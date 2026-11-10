@@ -47,6 +47,7 @@ en:
           one: 1 transaction was skipped and is still unreviewed.
           other: "%{count} transactions were skipped and are still unreviewed."
         summary: "%{reviewed} of %{total} transactions reviewed."
+        summary_link: Note and complete the month
         title: Nothing left to review in %{month}
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
@@ -91,8 +92,6 @@ en:
         undo: undo
       show:
         heading: Review %{month}
-        hide_transfers: Hide transfers
-        include_transfers: Include transfers
         messages:
           first_card: This is the first transaction.
           no_receipt: This transaction has no receipt. Press f to search Paperless.
@@ -102,6 +101,7 @@ en:
         receipt_column: Receipt
         refresh: Refresh suggestions
         refresh_hint: Reads the receipts of this month again in the background and retries failed ones
+        summary: Summary
         title: Review %{month}
       split:
         amount: Amount
@@ -156,3 +156,60 @@ en:
         empty: This document has no OCR text.
         failed: The receipt text couldn't be loaded from Paperless.
         label: Receipt text
+    index:
+      months: Months
+      subtitle: Go through each month's transactions one at a time, then note what stood out and complete the month.
+      title: Monthly review
+    month:
+      no_transactions: No transactions to review
+      progress: "%{reviewed} of %{total} reviewed"
+    show:
+      complete: Complete review
+      completed_on: Completed on %{date}.
+      continue:
+        one: Continue review (1 left)
+        other: Continue review (%{count} left)
+      heading: "%{month}"
+      legend:
+        pending: Not reached yet
+        skipped: Skipped
+      money:
+        expense: Expenses
+        income: Income
+        net: Net
+        report: Open report
+        title: Income and expenses
+      note:
+        label: Note
+        placeholder: What stood out this month?
+        save: Save note
+        title: Complete the month
+      open_cards: Open review
+      period: "%{from} – %{to}"
+      reopen: Reopen
+      review:
+        in_transactions: Show unreviewed
+        open: Not reached yet
+        progress: "%{reviewed} of %{total}"
+        reviewed: Reviewed
+        skipped: Skipped
+        title: Review
+      start: Start review
+      title: Monthly review %{month}
+      unreviewed: Unreviewed
+      unreviewed_hint:
+        one: 1 transaction is still unreviewed. Completing keeps it under the "unreviewed" filter.
+        other: "%{count} transactions are still unreviewed. Completing keeps them under the \"unreviewed\" filter."
+    status:
+      completed: Completed
+      empty: Nothing to review
+      in_progress: In progress
+      not_started: Not started
+      ready: Ready to complete
+    transfers_toggle:
+      hide: Hide transfers
+      include: Include transfers
+    update:
+      completed: The month is completed.
+      reopened: The month is open again.
+      saved: The note was saved.

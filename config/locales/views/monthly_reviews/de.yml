@@ -47,6 +47,7 @@ de:
           one: 1 Buchung wurde übersprungen und ist noch ungeprüft.
           other: "%{count} Buchungen wurden übersprungen und sind noch ungeprüft."
         summary: "%{reviewed} von %{total} Buchungen geprüft."
+        summary_link: Notiz schreiben und Monat abschließen
         title: Im %{month} gibt es nichts mehr zu prüfen
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
@@ -91,8 +92,6 @@ de:
         undo: rückgängig
       show:
         heading: "%{month} prüfen"
-        hide_transfers: Überweisungen ausblenden
-        include_transfers: Überweisungen einbeziehen
         messages:
           first_card: Das ist die erste Buchung.
           no_receipt: Diese Buchung hat keinen Beleg. Mit f durchsuchst du Paperless.
@@ -102,6 +101,7 @@ de:
         receipt_column: Beleg
         refresh: Vorschläge aktualisieren
         refresh_hint: Liest die Belege dieses Monats im Hintergrund neu und wiederholt fehlgeschlagene
+        summary: Zusammenfassung
         title: "%{month} prüfen"
       split:
         amount: Betrag
@@ -156,3 +156,60 @@ de:
         empty: Dieses Dokument hat keinen OCR-Text.
         failed: Der Belegtext konnte nicht aus Paperless geladen werden.
         label: Belegtext
+    index:
+      months: Monate
+      subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.
+      title: Monatsprüfung
+    month:
+      no_transactions: Keine Buchungen zu prüfen
+      progress: "%{reviewed} von %{total} geprüft"
+    show:
+      complete: Prüfung abschließen
+      completed_on: Abgeschlossen am %{date}.
+      continue:
+        one: Prüfung fortsetzen (noch 1)
+        other: Prüfung fortsetzen (noch %{count})
+      heading: "%{month}"
+      legend:
+        pending: Noch nicht erreicht
+        skipped: Übersprungen
+      money:
+        expense: Ausgaben
+        income: Einnahmen
+        net: Saldo
+        report: Bericht öffnen
+        title: Einnahmen und Ausgaben
+      note:
+        label: Notiz
+        placeholder: Was ist dir in diesem Monat aufgefallen?
+        save: Notiz speichern
+        title: Monat abschließen
+      open_cards: Prüfung öffnen
+      period: "%{from} – %{to}"
+      reopen: Wieder öffnen
+      review:
+        in_transactions: Ungeprüfte anzeigen
+        open: Noch nicht erreicht
+        progress: "%{reviewed} von %{total}"
+        reviewed: Geprüft
+        skipped: Übersprungen
+        title: Prüfung
+      start: Prüfung starten
+      title: Monatsprüfung %{month}
+      unreviewed: Ungeprüft
+      unreviewed_hint:
+        one: 1 Buchung ist noch ungeprüft. Sie bleibt nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar.
+        other: "%{count} Buchungen sind noch ungeprüft. Sie bleiben nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar."
+    status:
+      completed: Abgeschlossen
+      empty: Nichts zu prüfen
+      in_progress: In Arbeit
+      not_started: Nicht begonnen
+      ready: Bereit zum Abschluss
+    transfers_toggle:
+      hide: Überweisungen ausblenden
+      include: Überweisungen einbeziehen
+    update:
+      completed: Der Monat ist abgeschlossen.
+      reopened: Der Monat ist wieder offen.
+      saved: Die Notiz wurde gespeichert.

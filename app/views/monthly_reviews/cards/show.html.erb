@@ -17,13 +17,14 @@
       <h1 class="text-xl font-semibold text-primary truncate"><%= t(".heading", month: review_month_label(@monthly_review)) %></h1>
       <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <%= render "monthly_reviews/transfers_toggle", href: monthly_review_card_path(@monthly_review, include_transfers: (include_transfers? ? nil : "1")) %>
       <%= render DS::Link.new(
-            text: include_transfers? ? t(".hide_transfers") : t(".include_transfers"),
+            text: t(".summary"),
             variant: :ghost,
             size: :sm,
-            icon: "arrow-right-left",
-            href: monthly_review_card_path(@monthly_review, include_transfers: (include_transfers? ? nil : "1"))
+            icon: "clipboard-list",
+            href: monthly_review_path(@monthly_review, transfers_param)
           ) %>
       <%= render DS::Button.new(
             text: t(".refresh"),
