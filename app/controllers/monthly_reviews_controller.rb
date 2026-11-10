@@ -45,10 +45,8 @@ class MonthlyReviewsController < ApplicationController
       @monthly_review = MonthlyReview.find_or_build(Current.family, review_date)
     end
 
-    # The note and completion belong to the people who review: a member who
-    # can only read shared accounts has no card to review either.
     def can_edit_review?
-      !Current.user.guest? && Current.family.accounts.annotatable_by(Current.user).exists?
+      MonthlyReview.editable_by?(Current.user)
     end
 
     def require_review_editor!

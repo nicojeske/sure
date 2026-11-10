@@ -8,6 +8,13 @@ class MonthlyReview < ApplicationRecord
   validates :start_date, uniqueness: { scope: :family_id }
 
   class << self
+    # Whether `user` may write a review's note and complete it: the people
+    # who review, so not guests and not members who can only read shared
+    # accounts.
+    def editable_by?(user)
+      !user.guest? && user.family.accounts.annotatable_by(user).exists?
+    end
+
     # Finds or creates the review for the budget month containing `date`,
     # honouring the family's custom month start.
     def for(family, date)
