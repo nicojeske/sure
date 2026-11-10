@@ -710,6 +710,23 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".split-group", count: 0
   end
 
+  test "show shows a split parent's receipt pill on its children" do
+    entry = create_transaction(name: "Grocery Store", amount: 100, account: @account)
+    link = ReceiptLink.create!(
+      transaction_record: entry.entryable, paperless_connection: paperless_connections(:one), document_id: 4242,
+      status: "linked", source: "manual", document_amount: 100, document_currency: entry.currency
+    )
+    children = entry.split!([ { name: "Food", amount: 60 }, { name: "Household", amount: 40 } ])
+
+    get account_url(@account)
+
+    assert_response :success
+    children.each do |child|
+      assert_select "##{dom_id(child.entryable, :receipt_pill)} a[href=?]", paperless_document_path(link.document_id)
+    end
+    assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_amount_conflict_tooltip"), count: 0
+  end
+
   test "show avoids N+1 queries when loading split parents for grouped display" do
     @user.update!(preferences: { "show_split_grouped" => true })
     3.times do |i|

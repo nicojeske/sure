@@ -79,8 +79,7 @@ class TransactionsController < ApplicationController
     # Preload which entries on this page are split parents (have children) to avoid N+1
     @split_parent_entry_ids = Entry.split_parent_ids_among(entry_ids)
 
-    # Preload receipt-link status for this page's rows to avoid an N+1 from Transaction#receipt_linked?
-    load_receipt_link_indicators(@transactions)
+    @displayed_receipts = Transaction.displayed_receipts_for(@transactions)
 
     # Counts what the categorize wizard can act on, so read-only shares don't
     # keep the "Categorize" menu item visible.
@@ -579,38 +578,6 @@ class TransactionsController < ApplicationController
   end
 
   private
-    # Populates @primary_receipt_links (transaction_id => the "best" linked ReceiptLink, rendered
-    # as the receipt pill and its preview-modal link) and @conflicting_receipt_transaction_ids
-    # (rendered with a warning tone when the linked document's structured total, if any, differs
-    # from the amount of the transaction it is linked to) for a page of already-loaded
-    # transactions, in one query instead of Transaction#displayed_receipt per row. A split child
-    # without a link of its own shows its hidden parent's, as Transaction#displayed_receipt does.
-    def load_receipt_link_indicators(transactions)
-      @primary_receipt_links = {}
-      @conflicting_receipt_transaction_ids = Set.new
-      return if transactions.empty?
-
-      parent_entry_ids = transactions.filter_map { |t| t.entry.parent_entry_id }.uniq
-      parent_entries = parent_entry_ids.any? ? Entry.where(id: parent_entry_ids).index_by(&:id) : {}
-      entries_by_transaction_id = transactions.to_h { |t| [ t.id, t.entry ] }
-      parent_entries.each_value { |parent| entries_by_transaction_id[parent.entryable_id] ||= parent }
-
-      # `.ordered` (score desc) means the first link seen per transaction is the "best" one.
-      best_links = {}
-      ReceiptLink.linked.where(transaction_id: entries_by_transaction_id.keys).ordered.each do |link|
-        best_links[link.transaction_id] ||= link
-      end
-
-      transactions.each do |transaction|
-        link = best_links[transaction.id] ||
-          parent_entries[transaction.entry.parent_entry_id]&.then { |parent| best_links[parent.entryable_id] }
-        next unless link
-
-        @primary_receipt_links[transaction.id] = link
-        @conflicting_receipt_transaction_ids << transaction.id if link.amount_conflicts_with?(entries_by_transaction_id[link.transaction_id])
-      end
-    end
-
     # Scoped by user (not just family) because Current.annotatable_entries is
     # user-scoped for family sharing (see Current#annotatable_entries).
     #

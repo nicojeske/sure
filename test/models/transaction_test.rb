@@ -12,6 +12,45 @@ class TransactionTest < ActiveSupport::TestCase
     assert_nil entries(:transfer_out).entryable.displayed_receipt
   end
 
+  test "displayed_receipt prefers a split child's own linked receipt" do
+    child = entries(:transaction).split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ]).first
+    own_link = ReceiptLink.create!(
+      transaction_record: child.entryable, paperless_connection: paperless_connections(:one), document_id: 4242, status: "linked", source: "manual"
+    )
+
+    assert_equal own_link, child.entryable.reload.displayed_receipt
+  end
+
+  test "displayed_receipts_for matches displayed_receipt for each transaction" do
+    parent = entries(:transaction)
+    children = parent.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
+    own_link = ReceiptLink.create!(
+      transaction_record: children.last.entryable, paperless_connection: paperless_connections(:one), document_id: 4242, status: "linked", source: "manual"
+    )
+    transactions = [ *children.map(&:entryable), entries(:transfer_out).entryable ].map(&:reload)
+
+    links = Transaction.displayed_receipts_for(transactions)
+
+    assert_equal({ children.first.entryable_id => receipt_links(:linked_one), children.last.entryable_id => own_link }, links)
+  end
+
+  test "a split child's inherited receipt is checked against the parent's amount" do
+    parent = entries(:transaction)
+    receipt_links(:linked_one).update!(document_amount: parent.amount, document_currency: parent.currency)
+    child = parent.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ]).first
+
+    assert_not child.entryable.displayed_receipt.amount_conflict?
+    assert_not Transaction.displayed_receipts_for([ child.entryable ])[child.entryable_id].amount_conflict?
+  end
+
+  test "self_and_split_children lists a split parent and its children" do
+    parent = entries(:transaction)
+    children = parent.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
+
+    assert_equal [ parent.entryable_id, *children.map(&:entryable_id) ].sort, parent.entryable.self_and_split_children.map(&:id).sort
+    assert_equal [ children.first.entryable_id ], children.first.entryable.self_and_split_children.map(&:id)
+  end
+
   test "pending? is true when extra.simplefin.pending is truthy" do
     transaction = Transaction.new(extra: { "simplefin" => { "pending" => true } })
 

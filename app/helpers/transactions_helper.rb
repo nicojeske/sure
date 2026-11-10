@@ -110,9 +110,9 @@ module TransactionsHelper
   #   dependency tracker cannot digest DS::* components (see
   #   account_sidebar_tabs)
   # - the Brandfetch settings that shape logo URLs
-  # - the receipt link the pill shows and whether it conflicts, when the list
-  #   preloaded them; linking a receipt doesn't touch the transaction, and a
-  #   split child shows its parent's
+  # - the receipt link the pill shows and whether it conflicts; linking a
+  #   receipt doesn't touch the transaction, and a split child shows its
+  #   parent's
   #
   # Add a file to TRANSACTION_ROW_SOURCES when the row starts rendering it.
   def transaction_row_cache_key(entry, view_ctx:, in_split_group:)
@@ -153,9 +153,17 @@ module TransactionsHelper
       account_key.(counterpart),
       (category_key.(other_leg.category) if transfer && !outflow_leg),
       transaction.activity_security&.cache_key_with_version,
-      @primary_receipt_links&.dig(transaction.id)&.cache_key_with_version,
-      @conflicting_receipt_transaction_ids&.include?(transaction.id)
+      displayed_receipt_for(transaction)&.then { |link| [ link.cache_key_with_version, link.amount_conflict? ] }
     ]
+  end
+
+  # The receipt link a row's pill shows: preloaded by the list pages
+  # (Transaction.displayed_receipts_for), otherwise looked up for the one row.
+  def displayed_receipt_for(transaction)
+    return @displayed_receipts[transaction.id] if @displayed_receipts
+
+    @displayed_receipt_lookups ||= {}
+    @displayed_receipt_lookups.fetch(transaction.id) { @displayed_receipt_lookups[transaction.id] = transaction.displayed_receipt }
   end
 
   # Whether the current user may annotate (e.g. re-tag) entries on this

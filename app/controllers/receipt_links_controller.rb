@@ -107,20 +107,9 @@ class ReceiptLinksController < ApplicationController
     # didn't touch linked state (e.g. dismissing a suggestion). A split parent's children show
     # its receipt, so their pills are refreshed too.
     def receipt_pill_streams
-      transaction = @entry.transaction
-      link = @receipt_links.detect(&:linked?)
-
-      own = turbo_stream.replace(
-        dom_id(transaction, :receipt_pill),
-        partial: "transactions/receipt_pill",
-        locals: { transaction: transaction, receipt_link: link, conflict: link&.amount_conflicts_with?(@entry) }
-      )
-
-      children = @entry.child_entries.includes(:entryable).map(&:entryable).map do |child|
-        turbo_stream.replace(dom_id(child, :receipt_pill), partial: "transactions/receipt_pill", locals: { transaction: child })
+      @entry.transaction.self_and_split_children.map do |transaction|
+        turbo_stream.replace(dom_id(transaction, :receipt_pill), partial: "transactions/receipt_pill", locals: { transaction: transaction })
       end
-
-      [ own, *children ]
     end
 
     def receipt_search

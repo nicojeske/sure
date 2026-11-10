@@ -1225,7 +1225,7 @@ end
     connection = paperless_connections(:one)
     # receipt_links(:linked_one) is already linked to entries(:transaction)'s transaction with no
     # document_amount set, giving a normal-tone pill; this second, conflicting link exercises the
-    # warning-tone path without an N+1 (both render off the same preloaded @conflicting_receipt_transaction_ids).
+    # warning-tone path (both render off the same Transaction.displayed_receipts_for preload).
     conflicting_entry = create_transaction(account: @entry.account, amount: 55)
     ReceiptLink.create!(
       transaction_record: conflicting_entry.entryable, paperless_connection: connection, document_id: 999,
@@ -1247,18 +1247,22 @@ end
     assert_select "a[href=?][data-turbo-frame=modal]", paperless_document_path(receipt_links(:linked_one).document_id)
   end
 
-  test "index shows a split parent's receipt on its children, checked against the parent's amount" do
-    # Splitting leaves receipt_links(:linked_one) on the hidden parent.
-    receipt_links(:linked_one).update!(document_amount: @entry.amount, document_currency: @entry.currency)
-    @entry.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
+  [ true, false ].each do |grouped|
+    test "index shows a split parent's receipt on its children, checked against the parent's amount (grouped: #{grouped})" do
+      @user.update!(preferences: { "show_split_grouped" => grouped })
+      # Splitting leaves receipt_links(:linked_one) on the hidden parent.
+      receipt_links(:linked_one).update!(document_amount: @entry.amount, document_currency: @entry.currency)
+      @entry.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
 
-    get transactions_url
+      get transactions_url
 
-    assert_response :success
-    @entry.child_entries.each do |child|
-      assert_select "##{dom_id(child.entryable, :receipt_pill)} a[href=?]", paperless_document_path(receipt_links(:linked_one).document_id)
+      assert_response :success
+      assert_select ".split-group", count: grouped ? 1 : 0
+      @entry.child_entries.each do |child|
+        assert_select "##{dom_id(child.entryable, :receipt_pill)} a[href=?]", paperless_document_path(receipt_links(:linked_one).document_id)
+      end
+      assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_amount_conflict_tooltip"), count: 0
     end
-    assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_amount_conflict_tooltip"), count: 0
   end
 
   test "index does not offer the receipt filter for a family with no configured Paperless connection" do
