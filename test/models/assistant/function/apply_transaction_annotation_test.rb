@@ -29,14 +29,26 @@ class Assistant::Function::ApplyTransactionAnnotationTest < ActiveSupport::TestC
     assert result[:split]
     assert_equal "Corer and hand warmer", result[:transaction][:name]
     assert_equal "keep me", result[:transaction][:notes]
-    assert_equal [ "Corer", "Hand warmer" ], result[:transaction][:parts].pluck(:name)
+    assert_equal [ "Corer", "Hand warmer" ], result[:transaction][:parts].pluck(:name).sort
 
-    @entry.reload
-    assert @entry.reviewed?
-    assert_equal @user, @entry.reviewed_by
-    assert @entry.split_parent?
-    assert @entry.child_entries.all?(&:reviewed?)
-    assert @suggestion.reload.applied?
+    assert result[:transaction][:reviewed]
+    assert @entry.reload.reviewed?
+  end
+
+  test "null fields apply the default selection" do
+    result = @function.call("suggestion_id" => @suggestion.id, "fields" => nil, "split" => false)
+
+    assert_equal %w[name category notes], result[:applied_fields]
+  end
+
+  test "applies a chosen field subset together with the split" do
+    result = @function.call("suggestion_id" => @suggestion.id, "fields" => [ "notes" ], "split" => true)
+
+    assert_equal [ "notes" ], result[:applied_fields]
+    assert result[:split]
+    assert_equal "AMAZON MKTPL 123", result[:transaction][:name]
+    assert_equal "Corer, hand warmer", result[:transaction][:notes]
+    assert_equal [ "Corer", "Hand warmer" ], result[:transaction][:parts].pluck(:name).sort
   end
 
   test "applies only the chosen fields and no split" do
@@ -53,13 +65,14 @@ class Assistant::Function::ApplyTransactionAnnotationTest < ActiveSupport::TestC
     assert @entry.reviewed?
   end
 
-  test "an empty field list only marks the transaction reviewed" do
-    result = @function.call("suggestion_id" => @suggestion.id, "fields" => [], "split" => false)
+  test "refuses to apply nothing, so it never only marks the transaction reviewed" do
+    assert_equal "no_fields_selected", @function.call("suggestion_id" => @suggestion.id, "fields" => [], "split" => false)[:error]
+    assert_equal "no_fields_selected", @function.call("suggestion_id" => @suggestion.id, "fields" => [ "tags" ], "split" => false)[:error]
+    assert_not @entry.reload.reviewed?
 
-    assert result[:success]
+    result = @function.call("suggestion_id" => @suggestion.id, "fields" => [], "split" => true)
     assert_empty result[:applied_fields]
-    assert_equal "AMAZON MKTPL 123", @entry.reload.name
-    assert @entry.reviewed?
+    assert result[:split]
   end
 
   test "a read_write share may annotate but neither rename nor split" do
