@@ -55,7 +55,7 @@ en:
     messages: Messages
     mfa: Two-factor authentication
     monobank_items: Monobank
-    monthly_review_cards: Transactions
+    monthly_review_cards: Review
     monthly_reviews: Monthly review
     oidc_accounts: SSO accounts
     onboardings: Onboarding
