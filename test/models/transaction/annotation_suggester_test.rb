@@ -119,6 +119,48 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     suggester.suggest_from_hint(@entry, "corer")
   end
 
+  test "tells the provider which fields a rule set" do
+    @entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal %w[category], args[:rule_set_fields]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
+  test "a receipt suggestion, as prefetched without a hint, drops proposals for rule-set fields" do
+    entry = receipt_links(:linked_one).transaction_record.entry
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "Latte 3.50" })
+    entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+    entry.transaction.enrich_attribute(:merchant_id, @family.merchants.create!(name: "Edeka").id, source: "rule")
+    entry.transaction.enrich_attribute(:tag_ids, [ tags(:one).id ], source: "rule")
+    stub_annotation(annotation(
+      name: "Latte", notes: "Oat milk", category_name: "Outdoor", merchant_name: "Starbucks", tag_names: [ "Trips" ]
+    ))
+
+    payload = suggester.suggest_from_receipt(entry.reload, receipt_links(:linked_one)).payload
+
+    assert_nil payload["category_id"]
+    assert_nil payload["merchant_id"]
+    assert_nil payload["new_merchant_name"]
+    assert_equal [], payload["tag_ids"]
+    assert_equal "Latte", payload["name"]
+    assert_equal "Oat milk", payload["notes"]
+  end
+
+  test "a hint may change rule-set fields" do
+    @entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+    @entry.enrich_attribute(:name, "Kitchen stuff", source: "rule")
+    stub_annotation(annotation(name: "Hand warmer", category_name: "Outdoor"))
+
+    payload = suggester.suggest_from_hint(@entry.reload, "this time it's a hand warmer").payload
+
+    assert_equal @outdoor.id, payload["category_id"]
+    assert_equal "Hand warmer", payload["name"]
+  end
+
   test "a provider failure is recorded on the suggestion and in the debug log" do
     @provider.stubs(:suggest_transaction_annotation).returns(Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("boom")))
 
