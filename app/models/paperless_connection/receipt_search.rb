@@ -9,6 +9,8 @@
 # Raises Provider::Paperless::Error; callers decide how to show and log it.
 class PaperlessConnection::ReceiptSearch
   PAGE_SIZE = 25
+  # Receipts are usually dated on or a few days before the booking.
+  DATE_WINDOW = 7.days
 
   Result = Data.define(:documents, :next_page, :correspondents, :facts)
 
@@ -19,9 +21,11 @@ class PaperlessConnection::ReceiptSearch
     @entry = entry
   end
 
-  def search(query:, page: 1, created_from: nil, created_to: nil)
+  # within_window: only documents dated within DATE_WINDOW of the transaction.
+  def search(query:, page: 1, within_window: false)
+    window = within_window ? date_window : nil
     response = provider.search_documents(
-      query: query, page: page, page_size: PAGE_SIZE, ordering: "-created", created_from: created_from, created_to: created_to
+      query: query, page: page, page_size: PAGE_SIZE, ordering: "-created", created_from: window&.begin, created_to: window&.end
     )
     documents = response["results"] || []
     facts = documents.index_by { |document| document["id"] }.transform_values { |document| facts_builder.for(document) }
@@ -55,13 +59,13 @@ class PaperlessConnection::ReceiptSearch
     link
   end
 
+  def date_window
+    (entry.date - DATE_WINDOW)..(entry.date + DATE_WINDOW)
+  end
+
   private
     def provider
-      @provider ||= Provider::Paperless.new(
-        base_url: connection.base_url,
-        api_token: connection.api_token,
-        verify_ssl: connection.verify_ssl
-      )
+      @provider ||= connection.provider
     end
 
     # Stable-sorts documents whose mapped total matches the transaction amount to the front,

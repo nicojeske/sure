@@ -11,5 +11,5 @@
         placeholder: t(".placeholder"),
         autocomplete: "off",
         data: { turbo_permanent: true, review_card_target: "hint" } %>
-  <p class="hidden text-xs text-subdued md:block"><%= t(".help_html", focus: render("monthly_reviews/cards/kbd", key: "/"), send: render("monthly_reviews/cards/kbd", key: "⏎"), leave: render("monthly_reviews/cards/kbd", key: "Esc")) %></p>
+  <p class="hidden text-xs text-subdued md:block"><%= t(".help_html", focus: render("monthly_reviews/cards/kbd", key: "/"), send: render("monthly_reviews/cards/kbd", key: "⏎"), leave: render("monthly_reviews/cards/kbd", key: t("monthly_reviews.cards.keys.esc"))) %></p>
 <% end %>

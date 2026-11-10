@@ -2,6 +2,7 @@
 
 class ReceiptLinksController < ApplicationController
   include ActionView::RecordIdentifier
+  include PaperlessErrorCapturing
 
   ERROR_TYPE_MESSAGE_KEYS = {
     unauthorized: :unauthorized,
@@ -126,7 +127,7 @@ class ReceiptLinksController < ApplicationController
       @correspondents = result.correspondents
       @document_facts = result.facts
     rescue Provider::Paperless::Error => e
-      capture_paperless_error(e, source: "ReceiptLinksController#new")
+      capture_paperless_error(e, source: "ReceiptLinksController#new", message: "Paperless search failed", transaction_id: @entry.transaction_id)
       @documents = []
       @next_page = nil
       @correspondents = {}
@@ -139,18 +140,6 @@ class ReceiptLinksController < ApplicationController
 
       receipt_search.link!(document_id)
     rescue Provider::Paperless::Error => e
-      capture_paperless_error(e, source: "ReceiptLinksController#create")
-    end
-
-    def capture_paperless_error(error, source:)
-      DebugLogEntry.capture(
-        category: "provider_sync",
-        level: "error",
-        message: "Paperless search failed: #{error.message}",
-        source: source,
-        provider_key: "paperless",
-        family: Current.family,
-        metadata: { error_type: error.error_type, transaction_id: @entry.transaction_id }
-      )
+      capture_paperless_error(e, source: "ReceiptLinksController#create", message: "Paperless search failed", transaction_id: @entry.transaction_id)
     end
 end

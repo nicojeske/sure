@@ -2,9 +2,7 @@
 # transaction date, and picking one links it and has the AI read it.
 class MonthlyReviews::ReceiptSearchesController < ApplicationController
   include MonthlyReviewScoped
-
-  # Receipts are usually dated on or a few days before the booking.
-  DATE_WINDOW = 7.days
+  include PaperlessErrorCapturing
 
   before_action :set_entry
   before_action :set_paperless_connection
@@ -12,12 +10,13 @@ class MonthlyReviews::ReceiptSearchesController < ApplicationController
   def index
     @query = params[:q].to_s.strip.presence || default_query
     @any_date = params[:any_date] == "1"
+    @date_window = receipt_search.date_window unless @any_date
     @page = [ params[:page].to_i, 1 ].max
 
     begin
-      @result = receipt_search.search(query: @query, page: @page, **date_window)
+      @result = receipt_search.search(query: @query, page: @page, within_window: !@any_date)
     rescue Provider::Paperless::Error => e
-      capture_paperless_error(e, source: "#{self.class.name}#index")
+      capture_error(e, "index")
       @search_failed = true
     end
   end
@@ -28,7 +27,7 @@ class MonthlyReviews::ReceiptSearchesController < ApplicationController
 
     redirect_to review_card_path(@entry, suggestion_id: suggestion.id)
   rescue Provider::Paperless::Error => e
-    capture_paperless_error(e, source: "#{self.class.name}#create")
+    capture_error(e, "create")
     redirect_to review_card_path(@entry), alert: t(".failed")
   end
 
@@ -46,22 +45,10 @@ class MonthlyReviews::ReceiptSearchesController < ApplicationController
       @entry.transaction.merchant&.name || @entry.name
     end
 
-    def date_window
-      return {} if @any_date
-
-      { created_from: @entry.date - DATE_WINDOW, created_to: @entry.date + DATE_WINDOW }
-    end
-
-    def capture_paperless_error(error, source:)
-      DebugLogEntry.capture(
-        category: "provider_sync",
-        level: "error",
-        message: "Paperless receipt search failed: #{error.message}",
-        source: source,
-        provider_key: "paperless",
-        family: Current.family,
-        account: @entry.account,
-        metadata: { error_type: error.error_type, transaction_id: @entry.entryable_id, monthly_review_id: @monthly_review.id }
+    def capture_error(error, action)
+      capture_paperless_error(
+        error, source: "#{self.class.name}##{action}", message: "Paperless receipt search failed", account: @entry.account,
+        transaction_id: @entry.entryable_id, monthly_review_id: @monthly_review.id
       )
     end
 end

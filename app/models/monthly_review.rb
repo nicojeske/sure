@@ -82,7 +82,12 @@ class MonthlyReview < ApplicationRecord
     SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers, retry_failed: retry_failed).run(&block)
   end
 
-  # Undoes a card's review (Q15): reverts the proposal that marked it reviewed,
+  # The month's entries for the card page, loaded once.
+  def card_list(entries, include_transfers: false)
+    CardList.new(month_entries(entries, include_transfers: include_transfers).preload(:account, entryable: [ :merchant, :receipt_links ]))
+  end
+
+  # Undoes a card's review: reverts the proposal that marked it reviewed,
   # or only clears "reviewed" when it was marked without one. Undoing a split
   # part reverts the split, which removes the part. Returns the entry the
   # review continues with: `entry`, or its split parent.

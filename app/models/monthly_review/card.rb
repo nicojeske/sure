@@ -9,7 +9,6 @@
 # no receipt at all. Building a card never calls the LLM; the learned
 # proposal is stored because applying needs a record.
 class MonthlyReview::Card
-  STATES = %i[reviewed loading failed unread receipt_choice proposal empty].freeze
   OPEN_STATUSES = %w[pending ready failed reverted].freeze
 
   # status: :change (proposed and selectable), :locked (proposed but this user

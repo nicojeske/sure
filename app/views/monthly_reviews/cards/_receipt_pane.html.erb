@@ -1,8 +1,9 @@
-<%# The receipt, always open: the text in its own height-capped scroll area
+<%# The receipt, always open: its text in a height-capped scroll area
     (Shift+↑/↓), or the picker when several receipts match about equally well.
-    Rendered twice (receipt column and inside the card) but only the visible
-    copy loads its text, since a lazy frame inside display:none never loads. %>
-<%# locals: (card:, frame_id:, scroll_class:) %>
+    Rendered twice, in the receipt column (variant "wide") and in the card
+    ("narrow"); only the visible copy loads its text, since a lazy frame inside
+    display:none never loads. %>
+<%# locals: (card:, variant:) %>
 <% if card.receipt_candidates.any? %>
   <div class="flex min-w-0 flex-col gap-2">
     <p class="text-xs font-medium uppercase text-secondary"><%= t(".pick") %></p>
@@ -37,15 +38,14 @@
       </span>
       <span class="hidden shrink-0 items-center gap-1 md:inline-flex">
         <%= render "monthly_reviews/cards/kbd", key: "o" %> <%= t(".open") %>
-        <%= render "monthly_reviews/cards/kbd", key: "⇧↑↓" %> <%= t(".scroll") %>
+        <%= render "monthly_reviews/cards/kbd", key: t("monthly_reviews.cards.keys.scroll") %> <%= t(".scroll") %>
       </span>
     </div>
-    <% variant = frame_id.delete_prefix("receipt_text_") %>
-    <%= turbo_frame_tag "#{frame_id}_#{link.id}",
+    <%= turbo_frame_tag review_receipt_frame_id(variant, link),
           src: monthly_review_receipt_text_path(@monthly_review, entry_id: card.entry.id, receipt_link_id: link.id, variant: variant),
           loading: :lazy,
           data: { turbo_permanent: true } do %>
-      <div class="<%= scroll_class %> flex items-center gap-2 rounded-lg bg-container-inset p-3 text-xs text-secondary">
+      <div class="<%= review_receipt_scroll_class(variant) %> flex items-center gap-2 rounded-lg bg-container-inset p-3 text-xs text-secondary">
         <%= icon "loader-circle", size: "sm", class: "animate-spin" %> <%= t(".loading") %>
       </div>
     <% end %>

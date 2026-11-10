@@ -1,7 +1,7 @@
 <%# One transaction with its proposal. The data-review-card-* attributes tell
     the review-card controller (on the page, outside this frame) which card is
     showing and what its keys should do. %>
-<%# locals: (card:, entries:, current_index:, next_entry:) %>
+<%# locals: (card:, list:, next_entry:) %>
 <% entry = card.entry %>
 <% form_id = "review_card_decision" %>
 <% next_link = next_entry && Transaction::AnnotationSuggester.receipt_choice(next_entry.transaction).link %>
@@ -13,16 +13,16 @@
         review_card_entry_id: entry.id,
         review_card_state: card.state,
         review_card_queued: card.queued?,
-        review_card_reviewed_ids: entries.select(&:reviewed?).map(&:id).to_json,
-        review_card_total: entries.size,
+        review_card_reviewed_ids: list.reviewed_ids.to_json,
+        review_card_total: list.size,
         review_card_paperless_url: card.receipt_link&.paperless_connection&.document_url(card.receipt_link.document_id),
         review_card_next_receipt_url: (next_link && monthly_review_receipt_text_path(@monthly_review, entry_id: next_entry.id, receipt_link_id: next_link.id, variant: "wide"))
       }
     ) do %>
-  <%= render "monthly_reviews/cards/header", card: card, position: current_index + 1, total: entries.size %>
+  <%= render "monthly_reviews/cards/header", card: card, position: list.position(entry), total: list.size %>
 
   <div class="@7xl/page:hidden">
-    <%= render "monthly_reviews/cards/receipt_pane", card: card, frame_id: "receipt_text_narrow", scroll_class: "max-h-48" %>
+    <%= render "monthly_reviews/cards/receipt_pane", card: card, variant: "narrow" %>
   </div>
 
   <% unless card.reviewed? %>
@@ -48,5 +48,5 @@
 
   <p class="text-xs text-secondary" data-review-card-target="feedback" aria-live="polite"></p>
   <%= render "monthly_reviews/cards/shortcuts" %>
-  <%= render "monthly_reviews/cards/actions", card: card, form_id: form_id, first: current_index.zero? %>
+  <%= render "monthly_reviews/cards/actions", card: card, form_id: form_id, first: list.first?(entry) %>
 <% end %>

@@ -54,6 +54,12 @@ en:
         help_html: "%{focus} or h to type · %{send} asks the AI · %{leave} leaves the field"
         label: Hint for the AI
         placeholder: e.g. “Apple corer 12 + hand warmers 8”
+      keys:
+        alt: Alt
+        ctrl: Ctrl
+        esc: Esc
+        reviewed: Ctrl+⏎
+        scroll: "⇧↑↓"
       list:
         progress_html: "%{reviewed}/%{total} reviewed"
         title: Transactions
@@ -110,7 +116,7 @@ en:
         uncategorized: Uncategorized
       state:
         busy: Working on it…
-        empty: 'No proposal: no receipt, no hint and nothing learned. Type a hint, edit by hand, or press Ctrl+⏎ to mark it reviewed.'
+        empty: 'No proposal: no receipt, no hint and nothing learned. Type a hint, edit by hand, or press %{reviewed_key} to mark it reviewed.'
         failed_message: Retry, type a hint, or edit it by hand.
         failed_title: Couldn't build a proposal
         loading_hint: Reading your hint… The card updates when the proposal is ready.

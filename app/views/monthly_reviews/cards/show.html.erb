@@ -1,5 +1,4 @@
 <% content_for :title, t(".title", month: review_month_label(@monthly_review)) %>
-<% current_index = @entry && @entries.index(@entry) %>
 
 <%= tag.div class: "@container/page pb-48 md:pb-12",
       data: {
@@ -39,20 +38,20 @@
   </header>
 
   <div class="grid grid-cols-1 @3xl/page:grid-cols-[18rem_minmax(0,1fr)] @7xl/page:grid-cols-[18rem_minmax(0,1fr)_24rem] gap-4 items-start">
-    <%= render "monthly_reviews/cards/list", entries: @entries, current_entry: @entry, current_index: current_index %>
+    <%= render "monthly_reviews/cards/list", list: @list, current_entry: @entry %>
 
     <%= turbo_frame_tag "monthly_review_card", class: "group/frame contents", data: { turbo_action: "advance" } do %>
       <% if @card %>
         <%= turbo_stream_from Current.family, :monthly_review, @entry, hidden: true %>
-        <%= render "monthly_reviews/cards/strip", entries: @entries, current_index: current_index %>
-        <%= render "monthly_reviews/cards/card", card: @card, entries: @entries, current_index: current_index, next_entry: @next_entry %>
+        <%= render "monthly_reviews/cards/strip", list: @list, current_entry: @entry %>
+        <%= render "monthly_reviews/cards/card", card: @card, list: @list, next_entry: @next_entry %>
         <aside class="hidden @7xl/page:col-start-3 @7xl/page:block sticky top-4" aria-label="<%= t(".receipt_column") %>">
           <%= render DS::Card.new do %>
-            <%= render "monthly_reviews/cards/receipt_pane", card: @card, frame_id: "receipt_text_wide", scroll_class: "max-h-[calc(100vh-12rem)]" %>
+            <%= render "monthly_reviews/cards/receipt_pane", card: @card, variant: "wide" %>
           <% end %>
         </aside>
       <% else %>
-        <%= render "monthly_reviews/cards/finished", entries: @entries %>
+        <%= render "monthly_reviews/cards/finished", list: @list %>
       <% end %>
     <% end %>
   </div>

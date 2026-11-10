@@ -57,5 +57,5 @@
         ) %>
   </div>
 <% when :empty %>
-  <p class="text-sm text-secondary"><%= t(".empty") %></p>
+  <p class="text-sm text-secondary"><%= t(".empty", reviewed_key: t("monthly_reviews.cards.keys.reviewed")) %></p>
 <% end %>

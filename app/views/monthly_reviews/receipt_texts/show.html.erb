@@ -1,10 +1,11 @@
-<%= turbo_frame_tag @frame_id, data: { turbo_permanent: true } do %>
+<% scroll_class = review_receipt_scroll_class(@variant) %>
+<%= turbo_frame_tag review_receipt_frame_id(@variant, @receipt_link), data: { turbo_permanent: true } do %>
   <% if @failed %>
-    <p class="<%= @scroll_class %> rounded-lg bg-container-inset p-3 text-xs text-secondary" data-review-receipt-error><%= t(".failed") %></p>
+    <p class="rounded-lg bg-container-inset p-3 text-xs text-secondary" data-review-receipt-error><%= t(".failed") %></p>
   <% elsif @content.blank? %>
     <p class="rounded-lg bg-container-inset p-3 text-xs text-secondary"><%= t(".empty") %></p>
   <% else %>
-    <div class="<%= @scroll_class %> overflow-auto rounded-lg bg-container-inset p-3" data-receipt-scroll tabindex="0" aria-label="<%= t(".label") %>">
+    <div class="<%= scroll_class %> overflow-auto rounded-lg bg-container-inset p-3" data-receipt-scroll tabindex="0" aria-label="<%= t(".label") %>">
       <pre class="whitespace-pre-wrap break-words font-mono text-xs text-primary"><%= @content %></pre>
     </div>
   <% end %>

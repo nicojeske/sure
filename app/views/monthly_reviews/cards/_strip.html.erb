@@ -1,11 +1,9 @@
 <%# Phones: the neighbouring transactions in a horizontal strip above the card,
     instead of the list. %>
-<%# locals: (entries:, current_index:) %>
-<% window = entries[[ current_index - 2, 0 ].max, 6] || [] %>
+<%# locals: (list:, current_entry:) %>
 <ol class="@3xl/page:hidden flex gap-1 overflow-x-auto rounded-xl bg-container shadow-border-xs p-1" aria-label="<%= t(".label") %>">
-  <% window.each do |entry| %>
-    <% index = entries.index(entry) %>
-    <%= tag.li class: "group/item shrink-0", data: { review_entry_id: entry.id, status: review_list_status(entry, entries[current_index], index, current_index) } do %>
+  <% list.around(current_entry).each do |entry| %>
+    <%= tag.li class: "group/item shrink-0", data: { review_entry_id: entry.id, status: list.status(entry, current_entry) } do %>
       <%= link_to review_card_path(entry),
             class: "flex w-28 flex-col rounded-lg px-2 py-1 text-xs group-data-[status=current]/item:bg-container-inset",
             data: { turbo_frame: "monthly_review_card", turbo_action: "advance" } do %>

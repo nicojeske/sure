@@ -5,9 +5,9 @@
 <div class="flex flex-col divide-y divide-subdued rounded-lg border border-secondary">
   <% card.fields.each do |field| %>
     <%= content_tag (field.change? ? :label : :div),
-          class: class_names("group/row grid grid-cols-[1.25rem_1.25rem_5rem_minmax(0,1fr)] items-center gap-x-2 px-3 py-1.5 text-sm", field.change? && "cursor-pointer"),
+          class: class_names("group/row flex items-center gap-2 px-3 py-1.5 text-sm", field.change? && "cursor-pointer"),
           data: { review_field_row: field.key, status: field.status } do %>
-      <span class="flex items-center justify-center">
+      <span class="flex w-5 shrink-0 items-center justify-center">
         <% case field.status %>
         <% when :change %>
           <%= check_box_tag "fields[]", field.key, field.checked,
@@ -20,20 +20,20 @@
           <%= icon "check", size: "sm", color: "success" %>
         <% end %>
       </span>
-      <span class="<%= "opacity-50" unless field.change? %>"><%= render "monthly_reviews/cards/kbd", key: field.number %></span>
-      <span class="text-xs text-secondary"><%= t(".labels.#{field.key}") %></span>
-      <span class="flex min-w-0 flex-col">
+      <span class="w-5 shrink-0 <%= "opacity-50" unless field.change? %>"><%= render "monthly_reviews/cards/kbd", key: field.number %></span>
+      <span class="w-20 shrink-0 text-xs text-secondary"><%= t(".labels.#{field.key}") %></span>
+      <span class="flex min-w-0 flex-1 flex-col">
         <% if field.status.in?(%i[change locked]) %>
           <span class="truncate text-xs text-subdued group-has-[:checked]/row:line-through">
-            <%= render "monthly_reviews/cards/field_value", key: field.key, value: field.current, entry: card.entry %>
+            <%= render "monthly_reviews/cards/field_value", key: field.key, value: field.current %>
           </span>
           <span class="flex min-w-0 items-center gap-1 text-subdued group-has-[:checked]/row:text-primary">
             <span aria-hidden="true">→</span>
-            <%= render "monthly_reviews/cards/field_value", key: field.key, value: field.proposed, entry: card.entry %>
+            <%= render "monthly_reviews/cards/field_value", key: field.key, value: field.proposed %>
           </span>
         <% else %>
           <span class="truncate text-primary">
-            <%= render "monthly_reviews/cards/field_value", key: field.key, value: field.current, entry: card.entry %>
+            <%= render "monthly_reviews/cards/field_value", key: field.key, value: field.current %>
           </span>
           <span class="text-xs text-subdued"><%= field.status == :applied ? t(".applied") : t(".no_change") %></span>
         <% end %>

@@ -62,9 +62,7 @@ class ReceiptLink < ApplicationRecord
   # Raises Provider::Paperless::Error.
   def document_content
     Rails.cache.fetch([ "paperless/document_content", paperless_connection_id, document_id ], expires_in: CONTENT_CACHE_TTL) do
-      connection = paperless_connection
-      Provider::Paperless.new(base_url: connection.base_url, api_token: connection.api_token, verify_ssl: connection.verify_ssl)
-        .document(document_id)["content"].to_s
+      paperless_connection.provider.document(document_id)["content"].to_s
     end
   end
 

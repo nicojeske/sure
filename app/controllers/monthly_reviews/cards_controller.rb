@@ -10,10 +10,12 @@ class MonthlyReviews::CardsController < ApplicationController
   def show
     @monthly_review.prefetch_suggestions_later(Current.user, include_transfers: include_transfers?) unless turbo_frame_request?
 
-    @entries = review_entries.preload(:account, entryable: [ :merchant, :receipt_links ]).to_a
-    @entry = current_entry
-    @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id]) if @entry
-    @next_entry = next_entry_in_list
+    @list = @monthly_review.card_list(Current.annotatable_entries, include_transfers: include_transfers?)
+    @entry = @list.current_entry(entry_id: params[:entry_id], finished: params[:finished].present?)
+    return unless @entry
+
+    @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id])
+    @next_entry = @list.next_unreviewed_after(@entry)
   end
 
   def update
@@ -32,20 +34,6 @@ class MonthlyReviews::CardsController < ApplicationController
   end
 
   private
-    def current_entry
-      if params[:entry_id].present?
-        @entries.find { |entry| entry.id == params[:entry_id] } || raise(ActiveRecord::RecordNotFound)
-      elsif params[:finished].blank?
-        @entries.find { |entry| !entry.reviewed? }
-      end
-    end
-
-    def next_entry_in_list
-      return nil unless @entry
-
-      @entries.drop(@entries.index(@entry) + 1).find { |entry| !entry.reviewed? }
-    end
-
     def accept!
       suggestion = @entry.annotation_suggestions.find_by(id: params[:suggestion_id]) if params[:suggestion_id].present?
 
@@ -75,8 +63,9 @@ class MonthlyReviews::CardsController < ApplicationController
     # close candidate the user picked.
     def suggest!
       link = @entry.transaction.receipt_links.where.not(status: "dismissed").find(params[:receipt_link_id])
-      input_hash = Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link)
-      suggestion = suggest_unless_in_flight(input_hash) { suggester.suggest_from_receipt(@entry, link) }
+      suggestion = suggest_unless_in_flight(Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link)) do
+        suggester.suggest_from_receipt(@entry, link)
+      end
 
       redirect_to review_card_path(@entry, suggestion_id: suggestion.id)
     end

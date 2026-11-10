@@ -3,7 +3,7 @@
     <% if @any_date %>
       <%= t(".any_date") %>
     <% else %>
-      <%= t(".window", from: l(@entry.date - MonthlyReviews::ReceiptSearchesController::DATE_WINDOW, format: :short), to: l(@entry.date + MonthlyReviews::ReceiptSearchesController::DATE_WINDOW, format: :short)) %>
+      <%= t(".window", from: l(@date_window.begin, format: :short), to: l(@date_window.end, format: :short)) %>
       <%= link_to t(".search_any_date"), monthly_review_receipt_searches_path(@monthly_review, entry_id: @entry.id, q: @query, any_date: "1", include_transfers: ("1" if include_transfers?)), class: "underline" %>
     <% end %>
   </p>

@@ -173,9 +173,7 @@ class Transaction::AnnotationSuggester
     end
 
     def receipt_text(receipt_link)
-      connection = receipt_link.paperless_connection
-      client = Provider::Paperless.new(base_url: connection.base_url, api_token: connection.api_token, verify_ssl: connection.verify_ssl)
-      content = client.document(receipt_link.document_id)["content"]
+      content = receipt_link.paperless_connection.provider.document(receipt_link.document_id)["content"]
       raise ReceiptError, "Receipt #{receipt_link.document_id} has no OCR text" if content.blank?
 
       self.class.redact(content).first(MAX_RECEIPT_CHARS)

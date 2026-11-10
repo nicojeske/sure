@@ -221,6 +221,8 @@ export default class extends Controller {
         return this.clickVisible("[data-review-action='suggest']");
       case "receipt_choice":
         return this.choices()[this.choiceIndex]?.click();
+      case "reviewed":
+        return this.decide("skip");
       case "finished":
         return;
       default:
@@ -232,11 +234,9 @@ export default class extends Controller {
   // the key does exactly what the button does.
   decide(decision, missingMessage = null) {
     if (this.busy()) return;
-    // A reviewed card has only "Next", which moves on like a skip.
-    const name =
-      decision === "skip" && this.state() === "reviewed" ? "accept" : decision;
+
     const button = this.cardTarget.querySelector(
-      `[data-review-decision="${name}"]`,
+      `[data-review-decision="${decision}"]`,
     );
     if (!button) {
       if (missingMessage) this.flash(missingMessage);

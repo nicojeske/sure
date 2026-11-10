@@ -54,6 +54,12 @@ de:
         help_html: "%{focus} oder h zum Tippen · %{send} fragt die KI · %{leave} verlässt das Feld"
         label: Hinweis für die KI
         placeholder: z. B. „Apfelentkerner 12 + Handwärmer 8“
+      keys:
+        alt: Alt
+        ctrl: Strg
+        esc: Esc
+        reviewed: Strg+⏎
+        scroll: "⇧↑↓"
       list:
         progress_html: "%{reviewed}/%{total} geprüft"
         title: Buchungen
@@ -110,7 +116,7 @@ de:
         uncategorized: Ohne Kategorie
       state:
         busy: Wird bearbeitet…
-        empty: 'Kein Vorschlag: kein Beleg, kein Hinweis und nichts gelernt. Tippe einen Hinweis, bearbeite von Hand oder markiere mit Strg+⏎ als geprüft.'
+        empty: 'Kein Vorschlag: kein Beleg, kein Hinweis und nichts gelernt. Tippe einen Hinweis, bearbeite von Hand oder markiere mit %{reviewed_key} als geprüft.'
         failed_message: Versuche es erneut, tippe einen Hinweis oder bearbeite von Hand.
         failed_title: Es konnte kein Vorschlag erstellt werden
         loading_hint: Dein Hinweis wird gelesen… Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
