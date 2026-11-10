@@ -1,74 +1,80 @@
-<div class="bg-container shadow-border-xs rounded-xl space-y-2">
-  <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
-    <div class="space-y-2 w-full">
-      <p class="text-sm font-medium text-secondary"><%= title %></p>
-      <p class="text-primary text-3xl font-medium truncate privacy-sensitive"><%= net_total_display %></p>
-    </div>
+<%= wrap_in_frame do %>
+  <div class="bg-container shadow-border-xs rounded-xl space-y-2">
+    <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
+      <div class="space-y-2 w-full">
+        <p class="text-sm font-medium text-secondary"><%= title %></p>
+        <p class="text-primary text-3xl font-medium truncate privacy-sensitive"><%= net_total_display %></p>
+      </div>
 
-    <div class="flex items-center gap-2">
-      <%= render DS::SegmentedControl.new(aria_label: views_aria) do |sc| %>
-        <% sc.with_segment(view_label_for("cumulative"),
-             active: cumulative?,
-             href: transactions_path(link_params_for(chart_view: "cumulative")),
-             class: "whitespace-nowrap") %>
-        <% sc.with_segment(view_label_for("periodic"),
-             active: !cumulative?,
-             href: transactions_path(link_params_for(chart_view: "periodic")),
-             class: "whitespace-nowrap") %>
-      <% end %>
-
-      <% if period.key.present? %>
-        <%= render UI::PeriodPicker.new(
-          selected: period,
-          url: transactions_path,
-          extra_params: link_params_for(chart_view: view)
-        ) %>
-      <% else %>
-        <span class="inline-flex items-center gap-1.5 bg-container border border-secondary font-medium rounded-lg px-3 py-2 text-sm text-secondary">
-          <%= helpers.icon("calendar", size: "sm") %>
-          <%= l(period.start_date, format: :long) %> – <%= l(period.end_date, format: :long) %>
-        </span>
-      <% end %>
-    </div>
-  </div>
-
-  <% unless cumulative? %>
-    <div class="flex justify-end px-4">
-      <%= render DS::SegmentedControl.new(aria_label: granularity_aria) do |sc| %>
-        <% UI::Transactions::Chart::GRANULARITIES.each do |g| %>
-          <% sc.with_segment(granularity_label_for(g),
-               active: granularity == g,
-               href: transactions_path(link_params_for(chart_view: "periodic", granularity: g)),
-               class: "whitespace-nowrap") %>
+      <div class="flex items-center gap-2">
+        <%= render DS::SegmentedControl.new(aria_label: views_aria) do |sc| %>
+          <% sc.with_segment(view_label_for("cumulative"),
+               active: cumulative?,
+               href: path_for(chart_view: "cumulative"),
+               class: "whitespace-nowrap",
+               data: segment_data) %>
+          <% sc.with_segment(view_label_for("periodic"),
+               active: !cumulative?,
+               href: path_for(chart_view: "periodic"),
+               class: "whitespace-nowrap",
+               data: segment_data) %>
         <% end %>
-      <% end %>
-    </div>
-  <% end %>
 
-  <% if has_data? %>
-    <div class="px-4">
-      <%= render "shared/trend_change", trend: trend, comparison_label: comparison_label %>
+        <% if period.key.present? %>
+          <%= render UI::PeriodPicker.new(
+            selected: period,
+            url: url,
+            frame: frame,
+            extra_params: link_params_for(chart_view: view)
+          ) %>
+        <% else %>
+          <span class="inline-flex items-center gap-1.5 bg-container border border-secondary font-medium rounded-lg px-3 py-2 text-sm text-secondary">
+            <%= helpers.icon("calendar", size: "sm") %>
+            <%= l(period.start_date, format: :long) %> – <%= l(period.end_date, format: :long) %>
+          </span>
+        <% end %>
+      </div>
     </div>
-  <% end %>
 
-  <div class="h-64 pb-4">
-    <% if has_data? %>
-      <% if cumulative? %>
-        <div id="transactions-net-flow-chart" class="w-full h-full privacy-sensitive"
-          data-controller="time-series-chart"
-          data-time-series-chart-data-value="<%= series.to_json %>"></div>
-      <% else %>
-        <div class="w-full h-full privacy-sensitive"
-          data-controller="bar-chart"
-          data-bar-chart-data-value="<%= bars.to_json %>"
-          data-bar-chart-currency-value="<%= currency %>"
-          data-bar-chart-income-label-value="<%= income_label %>"
-          data-bar-chart-expense-label-value="<%= expenses_label %>"></div>
-      <% end %>
-    <% else %>
-      <div class="w-full h-full flex items-center justify-center">
-        <p class="text-secondary text-sm"><%= no_data_message %></p>
+    <% unless cumulative? %>
+      <div class="flex justify-end px-4">
+        <%= render DS::SegmentedControl.new(aria_label: granularity_aria) do |sc| %>
+          <% UI::Transactions::Chart::GRANULARITIES.each do |g| %>
+            <% sc.with_segment(granularity_label_for(g),
+                 active: granularity == g,
+                 href: path_for(chart_view: "periodic", granularity: g),
+                 class: "whitespace-nowrap",
+                 data: segment_data) %>
+          <% end %>
+        <% end %>
       </div>
     <% end %>
+
+    <% if has_data? %>
+      <div class="px-4">
+        <%= render "shared/trend_change", trend: trend, comparison_label: comparison_label %>
+      </div>
+    <% end %>
+
+    <div class="h-64 pb-4">
+      <% if has_data? %>
+        <% if cumulative? %>
+          <div id="transactions-net-flow-chart" class="w-full h-full privacy-sensitive"
+            data-controller="time-series-chart"
+            data-time-series-chart-data-value="<%= series.to_json %>"></div>
+        <% else %>
+          <div class="w-full h-full privacy-sensitive"
+            data-controller="bar-chart"
+            data-bar-chart-data-value="<%= bars.to_json %>"
+            data-bar-chart-currency-value="<%= currency %>"
+            data-bar-chart-income-label-value="<%= income_label %>"
+            data-bar-chart-expense-label-value="<%= expenses_label %>"></div>
+        <% end %>
+      <% else %>
+        <div class="w-full h-full flex items-center justify-center">
+          <p class="text-secondary text-sm"><%= no_data_message %></p>
+        </div>
+      <% end %>
+    </div>
   </div>
-</div>
+<% end %>
