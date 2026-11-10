@@ -39,10 +39,16 @@ module Provider::LlmConcept
   # A proposed annotation for one transaction, from receipt OCR text and/or a
   # typed hint. Names are raw model output; callers resolve them to records.
   # split is nil or an array of TransactionAnnotationSplit.
+  # rule_proposal is nil or a RuleProposal, for a hint that asks for a rule.
   TransactionAnnotation = Data.define(
     :name, :merchant_name, :category_name, :tag_names, :notes,
-    :receipt_total, :split, :confidence, :rationale
-  )
+    :receipt_total, :split, :confidence, :rationale, :rule_proposal
+  ) do
+    def initialize(rule_proposal: nil, **attributes) = super
+  end
+  # Raw model output: conditions are { "field", "operator", "value" } and
+  # actions { "field", "value" } hashes (value a list for tags).
+  RuleProposal = Data.define(:conditions, :actions)
   TransactionAnnotationSplit = Data.define(:name, :amount, :category_name, :tag_names, :notes)
 
   # transaction: { date:, amount:, currency:, name:, merchant:, category: }

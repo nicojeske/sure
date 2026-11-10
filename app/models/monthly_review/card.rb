@@ -192,12 +192,13 @@ class MonthlyReview::Card
     { rule: rule_suggestion, bill: bill_suggestion }.compact
   end
 
-  # A MonthlyReview::RuleSuggestion from a repeating pattern in the family's
-  # reviewed transactions, or nil.
+  # A MonthlyReview::RuleSuggestion: the rule the current hint asked for, else
+  # one from a repeating pattern in the family's reviewed transactions, or nil.
   def rule_suggestion
     return @rule_suggestion if defined?(@rule_suggestion)
 
-    @rule_suggestion = MonthlyReview::RuleSuggestionDetector.new(entry, user: user, rule_handled: rule_handled?).suggestion
+    @rule_suggestion = hint_rule_suggestion ||
+      MonthlyReview::RuleSuggestionDetector.new(entry, user: user, rule_handled: rule_handled?).suggestion
   end
 
   def bill_suggestion
@@ -207,6 +208,13 @@ class MonthlyReview::Card
   end
 
   private
+    # Asked for in the hint, so it shows whether or not rule prompts are on
+    # and even when a rule already handled the transaction.
+    def hint_rule_suggestion
+      stored = proposal? && suggestion.hint? ? suggestion.payload["rule_proposal"] : nil
+      MonthlyReview::HintRule.suggestion(stored, family: review.family, user: user) if stored.present?
+    end
+
     def rule_provenance
       @rule_provenance ||= MonthlyReview::RuleProvenance.new(review.family, [ entry ])
     end

@@ -15,8 +15,34 @@ class Provider::TransactionAnnotationPrompt
       receipt_total: number_or_nil(parsed["receipt_total"]),
       split: split_from(parsed["split"]),
       confidence: number_or_nil(parsed["confidence"]),
-      rationale: string_or_nil(parsed["rationale"])
+      rationale: string_or_nil(parsed["rationale"]),
+      rule_proposal: rule_proposal_from(parsed["rule_proposal"])
     )
+  end
+
+  def self.rule_proposal_from(value)
+    return nil unless value.is_a?(Hash)
+
+    value = value.stringify_keys
+    conditions = Array(value["conditions"]).filter_map do |condition|
+      next unless condition.is_a?(Hash)
+
+      condition = condition.stringify_keys
+      next unless condition.values_at("field", "operator", "value").all? { |part| string_or_nil(part) }
+
+      condition.slice("field", "operator", "value").transform_values { |part| string_or_nil(part) }
+    end
+    actions = Array(value["actions"]).filter_map do |action|
+      next unless action.is_a?(Hash)
+
+      action = action.stringify_keys
+      field = string_or_nil(action["field"])
+      amount = action["value"].is_a?(Array) || field == "tags" ? string_list(action["value"]) : string_or_nil(action["value"])
+      { "field" => field, "value" => amount } if field && amount.present?
+    end
+    return nil if conditions.empty? && actions.empty?
+
+    Provider::LlmConcept::RuleProposal.new(conditions: conditions, actions: actions)
   end
 
   def self.split_from(value)
@@ -58,7 +84,7 @@ class Provider::TransactionAnnotationPrompt
   end
 
   # The JSON shape both providers are asked for.
-  OUTPUT_KEYS = %w[name merchant_name category_name tag_names notes receipt_total split confidence rationale].freeze
+  OUTPUT_KEYS = %w[name merchant_name category_name tag_names notes receipt_total split confidence rationale rule_proposal].freeze
 
   # locale: the reviewer's interface language, for the rationale they read.
   # content_locale: the language stored values are written in (the family's
@@ -85,7 +111,7 @@ class Provider::TransactionAnnotationPrompt
   end
 
   def rules
-    [ <<~RULES.strip, rule_set_fields_rule ].compact.join("\n")
+    [ <<~RULES.strip, rule_set_fields_rule, rule_proposal_rule ].compact.join("\n")
       You annotate one bank transaction for a personal finance app. You get the transaction,
       optionally the OCR text of its receipt and a short hint typed by the user, examples of how
       the user annotated similar transactions, and the user's categories, merchants and tags.
@@ -134,7 +160,26 @@ class Provider::TransactionAnnotationPrompt
     sections.join("\n\n")
   end
 
+  # The rule_proposal field as the OpenAI JSON shape documents it.
+  RULE_PROPOSAL_SHAPE = '{"conditions": [{"field": "name"|"merchant"|"amount", "operator": ..., "value": ...}], ' \
+    '"actions": [{"field": "category"|"tags"|"merchant"|"name", "value": ...}]}'.freeze
+
   private
+    # Rules can only match on name, merchant and amount and only set category,
+    # tags, merchant and name, never notes.
+    def rule_proposal_rule
+      <<~RULE.strip
+        - rule_proposal: null, unless the hint itself asks for a rule ("always", "make a rule",
+          "immer so", "every time"). Then #{RULE_PROPOSAL_SHAPE}.
+          conditions: name (operator like, =, starts_with or ends_with; text from the transaction),
+          merchant (operator =; a name from the merchant list) or amount (operator >, >=, <, <=, =
+          or !=; a positive number for an expense). actions: category (a name from the category
+          list), tags (a list of names from the tag list), merchant (a name from the merchant list)
+          or name (text in the language of locale "#{content_locale}"). Use only what the hint asks
+          for; never notes or any other field. At least one condition and one action, else null.
+      RULE
+    end
+
     # The user's rules own these values; null (or []) proposes no change.
     def rule_set_fields_rule
       return nil if rule_set_fields.empty?
