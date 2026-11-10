@@ -93,6 +93,7 @@ de:
         reviewed: geprüft
         rule: Regel erstellen
         rule_dismiss: nicht jetzt
+        rule_never: nie für dieses Muster
         scroll: Beleg scrollen
         skip: überspringen
         split: aufteilen
@@ -154,6 +155,7 @@ de:
         label: Vorschläge
         rule:
           create: Regel erstellen
+          never: Nie für dieses Muster
           not_now: Nicht jetzt
           summary_html: 'Als Regel anlegen? %{summary}'
       update:

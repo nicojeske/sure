@@ -635,6 +635,7 @@ Rails.application.routes.draw do
     scope module: :monthly_reviews do
       resource :card, only: %i[show update]
       resources :hints, only: :create
+      resources :rule_suggestion_dismissals, only: :create
       resources :receipt_searches, only: %i[index create]
       resource :receipt_text, only: :show
       resource :prefetch, only: :create

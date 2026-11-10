@@ -8,7 +8,7 @@
 <% if suggestions.any? %>
   <div class="flex flex-col gap-2" role="group" aria-label="<%= t(".label") %>">
     <% suggestions.each do |kind, suggestion| %>
-      <%= render "monthly_reviews/cards/suggestions/#{kind}", suggestion: suggestion %>
+      <%= render "monthly_reviews/cards/suggestions/#{kind}", suggestion: suggestion, card: card %>
     <% end %>
   </div>
 <% end %>

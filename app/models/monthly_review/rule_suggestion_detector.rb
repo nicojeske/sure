@@ -61,8 +61,15 @@ class MonthlyReview::RuleSuggestionDetector
   private
     attr_reader :rule_handled
 
+    # Skips apply to the automatic suggestion only: users who turned rule
+    # prompts off get none, and a family's "Never for this pattern" holds in
+    # every month. Hint-driven suggestions are built elsewhere.
     def skip?
-      rule_handled || pattern_key.nil?
+      rule_handled || user.rule_prompts_disabled? || pattern_key.nil? || dismissed?
+    end
+
+    def dismissed?
+      family.rule_suggestion_dismissals.exists?(pattern_key: pattern_key)
     end
 
     def family
