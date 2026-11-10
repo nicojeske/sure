@@ -46,7 +46,8 @@ class Assistant::Function::UpdateMonthlyReview < Assistant::Function
           type: "string",
           enum: COMPLETIONS,
           description: "complete to sign the month off, reopen to undo that. Omit to leave it."
-        }
+        },
+        include_transfers: INCLUDE_TRANSFERS_PROPERTY
       }
     )
   end
@@ -72,7 +73,7 @@ class Assistant::Function::UpdateMonthlyReview < Assistant::Function
       end
     end
 
-    progress = review.progress(review_entries)
+    progress = review.progress(review_entries, include_transfers: include_transfers?(params))
     {
       success: true,
       month: review.to_param,

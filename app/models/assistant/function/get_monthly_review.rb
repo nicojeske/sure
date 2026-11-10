@@ -45,10 +45,7 @@ class Assistant::Function::GetMonthlyReview < Assistant::Function
           type: "string",
           description: "Month in #{MONTH_FORMAT}. Defaults to the current month. Families with a custom month start use the budget month that starts in it."
         },
-        include_transfers: {
-          type: "boolean",
-          description: "Also review transfers between the user's own accounts. Default false."
-        }
+        include_transfers: INCLUDE_TRANSFERS_PROPERTY
       }
     )
   end
@@ -57,7 +54,7 @@ class Assistant::Function::GetMonthlyReview < Assistant::Function
     review, failure = find_review(params["month"], build: true)
     return failure if failure
 
-    summary = MonthlyReview::Summary.new(review, review_entries, user: user, include_transfers: ActiveModel::Type::Boolean.new.cast(params["include_transfers"]) == true)
+    summary = MonthlyReview::Summary.new(review, review_entries, user: user, include_transfers: include_transfers?(params))
     open_entries = summary.open_entries.first(MAX_OPEN_TRANSACTIONS)
     ActiveRecord::Associations::Preloader.new(records: open_entries.map(&:transaction), associations: %i[category tags]).call
 

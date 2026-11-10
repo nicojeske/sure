@@ -34,6 +34,20 @@ class Assistant::Function::MarkTransactionsReviewedTest < ActiveSupport::TestCas
     assert_not @second.reload.reviewed?
   end
 
+  test "marks and counts transfers only when asked" do
+    transfer = review_transaction("To savings", day: 8, kind: "funds_movement")
+
+    result = @function.call("month" => "2026-10", "transaction_ids" => [ transfer.entryable_id ])
+    assert_equal [ transfer.entryable_id ], result[:not_found_ids]
+    assert_equal({ total: 2, reviewed: 0, open: 2 }, result[:progress])
+    assert_not transfer.reload.reviewed?
+
+    result = @function.call("month" => "2026-10", "transaction_ids" => [ transfer.entryable_id ], "include_transfers" => true)
+    assert_equal [ transfer.entryable_id ], result[:marked_ids]
+    assert_equal({ total: 3, reviewed: 1, open: 2 }, result[:progress])
+    assert transfer.reload.reviewed?
+  end
+
   test "a read-only share marks nothing" do
     account_shares(:depository_shared_with_member).update!(permission: "read_only")
 

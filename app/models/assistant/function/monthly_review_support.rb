@@ -9,7 +9,16 @@
 module Assistant::Function::MonthlyReviewSupport
   include Assistant::Function::MonthResolvable
 
+  INCLUDE_TRANSFERS_PROPERTY = {
+    type: "boolean",
+    description: "Count transfers between the user's own accounts as part of the review, as the review page's \"include transfers\" toggle does. Default false."
+  }.freeze
+
   private
+    def include_transfers?(params)
+      ActiveModel::Type::Boolean.new.cast(params["include_transfers"]) == true
+    end
+
     def review_entries
       family.entries.joins(:account).merge(Account.annotatable_by(user))
     end

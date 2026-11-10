@@ -17,8 +17,10 @@ class Assistant::Function::MarkTransactionsReviewed < Assistant::Function
         confirms a transaction is fine as it is; use apply_transaction_annotation
         instead to apply a proposal (that marks it reviewed too).
 
-        Only transactions of the given month that the user may edit are marked;
-        other ids are returned under not_found and left alone. Already reviewed
+        Only transactions of the given month that the user may edit are marked
+        (transfers between the user's own accounts only with
+        include_transfers); other ids are returned under not_found and left
+        alone. Already reviewed
         transactions keep their original review. At most #{MAX_IDS} ids per call.
 
         Returns the ids marked now, the ids that were already reviewed, the ids
@@ -43,7 +45,8 @@ class Assistant::Function::MarkTransactionsReviewed < Assistant::Function
           type: "array",
           items: { type: "string" },
           description: "Transaction ids from get_monthly_review or get_transactions."
-        }
+        },
+        include_transfers: INCLUDE_TRANSFERS_PROPERTY
       }
     )
   end
@@ -58,9 +61,10 @@ class Assistant::Function::MarkTransactionsReviewed < Assistant::Function
     review, failure = find_review(params["month"], build: true)
     return failure if failure
 
-    entries = review.month_entries(review_entries, include_transfers: true).where(entryable_id: ids.select { |id| valid_uuid?(id) }).to_a
+    include_transfers = include_transfers?(params)
+    entries = review.month_entries(review_entries, include_transfers: include_transfers).where(entryable_id: ids.select { |id| valid_uuid?(id) }).to_a
     already, unreviewed = entries.partition(&:reviewed?)
-    unreviewed.each { |entry| entry.mark_reviewed!(user) }
+    Entry.where(id: unreviewed.map(&:id), reviewed_at: nil).update_all(reviewed_at: Time.current, reviewed_by_id: user.id) if unreviewed.any?
 
     found_ids = entries.map(&:entryable_id)
     {
@@ -69,7 +73,7 @@ class Assistant::Function::MarkTransactionsReviewed < Assistant::Function
       marked_ids: unreviewed.map(&:entryable_id),
       already_reviewed_ids: already.map(&:entryable_id),
       not_found_ids: ids - found_ids,
-      progress: serialize_progress(review.progress(review_entries))
+      progress: serialize_progress(review.progress(review_entries, include_transfers: include_transfers))
     }
   end
 end

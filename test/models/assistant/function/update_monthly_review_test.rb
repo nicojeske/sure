@@ -32,6 +32,13 @@ class Assistant::Function::UpdateMonthlyReviewTest < ActiveSupport::TestCase
     assert_nil @review.notes
   end
 
+  test "reports progress with transfers only when asked" do
+    review_transaction("To savings", day: 8, kind: "funds_movement")
+
+    assert_equal 1, @function.call("month" => "2026-10", "notes" => "x")[:progress][:total]
+    assert_equal 2, @function.call("month" => "2026-10", "notes" => "x", "include_transfers" => true)[:progress][:total]
+  end
+
   test "creates the review of a month that was never opened" do
     @review.destroy!
 
