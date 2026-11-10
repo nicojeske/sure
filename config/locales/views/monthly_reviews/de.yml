@@ -152,7 +152,7 @@ de:
         failed: Der Belegtext konnte nicht aus Paperless geladen werden.
         label: Belegtext
     index:
-      months: Monate
+      months: Monate %{year}
       subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.
       title: Monatsprüfung
     cards_link:
@@ -203,3 +203,6 @@ de:
       completed: Der Monat ist abgeschlossen.
       reopened: Der Monat ist wieder offen.
       saved: Die Notiz wurde gespeichert.
+    year_switcher:
+      next: Nächstes Jahr (%{year})
+      previous: Vorheriges Jahr (%{year})

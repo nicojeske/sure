@@ -1,4 +1,4 @@
-# The monthly review overview (the latest months and their progress) and a
+# The monthly review overview (one year's months and their progress) and a
 # month's summary page, where the month gets its note and is completed.
 class MonthlyReviewsController < ApplicationController
   include MonthlyReviewScoped
@@ -11,7 +11,10 @@ class MonthlyReviewsController < ApplicationController
   helper_method :can_edit_review?
 
   def index
-    @overview = MonthlyReview::Overview.new(Current.family, Current.annotatable_entries, include_transfers: include_transfers?)
+    @overview = MonthlyReview::Overview.new(
+      Current.family, Current.annotatable_entries,
+      year: Integer(params[:year], exception: false), include_transfers: include_transfers?
+    )
     @breadcrumbs = [ [ t("breadcrumbs.home"), root_path ], [ t("breadcrumbs.monthly_reviews"), nil ] ]
   end
 

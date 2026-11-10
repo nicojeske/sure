@@ -45,7 +45,7 @@ module MonthlyReviewScoped
     def set_review_breadcrumbs(*trail)
       @breadcrumbs = [
         [ t("breadcrumbs.home"), root_path ],
-        [ t("breadcrumbs.monthly_reviews"), monthly_reviews_path ],
+        [ t("breadcrumbs.monthly_reviews"), monthly_reviews_path(year: @monthly_review.start_date.year, **transfers_param) ],
         [ helpers.review_month_label(@monthly_review), (monthly_review_path(@monthly_review, transfers_param) if trail.any?) ],
         *trail
       ]
