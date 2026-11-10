@@ -36,8 +36,9 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   # Select the release channel and legacy alias through December; no date pin.
+  # The fork publishes CalVer tags only, so it pushes no legacy SemVer alias.
   COMPATIBILITY_CHANNEL: 'alpha'
-  COMPATIBILITY_VERSION: '0.7.7-alpha.4'
+  COMPATIBILITY_VERSION: ''
 
 permissions:
   contents: write
@@ -591,7 +592,12 @@ jobs:
 
   release:
     name: Create GitHub Release
-    if: needs.prepare.outputs.release == 'true' && github.repository == 'we-promise/sure'
+    # Forks skip the mobile and Helm jobs, so they only need the image and desktop builds.
+    if: >-
+      !cancelled() && needs.prepare.outputs.release == 'true' &&
+      needs.merge.result == 'success' && needs.desktop.result == 'success' &&
+      contains(fromJSON('["success", "skipped"]'), needs.mobile.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.helm.result)
     needs: [prepare, merge, mobile, desktop, helm]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -601,18 +607,21 @@ jobs:
 
     steps:
       - name: Download Android APK artifact
+        if: needs.mobile.result == 'success'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: app-release-apk
           path: ${{ runner.temp }}/mobile-artifacts
 
       - name: Download iOS build artifact
+        if: needs.mobile.result == 'success'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ios-build-unsigned
           path: ${{ runner.temp }}/ios-build
 
       - name: Download Helm chart artifact
+        if: needs.helm.result == 'success'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: helm-chart-package
@@ -682,6 +691,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           ALIAS_NOTE: ${{ needs.prepare.outputs.alias_note }}
+          MOBILE_BUILT: ${{ needs.mobile.result == 'success' }}
         with:
           script: |
             const fs = require('node:fs');
@@ -720,8 +730,10 @@ jobs:
               }
             }
             const alias = process.env.ALIAS_NOTE || '';
-            const additions = alias && !body.split(/\r?\n/).includes(alias)
-              ? alias + '\n\n' + mobile : mobile;
+            const additions = [
+              alias && !body.split(/\r?\n/).includes(alias) ? alias : '',
+              process.env.MOBILE_BUILT === 'true' ? mobile : ''
+            ].filter(Boolean).join('\n\n');
             // Track fenced examples without rewriting any authored line endings.
             let fence = null;
             let index = body.length;
@@ -743,7 +755,7 @@ jobs:
             }
             const before = body.slice(0, index);
             const separator = !before || /(?:\r?\n){2}$/.test(before) ? '' : before.endsWith('\n') ? '\n' : '\n\n';
-            body = before + separator + additions + '\n\n' + body.slice(index);
+            if (additions) body = before + separator + additions + '\n\n' + body.slice(index);
             fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'release-notes.md'), body);
 
       - name: Create GitHub Release
