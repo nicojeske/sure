@@ -89,6 +89,11 @@ class ReleaseNotesWorkflowTest < ActiveSupport::TestCase
     assert_includes compose(nil), "## Mobile Debug Builds"
   end
 
+  test "leaves the notes untouched when the mobile builds were skipped" do
+    body = "Intro\n\n## What's Changed\n* Change\n"
+    assert_equal body, compose(body, mobile_built: false)
+  end
+
   test "publisher uses the prepared body without regenerating or appending notes" do
     release = steps.find { |step| step["name"] == "Create GitHub Release" }.fetch("with")
     assert_equal false, release.fetch("generate_release_notes")
@@ -103,7 +108,7 @@ class ReleaseNotesWorkflowTest < ActiveSupport::TestCase
       YAML.load_file(Rails.root.join(".github/workflows/publish.yml")).fetch("jobs").fetch("release").fetch("steps")
     end
 
-    def compose(body, status: nil, alias_note: "")
+    def compose(body, status: nil, alias_note: "", mobile_built: true)
       script = steps.find { |step| step["name"] == "Prepare release notes" }.fetch("with").fetch("script")
       Dir.mktmpdir do |dir|
         harness = <<~JS
@@ -127,7 +132,7 @@ class ReleaseNotesWorkflowTest < ActiveSupport::TestCase
             assert.equal(generated, #{status == 404 ? 1 : 0});
           })().catch(error => { console.error(error); process.exitCode = 1; });
         JS
-        output, result = Open3.capture2e({ "RUNNER_TEMP" => dir, "RELEASE_TAG" => "v2026.11.4", "ALIAS_NOTE" => alias_note }, "node", "-e", harness)
+        output, result = Open3.capture2e({ "RUNNER_TEMP" => dir, "RELEASE_TAG" => "v2026.11.4", "ALIAS_NOTE" => alias_note, "MOBILE_BUILT" => mobile_built.to_s }, "node", "-e", harness)
         if status && status != 404
           assert_not result.success?
           assert_not File.exist?(File.join(dir, "release-notes.md"))
