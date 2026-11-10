@@ -3,6 +3,8 @@ import { Controller } from "@hotwired/stimulus";
 const FIELD_KEYS = ["name", "merchant", "category", "tags", "notes"];
 const FRAME_ID = "monthly_review_card";
 const TYPING_INPUT_TYPES = ["checkbox", "radio", "button", "submit", "reset"];
+// Focused elements whose own Enter must not accept the card.
+const INTERACTIVE_TAGS = ["A", "BUTTON", "SUMMARY", "SELECT"];
 // A card waiting for a background run refreshes itself in case the live
 // update over the cable is missed, for at most POLL_LIMIT rounds.
 const POLL_INTERVAL = 8000;
@@ -28,6 +30,7 @@ export default class extends Controller {
   }
 
   cardTargetConnected(card) {
+    this.hintSending = false;
     this.choiceIndex = 0;
     this.searchIndex = 0;
     this.paintList(card);
@@ -48,6 +51,16 @@ export default class extends Controller {
     if (event.defaultPrevented || event.isComposing || !this.hasCardTarget)
       return;
 
+    const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
+    if (
+      event.shiftKey &&
+      plain &&
+      (event.key === "ArrowDown" || event.key === "ArrowUp")
+    ) {
+      event.preventDefault();
+      return this.scrollReceipt(event.key === "ArrowDown" ? 1 : -1);
+    }
+
     const target = event.target;
     const tag = target.tagName;
     if (tag === "SELECT" || tag === "TEXTAREA" || target.isContentEditable)
@@ -61,7 +74,6 @@ export default class extends Controller {
       tag !== "SUMMARY" &&
       this.editTarget.contains(target);
     const typing = tag === "INPUT" && !TYPING_INPUT_TYPES.includes(target.type);
-    const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
 
     if (inSearch && this.searchOpen()) return this.searchKey(event);
     if (inEdit) {
@@ -72,15 +84,6 @@ export default class extends Controller {
       return;
     }
     if (typing && !inHint) return;
-
-    if (
-      event.shiftKey &&
-      plain &&
-      (event.key === "ArrowDown" || event.key === "ArrowUp")
-    ) {
-      event.preventDefault();
-      return this.scrollReceipt(event.key === "ArrowDown" ? 1 : -1);
-    }
 
     if (inHint) return this.hintKey(event, plain);
 
@@ -103,7 +106,8 @@ export default class extends Controller {
     }
 
     if (event.key === "Enter") {
-      if (tag === "BUTTON" || tag === "A") return;
+      if (INTERACTIVE_TAGS.includes(tag) || target.closest("[role=button]"))
+        return;
       event.preventDefault();
       if (event.ctrlKey || event.metaKey) return this.decide("reviewed_only");
       if (plain) this.accept();
@@ -157,11 +161,14 @@ export default class extends Controller {
       event.preventDefault();
       return this.decide("reviewed_only");
     }
-    // With text, Enter submits the hint form natively.
+    if (this.hintSending || this.busy()) return event.preventDefault();
     if (plain && !this.hintTarget.value.trim()) {
       event.preventDefault();
       this.accept();
+      return;
     }
+    // With text, Enter submits the hint form natively, once per card.
+    this.hintSending = true;
   }
 
   shortcut(event, key) {

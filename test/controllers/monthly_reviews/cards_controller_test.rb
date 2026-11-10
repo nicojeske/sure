@@ -122,6 +122,27 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to monthly_review_card_path(@review, finished: 1)
   end
 
+  test "accept and reviewed_only on a reviewed card only move on" do
+    link = link_receipt(@first, document_id: 1)
+    suggestion = ready_suggestion(@first, receipt_link: link, name: "Espresso beans")
+    suggestion.apply!(user: @user, fields: %w[name])
+    reviewed_at = @first.reload.reviewed_at
+
+    travel 1.minute do
+      %w[accept reviewed_only].each do |decision|
+        patch monthly_review_card_url(@review), params: { decision: decision, entry_id: @first.id, suggestion_id: suggestion.id, fields: %w[name] }
+        assert_redirected_to monthly_review_card_path(@review, entry_id: @second.id)
+      end
+    end
+
+    assert_equal reviewed_at, @first.reload.reviewed_at
+    assert_equal suggestion, TransactionAnnotationSuggestion.applied_in_review_of(@first)
+
+    patch monthly_review_card_url(@review), params: { decision: "undo", entry_id: @first.id }
+    assert_equal "Coffee shop", @first.reload.name
+    assert_not @first.reviewed?
+  end
+
   test "reviewed_only marks reviewed without applying the proposal" do
     link = link_receipt(@first, document_id: 1)
     suggestion = ready_suggestion(@first, receipt_link: link, name: "Espresso beans")

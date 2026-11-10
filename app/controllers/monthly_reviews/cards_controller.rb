@@ -34,19 +34,23 @@ class MonthlyReviews::CardsController < ApplicationController
   end
 
   private
+    # Accepting a card that is already reviewed only moves on, so its review
+    # (and what undo reverts) stays as it was.
     def accept!
-      suggestion = @entry.annotation_suggestions.find_by(id: params[:suggestion_id]) if params[:suggestion_id].present?
+      unless @entry.reviewed?
+        suggestion = @entry.annotation_suggestions.find_by(id: params[:suggestion_id]) if params[:suggestion_id].present?
 
-      if suggestion&.applicable?
-        suggestion.apply!(user: Current.user, fields: Array(params[:fields]), split: params[:split] == "1")
-      else
-        @entry.mark_reviewed!(Current.user)
+        if suggestion&.applicable?
+          suggestion.apply!(user: Current.user, fields: Array(params[:fields]), split: params[:split] == "1")
+        else
+          @entry.mark_reviewed!(Current.user)
+        end
       end
       redirect_to_next
     end
 
     def reviewed_only!
-      @entry.mark_reviewed!(Current.user)
+      @entry.mark_reviewed!(Current.user) unless @entry.reviewed?
       redirect_to_next
     end
 

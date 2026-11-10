@@ -65,6 +65,32 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_text I18n.t("monthly_reviews.cards.finished.skipped", count: 1)
   end
 
+  test "Enter in the hint input sends the hint once" do
+    calls = Concurrent::AtomicFixnum.new
+    result = Provider::LlmConcept::TransactionAnnotation.new(
+      name: "Corer and warmers", merchant_name: nil, category_name: nil, tag_names: [], notes: nil,
+      receipt_total: nil, split: nil, confidence: 0.9, rationale: "From the hint"
+    )
+    provider = Object.new
+    provider.define_singleton_method(:suggest_transaction_annotation) do |**|
+      calls.increment
+      sleep 1
+      Provider::Response.new(success?: true, data: result, error: nil)
+    end
+    Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_card @plain, state: "empty"
+
+    send_keys "h"
+    find("[data-review-card-target='hint']").send_keys("corer + warmers", :enter, :enter)
+
+    assert_card @plain, state: "proposal"
+    assert_text "Corer and warmers"
+    assert_equal 1, calls.value
+    assert_not @plain.reload.reviewed?
+  end
+
   private
     def send_keys(*keys)
       find("body").send_keys(*keys)
