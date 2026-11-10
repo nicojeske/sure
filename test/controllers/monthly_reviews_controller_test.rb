@@ -74,6 +74,20 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path(year: 2024), text: I18n.t("breadcrumbs.monthly_reviews")
   end
 
+  test "with a custom month start, the month holding the oldest entry opens" do
+    @family.update!(month_start_day: 25)
+    create_transaction(account: @account, date: Date.new(2024, 3, 9), name: "Oldest")
+
+    travel_to Date.new(2026, 11, 10) do
+      get monthly_reviews_url(year: 2024)
+      assert_select "[data-review-month='feb-2024']"
+
+      get monthly_review_url("feb-2024")
+    end
+
+    assert_response :success
+  end
+
   test "summary shows income, expense, review counts and the unreviewed transactions" do
     @second.mark_reviewed!(@user)
     review_transaction("Salary", day: 7, amount: -1000)

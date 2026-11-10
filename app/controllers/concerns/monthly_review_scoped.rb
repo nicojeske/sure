@@ -17,12 +17,12 @@ module MonthlyReviewScoped
       @monthly_review = MonthlyReview.for(Current.family, review_date)
     end
 
-    # The month param as a date, 404 when it doesn't parse or lies outside
-    # the months budgets cover.
+    # The month param as a date, 404 when it doesn't parse or the month can't
+    # be reviewed.
     def review_date
       param = params[:monthly_review_month_year] || params[:month_year]
       date = Budget.param_to_date(param.to_s, family: Current.family)
-      raise ActiveRecord::RecordNotFound unless Budget.budget_date_valid?(date, family: Current.family)
+      raise ActiveRecord::RecordNotFound unless MonthlyReview.reviewable_month?(Current.family, date)
 
       date
     rescue Date::Error
