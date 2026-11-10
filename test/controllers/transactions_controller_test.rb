@@ -20,6 +20,15 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "pre", text: /original_name/, count: 0
   end
 
+  test "index offers the monthly review to preview users only" do
+    get transactions_url
+    assert_select "a[href=?]", monthly_reviews_path, count: 0
+
+    @user.update!(preferences: (@user.preferences || {}).merge("preview_features_enabled" => true))
+    get transactions_url
+    assert_select "a[href=?]", monthly_reviews_path, text: I18n.t("transactions.index.review_month")
+  end
+
   # Bills has always linked out to transactions. Until now nothing linked back,
   # so a transaction that settled a bill was a dead end. The link-back is part
   # of the preview-gated bills surface, so the viewer needs the flag.
