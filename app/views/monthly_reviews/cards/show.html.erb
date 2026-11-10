@@ -12,13 +12,11 @@
           still_reading: t(".messages.still_reading")
         }.to_json
       } do %>
-  <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <div class="flex items-center gap-2 min-w-0">
-      <h1 class="text-xl font-semibold text-primary truncate"><%= t(".heading", month: review_month_label(@monthly_review)) %></h1>
-      <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
+  <%= render DS::PageHeader.new(title: t(".heading", month: review_month_label(@monthly_review)), preview: true, size: :md, class: "mb-4") do |header| %>
+    <% header.with_action do %>
       <%= render "monthly_reviews/transfers_toggle", href: monthly_review_card_path(@monthly_review, include_transfers: (include_transfers? ? nil : "1")) %>
+    <% end %>
+    <% header.with_action do %>
       <%= render DS::Link.new(
             text: t(".summary"),
             variant: :ghost,
@@ -26,6 +24,8 @@
             icon: "clipboard-list",
             href: monthly_review_path(@monthly_review, transfers_param)
           ) %>
+    <% end %>
+    <% header.with_action do %>
       <%= render DS::Button.new(
             text: t(".refresh"),
             variant: :outline,
@@ -35,8 +35,8 @@
             method: :post,
             title: t(".refresh_hint")
           ) %>
-    </div>
-  </header>
+    <% end %>
+  <% end %>
 
   <div class="grid grid-cols-1 @3xl/page:grid-cols-[18rem_minmax(0,1fr)] @7xl/page:grid-cols-[18rem_minmax(0,1fr)_24rem] gap-4 items-start">
     <%= render "monthly_reviews/cards/list", list: @list, current_entry: @entry %>

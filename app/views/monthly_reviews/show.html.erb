@@ -3,24 +3,19 @@
 <% content_for :title, t(".title", month: month) %>
 
 <div class="@container/page space-y-6 pb-6 lg:pb-12">
-  <header class="flex flex-wrap items-start justify-between gap-3">
-    <div class="min-w-0">
-      <div class="flex flex-wrap items-center gap-2">
-        <h1 class="text-2xl font-semibold text-primary"><%= t(".heading", month: month) %></h1>
-        <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
-        <%= review_status_pill(@monthly_review.status(progress)) %>
-      </div>
-      <p class="mt-1 text-sm text-secondary">
-        <%= t(".period", from: l(@monthly_review.start_date, format: :long), to: l(@monthly_review.end_date, format: :long)) %>
-      </p>
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
+  <%= render DS::PageHeader.new(
+        title: t(".heading", month: month),
+        subtitle: t(".period", from: l(@monthly_review.start_date, format: :long), to: l(@monthly_review.end_date, format: :long)),
+        preview: true
+      ) do |header| %>
+    <% header.with_status { review_status_pill(@monthly_review.status(progress)) } %>
+    <% header.with_action do %>
       <%= render "monthly_reviews/transfers_toggle", href: monthly_review_path(@monthly_review, include_transfers: (include_transfers? ? nil : "1")) %>
-      <% if progress.total.positive? %>
-        <%= review_cards_link(progress) %>
-      <% end %>
-    </div>
-  </header>
+    <% end %>
+    <% if progress.total.positive? %>
+      <% header.with_action { review_cards_link(progress) } %>
+    <% end %>
+  <% end %>
 
   <div class="grid grid-cols-1 @3xl/page:grid-cols-2 gap-4">
     <%= render DS::Card.new(class: "gap-4") do %>
