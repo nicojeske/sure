@@ -93,6 +93,32 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     suggester.suggest_from_hint(@entry, "corer")
   end
 
+  test "stored values use the family's AI content language and the rationale the reviewer's language" do
+    @family.update!(locale: "fr", ai_content_language: "de")
+    @user.update!(locale: "en")
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal "de", args[:content_locale]
+      assert_equal "en", args[:locale]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
+  test "without an AI content language stored values follow the reviewer's interface language" do
+    @family.update!(locale: "fr", ai_content_language: nil)
+    @user.update!(locale: "en")
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal "en", args[:content_locale]
+      assert_equal "en", args[:locale]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
   test "a provider failure is recorded on the suggestion and in the debug log" do
     @provider.stubs(:suggest_transaction_annotation).returns(Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("boom")))
 

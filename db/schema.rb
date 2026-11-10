@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_120200) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -855,6 +855,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_120200) do
   end
 
   create_table "families", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "ai_content_language"
     t.jsonb "ai_prompt_overrides", default: {}, null: false
     t.string "assistant_type", default: "builtin", null: false
     t.boolean "auto_generate_transaction_names", default: false, null: false

@@ -158,7 +158,7 @@ class Provider::Anthropic < Provider
     end
   end
 
-  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", model: "", family: nil)
+  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", content_locale: nil, model: "", family: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -170,7 +170,7 @@ class Provider::Anthropic < Provider
 
       prompt = Provider::TransactionAnnotationPrompt.new(
         transaction: transaction, receipt_text: receipt_text, hint: hint, examples: examples,
-        categories: categories, merchants: merchants, tags: tags, locale: locale
+        categories: categories, merchants: merchants, tags: tags, locale: locale, content_locale: content_locale
       )
 
       result = AnnotationSuggester.new(
