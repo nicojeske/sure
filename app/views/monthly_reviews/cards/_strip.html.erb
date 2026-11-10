@@ -5,13 +5,16 @@
   <% list.around(current_entry).each do |entry| %>
     <%= tag.li class: "group/item shrink-0", data: { review_entry_id: entry.id, status: list.status(entry, current_entry) } do %>
       <%= link_to review_card_path(entry),
-            class: "flex w-28 flex-col rounded-lg px-2 py-1 text-xs group-data-[status=current]/item:bg-container-inset",
+            class: "flex w-32 items-center gap-2 rounded-lg px-2 py-1 text-xs group-data-[status=current]/item:bg-container-inset",
             data: { turbo_frame: "monthly_review_card", turbo_action: "advance" } do %>
-        <span class="flex items-center gap-1">
-          <%= render "monthly_reviews/cards/status_dot" %>
-          <span class="truncate text-primary"><%= entry.name %></span>
+        <%= render "monthly_reviews/cards/merchant_avatar", merchant: entry.transaction.merchant, name: entry.name, size: :sm %>
+        <span class="flex min-w-0 flex-col">
+          <span class="flex items-center gap-1">
+            <%= render "monthly_reviews/cards/status_dot" %>
+            <span class="truncate text-primary"><%= entry.name %></span>
+          </span>
+          <span class="text-secondary privacy-sensitive"><%= format_money(-entry.amount_money) %></span>
         </span>
-        <span class="text-secondary privacy-sensitive"><%= format_money(entry.amount_money) %></span>
       <% end %>
     <% end %>
   <% end %>

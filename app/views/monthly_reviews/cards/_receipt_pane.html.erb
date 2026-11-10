@@ -16,10 +16,7 @@
                 class: "flex w-full flex-col rounded-lg border border-secondary px-3 py-2 text-left text-sm hover:bg-container-inset data-[active=true]:border-primary data-[active=true]:bg-container-inset",
                 data: { review_choice: link.id } do %>
             <span class="truncate text-primary"><%= link.document_title.presence || t(".untitled", id: link.document_id) %></span>
-            <span class="text-xs text-secondary">
-              <%= [ link.document_correspondent, (l(link.document_created_on, format: :short) if link.document_created_on) ].compact.join(" · ") %>
-              <% if link.document_amount %>· <span class="privacy-sensitive"><%= format_money(Money.new(link.document_amount, link.document_currency || card.entry.currency)) %></span><% end %>
-            </span>
+            <span class="text-xs text-secondary"><%= render "monthly_reviews/cards/receipt_facts", link: link, entry: card.entry %></span>
           <% end %>
         </li>
       <% end %>
@@ -28,13 +25,13 @@
   </div>
 <% elsif (link = card.receipt_link) %>
   <div class="flex min-w-0 flex-col gap-2">
-    <div class="flex items-center justify-between gap-2 text-xs text-secondary">
-      <span class="inline-flex min-w-0 items-center gap-1">
-        <%= icon "receipt", size: "xs" %>
-        <span class="truncate"><%= link.document_title.presence || t(".untitled", id: link.document_id) %></span>
-        <% if link.document_amount %>
-          <span class="shrink-0 privacy-sensitive">· <%= format_money(Money.new(link.document_amount, link.document_currency || card.entry.currency)) %></span>
-        <% end %>
+    <div class="flex items-start justify-between gap-2 text-xs text-secondary">
+      <span class="flex min-w-0 items-start gap-1">
+        <%= icon "receipt", size: "xs", class: "mt-0.5" %>
+        <span class="min-w-0">
+          <span class="block truncate text-primary"><%= link.document_title.presence || t(".untitled", id: link.document_id) %></span>
+          <span class="block truncate"><%= render "monthly_reviews/cards/receipt_facts", link: link, entry: card.entry %></span>
+        </span>
       </span>
       <span class="hidden shrink-0 items-center gap-1 md:inline-flex">
         <%= render "monthly_reviews/cards/kbd", key: "o" %> <%= t(".open") %>
