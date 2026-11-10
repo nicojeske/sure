@@ -1559,7 +1559,7 @@ Documents:
 - `search_family_files` - Search uploaded documents (vector store)
 
 These are defined in `app/models/assistant/function/`. Preview tools
-(Statement Vault, `get_valuations`, `get_insights`) are listed in
+(Statement Vault, `get_valuations`, `get_insights`, bills, monthly review) are listed in
 [mcp.md](mcp.md#preview-tools).
 
 ### Vector Store (Document Search)
