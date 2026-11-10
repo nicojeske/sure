@@ -1112,6 +1112,15 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
     assert_equal [ 10, 5, 15 ], [ recorded.prompt_tokens, recorded.completion_tokens, recorded.total_tokens ]
   end
 
+  test "transaction annotation prompt is told the rule-set fields" do
+    Provider::Openai::AnnotationSuggester.expects(:new).with do |_client, prompt:, **|
+      assert_equal %w[category], prompt.rule_set_fields
+      true
+    end.returns(stub(suggest: nil))
+
+    @openai.suggest_transaction_annotation(transaction: { name: "BURGER" }, rule_set_fields: %w[category])
+  end
+
   private
     # Verify the response budget at the provider-to-processor boundary.
     # @param limit [Integer, nil] expected explicit cap or omitted cap

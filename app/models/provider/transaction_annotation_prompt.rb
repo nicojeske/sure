@@ -63,9 +63,15 @@ class Provider::TransactionAnnotationPrompt
   # locale: the reviewer's interface language, for the rationale they read.
   # content_locale: the language stored values are written in (the family's
   # AI content language); defaults to locale.
-  attr_reader :transaction, :receipt_text, :hint, :examples, :categories, :merchants, :tags, :locale, :content_locale
+  # rule_set_fields: review fields whose current value a rule set (see
+  # MonthlyReview::RuleProvenance); the model leaves them alone unless the
+  # hint asks otherwise.
+  attr_reader :transaction, :receipt_text, :hint, :examples, :categories, :merchants, :tags, :locale, :content_locale, :rule_set_fields
 
-  def initialize(transaction:, receipt_text:, hint:, examples:, categories:, merchants:, tags:, locale:, content_locale: nil)
+  # Rule-settable review field => the output key that proposes it.
+  RULE_SET_OUTPUT_KEYS = { "name" => "name", "merchant" => "merchant_name", "category" => "category_name", "tags" => "tag_names" }.freeze
+
+  def initialize(transaction:, receipt_text:, hint:, examples:, categories:, merchants:, tags:, locale:, content_locale: nil, rule_set_fields: [])
     @transaction = transaction
     @receipt_text = receipt_text
     @hint = hint
@@ -75,10 +81,11 @@ class Provider::TransactionAnnotationPrompt
     @tags = tags
     @locale = locale
     @content_locale = content_locale.presence || locale
+    @rule_set_fields = RULE_SET_OUTPUT_KEYS.keys & Array(rule_set_fields).map(&:to_s)
   end
 
   def rules
-    <<~RULES.strip
+    [ <<~RULES.strip, rule_set_fields_rule ].compact.join("\n")
       You annotate one bank transaction for a personal finance app. You get the transaction,
       optionally the OCR text of its receipt and a short hint typed by the user, examples of how
       the user annotated similar transactions, and the user's categories, merchants and tags.
@@ -126,4 +133,18 @@ class Provider::TransactionAnnotationPrompt
     sections << "TAGS: #{tags.join(", ")}"
     sections.join("\n\n")
   end
+
+  private
+    # The user's rules own these values; null (or []) proposes no change.
+    def rule_set_fields_rule
+      return nil if rule_set_fields.empty?
+
+      keys = rule_set_fields.map { |field| RULE_SET_OUTPUT_KEYS[field] }
+      empty = keys.include?("tag_names") ? "null ([] for tag_names)" : "null"
+
+      <<~RULE.strip
+        - #{keys.join(", ")}: set by the user's rules. Keep them #{empty} unless the hint explicitly
+          asks to change them, even when the receipt or the examples suggest otherwise.
+      RULE
+    end
 end
