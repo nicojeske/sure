@@ -54,6 +54,16 @@ class Assistant::Function::GetMonthlyReviewTest < ActiveSupport::TestCase
     assert_includes @function.call("month" => "2026-10", "include_transfers" => true)[:open_transactions].pluck(:id), transfer.entryable_id
   end
 
+  test "lists at most 50 open transactions and says when there are more" do
+    48.times { |index| review_transaction("Shop #{index}", day: 10 + index % 15) }
+
+    result = @function.call("month" => "2026-10")
+
+    assert_equal 51, result[:progress][:open]
+    assert_equal 50, result[:open_transactions].size
+    assert result[:open_transactions_truncated]
+  end
+
   test "a member with only read-only access sees no transactions to review" do
     viewer = users(:family_member)
     account_shares(:depository_shared_with_member).update!(permission: "read_only")
