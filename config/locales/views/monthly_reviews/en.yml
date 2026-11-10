@@ -181,6 +181,19 @@ en:
         failed: The receipt text couldn't be loaded from Paperless.
         label: Receipt text
     rule_suggestion:
+      action: "%{field}: %{value}"
+      condition: "%{field} %{operator} %{value}"
+      fields:
+        amount: Amount
+        category: Category
+        merchant: Merchant
+        name: Name
+        tags: Tags
+      hint_summary: "%{conditions} → %{actions}"
+      operators:
+        contains: contains
+        ends_with: ends with
+        starts_with: starts with
       summary: "%{pattern} → %{category}, %{count}× in %{months} months"
     index:
       months: Months in %{year}

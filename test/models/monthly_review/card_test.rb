@@ -253,6 +253,31 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_equal [ :rule ], card_for(@entry).strip_suggestions.keys
   end
 
+  test "a hint's rule proposal is the rule suggestion, even for a rule-handled entry" do
+    eon = @family.merchants.create!(name: "EON")
+    power = @family.categories.create!(name: "Strom")
+    ready_suggestion(@entry, source: "hint", hint: "always EON to Strom", rule_proposal: {
+      "conditions" => [ { "condition_type" => "transaction_merchant", "operator" => "=", "value" => eon.id } ],
+      "actions" => [ { "action_type" => "set_transaction_category", "value" => power.id } ],
+      "pattern_key" => "merchant:#{eon.id}"
+    })
+
+    card = card_for(@entry)
+    suggestion = card.rule_suggestion
+
+    assert_equal "merchant:#{eon.id}", suggestion.pattern_key
+    assert_equal [ { condition_type: "transaction_merchant", operator: "=", value: eon.id } ], suggestion.conditions
+    assert_equal [ { action_type: "set_transaction_category", value: power.id } ], suggestion.actions
+    assert_equal "Merchant = EON → Category: Strom", suggestion.summary
+    assert_equal [ :rule ], card.strip_suggestions.keys
+  end
+
+  test "a hint without a rule proposal leaves the automatic suggestion alone" do
+    ready_suggestion(@entry, source: "hint", hint: "milk", name: "Milk")
+
+    assert_nil card_for(@entry).rule_suggestion
+  end
+
   test "no rule suggestion with fewer than three matches or all in one month" do
     eon = @family.merchants.create!(name: "EON")
     @entry.transaction.update!(merchant: eon)

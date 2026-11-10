@@ -151,8 +151,10 @@ class Transaction::AnnotationSuggester
         end
 
         rule_set_fields = MonthlyReview::RuleProvenance.new(family, [ entry ]).rule_set_fields(entry).keys
-        payload = normalize(entry, request_annotation(entry, receipt_link, hint, rule_set_fields), receipt_link)
+        raw = request_annotation(entry, receipt_link, hint, rule_set_fields)
+        payload = normalize(entry, raw, receipt_link)
         payload = without_rule_set_proposals(payload, rule_set_fields) if hint.blank?
+        payload["rule_proposal"] = MonthlyReview::HintRule.normalize(raw.rule_proposal, entry: entry, user: user) if hint.present?
         suggestion.update!(status: "ready", payload: payload)
       rescue StandardError => e
         @last_error = e

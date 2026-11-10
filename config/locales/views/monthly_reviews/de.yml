@@ -181,6 +181,19 @@ de:
         failed: Der Belegtext konnte nicht aus Paperless geladen werden.
         label: Belegtext
     rule_suggestion:
+      action: "%{field}: %{value}"
+      condition: "%{field} %{operator} %{value}"
+      fields:
+        amount: Betrag
+        category: Kategorie
+        merchant: Händler
+        name: Name
+        tags: Tags
+      hint_summary: "%{conditions} → %{actions}"
+      operators:
+        contains: enthält
+        ends_with: endet mit
+        starts_with: beginnt mit
       summary: "%{pattern} → %{category}, %{count}× in %{months} Monaten"
     index:
       months: Monate %{year}
