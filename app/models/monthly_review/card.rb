@@ -108,7 +108,7 @@ class MonthlyReview::Card
     return [] unless proposal? && suggestion.split
 
     @split_parts ||= begin
-      categories = Category.where(id: suggestion.split.filter_map { |part| part["category_id"] }).index_by(&:id)
+      categories = review.family.categories.where(id: suggestion.split.filter_map { |part| part["category_id"] }).index_by(&:id)
       suggestion.split.map do |part|
         SplitPart.new(name: part["name"], amount: Money.new(part["amount"].to_d, entry.currency), category: categories[part["category_id"]])
       end
@@ -230,7 +230,7 @@ class MonthlyReview::Card
       case key
       when "name", "notes" then payload[key]
       when "merchant"
-        payload["new_merchant_name"].present? ? NewMerchant.new(name: payload["new_merchant_name"]) : Merchant.find_by(id: payload["merchant_id"])
+        payload["new_merchant_name"].present? ? NewMerchant.new(name: payload["new_merchant_name"]) : review.family.assignable_merchants_for(user).find_by(id: payload["merchant_id"])
       when "category" then review.family.categories.find_by(id: payload["category_id"])
       when "tags" then review.family.tags.where(id: payload["tag_ids"]).alphabetically.to_a
       end

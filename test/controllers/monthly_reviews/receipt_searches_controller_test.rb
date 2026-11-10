@@ -47,6 +47,18 @@ class MonthlyReviews::ReceiptSearchesControllerTest < ActionDispatch::Integratio
     assert_redirected_to monthly_review_card_path(@review, entry_id: @entry.id, suggestion_id: suggestion.id)
   end
 
+  test "picking a document whose read is already in flight does not call the LLM" do
+    Provider::Paperless.any_instance.stubs(:document).with("42").returns({ "id" => 42, "title" => "Kassenbon Edeka", "correspondent" => 3, "created" => "2026-10-05" })
+    link = link_receipt(@entry, document_id: 42)
+    pending = ready_suggestion(@entry, receipt_link: link, status: "pending")
+    forbid_llm
+
+    post monthly_review_receipt_searches_url(@review), params: { entry_id: @entry.id, document_id: "42" }
+
+    assert_redirected_to monthly_review_card_path(@review, entry_id: @entry.id, suggestion_id: pending.id)
+    assert pending.reload.pending?
+  end
+
   test "a Paperless failure while linking goes back to the card" do
     Provider::Paperless.any_instance.stubs(:document).raises(Provider::Paperless::Error.new("gone", :not_found))
     forbid_llm

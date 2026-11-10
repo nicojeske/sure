@@ -96,6 +96,21 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_equal :applied, card.fields.first.status
   end
 
+  test "a proposed merchant or split category from another family is not shown" do
+    foreign_merchant = FamilyMerchant.create!(family: families(:empty), name: "Elsewhere")
+    foreign_category = families(:empty).categories.create!(name: "Foreign")
+    own_category = categories(:food_and_drink)
+    suggestion = ready_suggestion(@entry, source: "hint", hint: "two things", merchant_id: foreign_merchant.id, split: [
+      { "name" => "One", "amount" => "12.0", "category_id" => own_category.id, "tag_ids" => [] },
+      { "name" => "Two", "amount" => "8.0", "category_id" => foreign_category.id, "tag_ids" => [] }
+    ])
+
+    card = card_for(@entry, suggestion_id: suggestion.id)
+
+    assert_nil card.fields.index_by(&:key)["merchant"].proposed
+    assert_equal [ own_category, nil ], card.split_parts.map(&:category)
+  end
+
   private
     def card_for(entry, suggestion_id: nil)
       MonthlyReview::Card.new(@review, entry, user: @user, suggestion_id: suggestion_id)

@@ -23,7 +23,8 @@ class MonthlyReviews::ReceiptSearchesController < ApplicationController
 
   def create
     link = receipt_search.link!(params.require(:document_id))
-    suggestion = suggester.suggest_from_receipt(@entry, link)
+    input_hash = Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link)
+    suggestion = suggest_unless_in_flight(input_hash) { suggester.suggest_from_receipt(@entry, link) }
 
     redirect_to review_card_path(@entry, suggestion_id: suggestion.id)
   rescue Provider::Paperless::Error => e
