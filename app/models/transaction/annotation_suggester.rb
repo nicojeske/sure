@@ -107,6 +107,7 @@ class Transaction::AnnotationSuggester
   def learned_suggestion(entry)
     category_id, confidence = learned_category(entry)
     return nil if category_id.nil? || category_id == entry.transaction.category_id
+    return nil if rule_set_fields_of(entry).include?("category")
 
     suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
       entry,
@@ -150,7 +151,7 @@ class Transaction::AnnotationSuggester
           suggestion.update!(receipt_link: receipt_link)
         end
 
-        rule_set_fields = MonthlyReview::RuleProvenance.new(family, [ entry ]).rule_set_fields(entry).keys
+        rule_set_fields = rule_set_fields_of(entry)
         raw = request_annotation(entry, receipt_link, hint, rule_set_fields)
         payload = normalize(entry, raw, receipt_link)
         payload = without_rule_set_proposals(payload, rule_set_fields) if hint.blank?
@@ -251,6 +252,10 @@ class Transaction::AnnotationSuggester
       return [ usual.id, nil ] if usual
 
       Family::BayesCategorizer.new(family).classify(transaction)
+    end
+
+    def rule_set_fields_of(entry)
+      MonthlyReview::RuleProvenance.new(family, [ entry ]).rule_set_fields(entry).keys
     end
 
     # Only a hint may override what a rule set; the prompt says so too, and

@@ -420,6 +420,14 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal @kitchen.id, suggestion.payload["category_id"]
   end
 
+  test "learned suggestion proposes nothing for a category a rule set" do
+    create_transaction(name: "AMAZON MKTPL 123", category: @outdoor)
+    @entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+
+    assert_nil suggester.learned_suggestion(@entry)
+    assert_not @entry.annotation_suggestions.where(source: "learned").exists?
+  end
+
   test "learned suggestion falls back to Bayes and is nil without an answer" do
     Family::BayesCategorizer.any_instance.stubs(:classify).returns([ @outdoor.id, 0.9 ])
     assert_equal @outdoor.id, suggester.learned_suggestion(@entry).payload["category_id"]
