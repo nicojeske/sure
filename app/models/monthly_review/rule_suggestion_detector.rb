@@ -141,8 +141,7 @@ class MonthlyReview::RuleSuggestionDetector
           Arel.sql("transactions.extra ->> 'original_name'")
         )
         rows = rows.select { |row| self.class.stem(row[5].presence || row[2])&.downcase == stem.downcase } unless merchant
-        tag_ids = Tagging.where(taggable_type: "Transaction", taggable_id: rows.map(&:first)).pluck(:taggable_id, :tag_id)
-          .group_by(&:first).transform_values { |pairs| pairs.map(&:last).sort }
+        tag_ids = MonthlyReview::TransactionTags.tag_ids_by_transaction_id(rows.map(&:first))
 
         rows.map do |id, date, name, category_id, merchant_id, _original_name|
           Match.new(date: date, name: name, category_id: category_id, merchant_id: merchant_id, tag_ids: tag_ids.fetch(id, []))

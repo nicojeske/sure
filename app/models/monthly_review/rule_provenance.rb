@@ -74,8 +74,7 @@ class MonthlyReview::RuleProvenance
     def tag_ids_by_transaction_id
       @tag_ids_by_transaction_id ||= begin
         tagged_ids = enrichments.values.select { |enrichment| enrichment.attribute_name == "tag_ids" }.map(&:enrichable_id)
-        Tagging.where(taggable_type: "Transaction", taggable_id: tagged_ids).pluck(:taggable_id, :tag_id)
-          .group_by(&:first).transform_values { |pairs| pairs.map(&:last) }
+        MonthlyReview::TransactionTags.tag_ids_by_transaction_id(tagged_ids)
       end
     end
 
