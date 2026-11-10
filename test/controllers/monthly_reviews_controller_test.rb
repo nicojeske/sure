@@ -46,8 +46,9 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", text: "October 2026"
     assert_select "dd", text: "1 of 4"
-    assert_select "[data-review-entry-id='#{@first.id}'][data-status='skipped']"
-    assert_select "[data-review-entry-id='#{@third.id}'][data-status='pending']"
+    assert_select "[data-review-entry-id='#{@first.id}'][data-status='open']"
+    assert_select "[data-review-entry-id='#{@third.id}'][data-status='open']"
+    assert_select "dt", text: "Skipped", count: 0
     assert_select "[data-review-entry-id='#{@second.id}']", count: 0
     assert_select "main", text: /\$1,000\.00/
     assert_select "main", text: /\$60\.00/

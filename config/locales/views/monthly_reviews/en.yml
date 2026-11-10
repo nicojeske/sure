@@ -171,9 +171,6 @@ en:
         one: Continue review (1 left)
         other: Continue review (%{count} left)
       heading: "%{month}"
-      legend:
-        pending: Not reached yet
-        skipped: Skipped
       money:
         expense: Expenses
         income: Income
@@ -184,14 +181,13 @@ en:
       period: "%{from} – %{to}"
       review:
         in_transactions: Show unreviewed
-        open: Not reached yet
+        open: Open
         progress: "%{reviewed} of %{total}"
         reviewed: Reviewed
-        skipped: Skipped
         title: Review
       start: Start review
       title: Monthly review %{month}
-      unreviewed: Unreviewed
+      open: Open transactions
     status:
       completed: Completed
       empty: Nothing to review

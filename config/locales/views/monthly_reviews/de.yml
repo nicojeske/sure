@@ -171,9 +171,6 @@ de:
         one: Prüfung fortsetzen (noch 1)
         other: Prüfung fortsetzen (noch %{count})
       heading: "%{month}"
-      legend:
-        pending: Noch nicht erreicht
-        skipped: Übersprungen
       money:
         expense: Ausgaben
         income: Einnahmen
@@ -184,14 +181,13 @@ de:
       period: "%{from} – %{to}"
       review:
         in_transactions: Ungeprüfte anzeigen
-        open: Noch nicht erreicht
+        open: Offen
         progress: "%{reviewed} von %{total}"
         reviewed: Geprüft
-        skipped: Übersprungen
         title: Prüfung
       start: Prüfung starten
       title: Monatsprüfung %{month}
-      unreviewed: Ungeprüft
+      open: Offene Buchungen
     status:
       completed: Abgeschlossen
       empty: Nichts zu prüfen

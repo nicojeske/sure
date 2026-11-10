@@ -50,12 +50,12 @@ class MonthlyReview::CardList
     entries[[ index_of(entry) - before, 0 ].max, count] || []
   end
 
-  # current, reviewed, skipped (unreviewed and passed over) or pending.
+  # current, reviewed or open. Skips aren't stored, so an entry passed over
+  # stays open.
   def status(entry, current)
     return "current" if entry == current
-    return "reviewed" if entry.reviewed?
 
-    current.nil? || index_of(entry) < index_of(current) ? "skipped" : "pending"
+    entry.reviewed? ? "reviewed" : "open"
   end
 
   private

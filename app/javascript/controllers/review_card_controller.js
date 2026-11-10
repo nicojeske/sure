@@ -373,7 +373,6 @@ export default class extends Controller {
       JSON.parse(card.dataset.reviewCardReviewedIds || "[]"),
     );
     const currentId = card.dataset.reviewCardEntryId;
-    const finished = card.dataset.reviewCardState === "finished";
     const rows = [
       ...this.listTarget.querySelectorAll("[data-review-entry-id]"),
     ];
@@ -382,17 +381,12 @@ export default class extends Controller {
     const total = Number(card.dataset.reviewCardTotal);
     if (total && total !== rows.length) return this.refreshPage();
 
-    const currentIndex = rows.findIndex(
-      (row) => row.dataset.reviewEntryId === currentId,
-    );
-
-    rows.forEach((row, index) => {
+    // Skips aren't stored: a row passed over stays open, as on the server.
+    for (const row of rows) {
       const id = row.dataset.reviewEntryId;
-      let status = "pending";
+      let status = "open";
       if (id === currentId) status = "current";
       else if (reviewed.has(id)) status = "reviewed";
-      else if (finished || (currentIndex >= 0 && index < currentIndex))
-        status = "skipped";
       row.dataset.status = status;
 
       const link = row.querySelector("a");
@@ -402,7 +396,7 @@ export default class extends Controller {
       } else {
         link?.removeAttribute("aria-current");
       }
-    });
+    }
 
     for (const count of this.element.querySelectorAll(
       "[data-review-reviewed-count]",

@@ -1,6 +1,6 @@
 require "application_system_test_case"
 
-# From the last card to the month's summary, back to a skipped card, and
+# From the last card to the month's summary, back to an open card, and
 # completing the month with a note so the overview shows it as completed.
 class MonthlyReviewSummaryTest < ApplicationSystemTestCase
   include MonthlyReviewTestHelper
@@ -27,9 +27,9 @@ class MonthlyReviewSummaryTest < ApplicationSystemTestCase
     assert_current_path monthly_review_path(@review, focus: "note")
     assert_selector "h1", exact_text: "October 2026"
     assert_selector "[data-breadcrumbs]", text: "Monthly review"
-    assert_selector "[data-review-entry-id='#{@plain.id}'][data-status='skipped']"
+    assert_selector "[data-review-entry-id='#{@plain.id}'][data-status='open']"
 
-    # A skipped transaction opens its card.
+    # An open transaction opens its card.
     find("[data-review-entry-id='#{@plain.id}'] a").click
     assert_selector "[data-review-card-entry-id='#{@plain.id}']"
     assert_current_path monthly_review_card_path(@review, entry_id: @plain.id)

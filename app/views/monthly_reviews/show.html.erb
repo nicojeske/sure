@@ -50,7 +50,7 @@
     <%= render DS::Card.new(class: "gap-4") do %>
       <div class="flex items-center justify-between gap-2">
         <h2 class="text-sm font-medium text-primary"><%= t(".review.title") %></h2>
-        <% if @summary.unreviewed_entries.any? %>
+        <% if @summary.open_entries.any? %>
           <%= render DS::Link.new(
                 text: t(".review.in_transactions"),
                 variant: :ghost,
@@ -68,30 +68,19 @@
             ) %>
         <dl class="flex-1 space-y-2">
           <%= render DS::DetailRow.new(label: t(".review.reviewed"), value: t(".review.progress", reviewed: progress.reviewed, total: progress.total), align: :center) %>
-          <%= render DS::DetailRow.new(label: t(".review.skipped"), value: @summary.skipped_count.to_s, align: :center) %>
           <%= render DS::DetailRow.new(label: t(".review.open"), value: @summary.open_count.to_s, align: :center) %>
         </dl>
       </div>
     <% end %>
   </div>
 
-  <%= render "monthly_reviews/completion", review: @monthly_review, unreviewed_count: @summary.unreviewed_entries.size, editable: can_edit_review?, focus_note: params[:focus] == "note" %>
+  <%= render "monthly_reviews/completion", review: @monthly_review, unreviewed_count: @summary.open_count, editable: can_edit_review?, focus_note: params[:focus] == "note" %>
 
-  <% if @summary.unreviewed_entries.any? %>
-    <%= render DS::Section.new(title: t(".unreviewed"), count: @summary.unreviewed_entries.size, divided: false) do |section| %>
-      <% section.with_aside do %>
-        <div class="flex items-center gap-3 text-xs text-secondary">
-          <% %w[skipped pending].each do |status| %>
-            <%= tag.span class: "group/item flex items-center gap-1.5", data: { status: status } do %>
-              <%= render "monthly_reviews/cards/status_dot" %>
-              <%= t(".legend.#{status}") %>
-            <% end %>
-          <% end %>
-        </div>
-      <% end %>
+  <% if @summary.open_entries.any? %>
+    <%= render DS::Section.new(title: t(".open"), count: @summary.open_count, divided: false) do %>
       <ol class="divide-y divide-subdued py-1">
-        <% @summary.unreviewed_entries.each do |entry| %>
-          <%= render "monthly_reviews/cards/list_row", entry: entry, status: @summary.status(entry) %>
+        <% @summary.open_entries.each do |entry| %>
+          <%= render "monthly_reviews/cards/list_row", entry: entry, status: "open" %>
         <% end %>
       </ol>
     <% end %>

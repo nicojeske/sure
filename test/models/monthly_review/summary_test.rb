@@ -5,34 +5,23 @@ class MonthlyReview::SummaryTest < ActiveSupport::TestCase
 
   setup do
     setup_monthly_review
-    @skipped = review_transaction("Skipped", day: 2)
+    @passed = review_transaction("Passed over", day: 2)
     @reviewed = review_transaction("Reviewed", day: 3)
-    @open = review_transaction("Open", day: 4)
-    @later = review_transaction("Later", day: 5)
+    @later = review_transaction("Later", day: 4)
     @reviewed.mark_reviewed!(@user)
   end
 
-  test "an unreviewed entry before the last reviewed one was skipped, later ones are open" do
-    assert_equal 4, summary.total
+  test "counts reviewed and open transactions and lists the open ones in queue order" do
+    assert_equal 3, summary.total
     assert_equal 1, summary.reviewed_count
-    assert_equal 1, summary.skipped_count
     assert_equal 2, summary.open_count
-    assert_equal %w[skipped reviewed pending pending], summary.list.map { |entry| summary.status(entry) }
-    assert_equal [ @skipped, @open, @later ], summary.unreviewed_entries
+    assert_equal [ @passed, @later ], summary.open_entries
   end
 
-  test "nothing reviewed yet means everything is open" do
-    @reviewed.unmark_reviewed!
-
-    assert_equal 0, summary.skipped_count
-    assert_equal 4, summary.open_count
-  end
-
-  test "once completed every unreviewed entry counts as skipped" do
+  test "completing the month keeps unreviewed transactions open" do
     @review.complete!
 
-    assert_equal 3, summary.skipped_count
-    assert_equal 0, summary.open_count
+    assert_equal 2, summary.open_count
   end
 
   test "income and expense come from the income statement for the review period" do
@@ -40,8 +29,8 @@ class MonthlyReview::SummaryTest < ActiveSupport::TestCase
     review_transaction("Next month", day: 6, amount: 50).update!(date: Date.new(2026, 11, 2))
 
     assert_equal Money.new(1000, @family.currency), summary.income
-    assert_equal Money.new(80, @family.currency), summary.expense
-    assert_equal Money.new(920, @family.currency), summary.net
+    assert_equal Money.new(60, @family.currency), summary.expense
+    assert_equal Money.new(940, @family.currency), summary.net
   end
 
   private
