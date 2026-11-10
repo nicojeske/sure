@@ -250,6 +250,7 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     ], suggestion.actions
     assert_equal "EON → Strom, 3× in 2 months", suggestion.summary
     assert_equal "merchant:#{eon.id}", suggestion.pattern_key
+    assert_equal [ :rule ], card_for(@entry).strip_suggestions.keys
   end
 
   test "no rule suggestion with fewer than three matches or all in one month" do
