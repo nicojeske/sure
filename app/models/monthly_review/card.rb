@@ -157,6 +157,12 @@ class MonthlyReview::Card
     Array(applied["fields"]).size + (applied["split"] ? 1 : 0)
   end
 
+  def bill_suggestion
+    return @bill_suggestion if defined?(@bill_suggestion)
+
+    @bill_suggestion = MonthlyReview::BillSuggestion.for(entry, user: user)
+  end
+
   private
     def resolve
       if entry.reviewed?
