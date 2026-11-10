@@ -81,6 +81,20 @@ class RecurringTransaction::AiSetupSuggesterTest < ActiveSupport::TestCase
     assert_nil suggestion.category_name
   end
 
+  test "asks for names in the family's AI content language, whoever runs it" do
+    @family.update!(ai_content_language: "de")
+    @user.update!(locale: "en")
+
+    assert_equal "de", captured_provider_args { Suggester.new(@family, user: @user).suggest_from_entries(@entries) }[:content_locale]
+  end
+
+  test "without an AI content language names follow the user's interface language" do
+    @family.update!(locale: "fr", ai_content_language: nil)
+    @user.update!(locale: "en")
+
+    assert_equal "en", captured_provider_args { Suggester.new(@family, user: @user).suggest_from_entries(@entries) }[:content_locale]
+  end
+
   test "configure mode sends the series' current configuration to the provider" do
     series = @family.recurring_transactions.create!(
       name: "Gym", account: accounts(:depository), amount: 40, currency: "USD",
@@ -149,6 +163,21 @@ class RecurringTransaction::AiSetupSuggesterTest < ActiveSupport::TestCase
         month_of_year: nil, category_name: nil, bill_type: nil, autopay: nil,
         confidence: nil, rationale: nil
       }.merge(overrides))
+    end
+
+    def captured_provider_args
+      captured = nil
+      provider = Object.new
+      provider.define_singleton_method(:suggest_bill_setup) do |**kwargs|
+        captured = kwargs
+        Provider::Response.new(success?: true, data: RawSuggestion.new(
+          name: "Fitnessstudio", amount: nil, frequency: nil, day_of_month: nil, weekday: nil,
+          month_of_year: nil, category_name: nil, bill_type: nil, autopay: nil, confidence: nil, rationale: nil
+        ), error: nil)
+      end
+      Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+      yield
+      captured
     end
 
     def stub_provider(suggestion)

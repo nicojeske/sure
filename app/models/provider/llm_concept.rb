@@ -32,7 +32,7 @@ module Provider::LlmConcept
     :category_name, :bill_type, :autopay, :confidence, :rationale
   )
 
-  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil, content_locale: nil)
     raise NotImplementedError, "Subclasses must implement #suggest_bill_setup"
   end
 
@@ -47,7 +47,7 @@ module Provider::LlmConcept
 
   # transaction: { date:, amount:, currency:, name:, merchant:, category: }
   # examples: [{ name:, merchant:, category:, tags: [], notes: }]
-  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", model: "", family: nil)
+  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", content_locale: nil, model: "", family: nil)
     raise NotImplementedError, "Subclasses must implement #suggest_transaction_annotation"
   end
 

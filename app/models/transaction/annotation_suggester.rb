@@ -184,7 +184,8 @@ class Transaction::AnnotationSuggester
         categories: family.categories.alphabetically.pluck(:name),
         merchants: merchants.alphabetically.limit(MAX_MERCHANTS).pluck(:name),
         tags: family.tags.alphabetically.pluck(:name),
-        locale: locale,
+        locale: family.ai_interface_locale_for(user),
+        content_locale: family.ai_content_locale_for(user),
         family: family
       )
       raise Error, "Provider failed: #{response.error&.message}" unless response.success?
@@ -337,10 +338,6 @@ class Transaction::AnnotationSuggester
     # Postgres rejects next to ORDER BY on a column outside the select list.
     def accessible_transactions
       Transaction.joins(:entry).where(entries: { account_id: family.accounts.accessible_by(user).select(:id) })
-    end
-
-    def locale
-      (user&.locale.presence || family.locale.presence || I18n.default_locale).to_s
     end
 
     def capture_failure(entry, suggestion, error)

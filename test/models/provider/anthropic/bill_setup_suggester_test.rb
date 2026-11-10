@@ -34,6 +34,14 @@ class Provider::Anthropic::BillSetupSuggesterTest < ActiveSupport::TestCase
     assert_suggestion result
   end
 
+  test "asks for the bill name in the content language" do
+    client = stub_client(build_response(content: [ suggestion_block ]), expect_request: ->(params) {
+      assert_match(/name: .*language of locale "de"/, params[:system_].squish)
+    })
+
+    suggester(client, model: "claude-haiku-4-5", content_locale: "de").suggest
+  end
+
   test "raises with the stop reason when the model returns no tool_use" do
     response = build_response(content: [ OpenStruct.new(type: :text, text: "Looks monthly.") ])
     response.stop_reason = :end_turn
@@ -46,8 +54,8 @@ class Provider::Anthropic::BillSetupSuggesterTest < ActiveSupport::TestCase
   end
 
   private
-    def suggester(client, model:)
-      Provider::Anthropic::BillSetupSuggester.new(client, model: model, charges: @charges, categories: @categories)
+    def suggester(client, model:, content_locale: nil)
+      Provider::Anthropic::BillSetupSuggester.new(client, model: model, charges: @charges, categories: @categories, content_locale: content_locale)
     end
 
     def assert_suggestion(result)

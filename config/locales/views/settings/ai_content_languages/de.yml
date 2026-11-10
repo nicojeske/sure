@@ -1,0 +1,12 @@
+---
+de:
+  settings:
+    ai_content_languages:
+      form:
+        title: Sprache für KI-Inhalte
+        subtitle: Die Sprache, in der die KI gespeicherte Daten schreibt, etwa Buchungsnamen, Notizen, neue Händler und Rechnungsnamen. Erklärungen und Chat-Antworten bleiben in der Oberflächensprache des jeweiligen Mitglieds.
+        label: Sprache
+        same_as_interface: Wie die Oberflächensprache
+      update:
+        success: Sprache für KI-Inhalte aktualisiert.
+        invalid: Diese Sprache ist nicht verfügbar.
