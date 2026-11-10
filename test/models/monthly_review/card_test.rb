@@ -272,6 +272,22 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_equal [ :rule ], card.strip_suggestions.keys
   end
 
+  test "a hint's rule proposal is skipped once the family chose Never for its pattern, rule prompts off or not" do
+    eon = @family.merchants.create!(name: "EON")
+    power = @family.categories.create!(name: "Strom")
+    ready_suggestion(@entry, source: "hint", hint: "always EON to Strom", rule_proposal: {
+      "conditions" => [ { "condition_type" => "transaction_merchant", "operator" => "=", "value" => eon.id } ],
+      "actions" => [ { "action_type" => "set_transaction_category", "value" => power.id } ],
+      "pattern_key" => "merchant:#{eon.id}"
+    })
+
+    @user.update!(rule_prompts_disabled: true)
+    assert card_for(@entry).rule_suggestion
+
+    @family.rule_suggestion_dismissals.create!(user: @user, pattern_key: "merchant:#{eon.id}")
+    assert_nil card_for(@entry).rule_suggestion
+  end
+
   test "a hint without a rule proposal leaves the automatic suggestion alone" do
     ready_suggestion(@entry, source: "hint", hint: "milk", name: "Milk")
 

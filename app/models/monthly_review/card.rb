@@ -209,10 +209,14 @@ class MonthlyReview::Card
 
   private
     # Asked for in the hint, so it shows whether or not rule prompts are on
-    # and even when a rule already handled the transaction.
+    # and even when a rule already handled the transaction. A family's
+    # "Never for this pattern" still holds.
     def hint_rule_suggestion
       stored = proposal? && suggestion.hint? ? suggestion.payload["rule_proposal"] : nil
-      MonthlyReview::HintRule.suggestion(stored, family: review.family, user: user) if stored.present?
+      return nil if stored.blank?
+
+      result = MonthlyReview::HintRule.suggestion(stored, family: review.family, user: user)
+      result unless review.family.rule_suggestion_dismissals.exists?(pattern_key: result.pattern_key)
     end
 
     def rule_provenance
