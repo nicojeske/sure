@@ -69,9 +69,7 @@ class MonthlyReview::Card
     proposed.nil? || proposed.is_a?(NewMerchant) ? field.current : proposed
   end
 
-  def original_name
-    transaction.extra&.dig("original_name").presence
-  end
+  delegate :original_name, to: :transaction
 
   # The receipt this card reads or was built from.
   def receipt_link

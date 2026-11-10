@@ -184,7 +184,9 @@ module TransactionsHelper
     tx = obj.respond_to?(:transaction) ? obj.transaction : obj
     return nil unless tx.respond_to?(:extra) && tx.extra.present?
 
-    extra = tx.extra
+    # The saved bank name has its own row in the drawer.
+    extra = tx.extra.is_a?(Hash) ? tx.extra.except("original_name") : tx.extra
+    return nil if extra.blank?
 
     if extra.is_a?(Hash) && extra["simplefin"].present?
       sf = extra["simplefin"]

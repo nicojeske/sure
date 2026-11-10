@@ -118,6 +118,7 @@ en:
       tab_upcoming: Upcoming
       uncategorized: "(uncategorized)"
       additional_details: "Additional details"
+      original_name: "Bank name"
       payee: "Payee"
       description: "Description"
       memo: "Memo"

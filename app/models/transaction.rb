@@ -436,6 +436,11 @@ class Transaction < ApplicationRecord
     receipt_links.linked.exists?
   end
 
+  # The bank's name for the transaction, saved before the first AI rename.
+  def original_name
+    extra&.dig("original_name").presence
+  end
+
   def activity_security_id
     extra&.dig("security_id").presence || extra&.dig("security", "id").presence
   end

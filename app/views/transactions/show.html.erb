@@ -169,10 +169,17 @@
       <% end %>
     <% end %>
 
-    <% if (details = build_transaction_extra_details(@entry)) %>
+    <% details = build_transaction_extra_details(@entry) %>
+    <% original_name = @entry.transaction.original_name %>
+    <% if details || original_name %>
       <% dialog.with_section(title: t(".additional_details"), open: false) do %>
         <div class="px-3 py-2 space-y-3">
-          <% if details[:kind] == :simplefin || details[:kind] == :plaid %>
+          <% if original_name %>
+            <dl>
+              <%= render DS::DetailRow.new(label: t(".original_name"), value: original_name, value_class: "font-mono") %>
+            </dl>
+          <% end %>
+          <% if details && details[:kind].in?(%i[simplefin plaid]) %>
             <%# build_transaction_extra_details already drops blank values, so every
                 key present here has something to show. Its keys double as locale
                 keys: payee/description/memo for SimpleFIN, original_description/
@@ -204,7 +211,7 @@
                 </dl>
               </div>
             <% end %>
-          <% else %>
+          <% elsif details %>
             <pre class="text-xs text-secondary bg-surface-inset rounded p-2 overflow-auto whitespace-pre-wrap break-words"><%= details[:raw] %></pre>
           <% end %>
         </div>
