@@ -255,7 +255,7 @@ class Transaction::AnnotationSuggester
     end
 
     def rule_set_fields_of(entry)
-      MonthlyReview::RuleProvenance.new(family, [ entry ]).rule_set_fields(entry).keys
+      MonthlyReview::RuleProvenance.new(family, [ entry ]).rules_by_field(entry).keys
     end
 
     # Only a hint may override what a rule set; the prompt says so too, and

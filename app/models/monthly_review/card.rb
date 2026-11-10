@@ -168,22 +168,22 @@ class MonthlyReview::Card
   # Keys of the rule-set fields, in field order (a subset of name, merchant,
   # category and tags).
   def rule_set_fields
-    rule_provenance.rule_set_fields(entry).keys
+    rule_provenance.rules_by_field(entry).keys
   end
 
   def rule_set?(key)
-    rule_provenance.rule_set_fields(entry).key?(key)
+    rule_provenance.rules_by_field(entry).key?(key)
   end
 
   # The rule that set the field, nil when it isn't rule-set, the enrichment
   # predates rule ids or the rule was deleted.
   def rule_for(key)
-    rule_provenance.rule_set_fields(entry)[key]
+    rule_provenance.rules_by_field(entry)[key]
   end
 
   # The rule the card's badge links to: the first known one.
   def rule
-    rule_provenance.rule_set_fields(entry).values.compact.first
+    rule_provenance.rules_by_field(entry).values.compact.first
   end
 
   # The suggestions strip's rows by kind, in display order. Each kind renders

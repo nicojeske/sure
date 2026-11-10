@@ -36,6 +36,6 @@ class MonthlyReview::CardListTest < ActiveSupport::TestCase
     # Enrichments, taggings and rules: one query each, however many rows.
     handled = assert_queries_count(3) { list.map { |entry| list.rule_handled?(entry) } }
     assert_equal [ true, false, false ], handled
-    assert_equal rule, list.rule_provenance.rule_set_fields(@first)["category"]
+    assert_equal rule, list.rule_provenance.rules_by_field(@first)["category"]
   end
 end

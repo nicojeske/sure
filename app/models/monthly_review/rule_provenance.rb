@@ -16,12 +16,12 @@ class MonthlyReview::RuleProvenance
   # Rule-set field key => the rule that set it, in TransactionAnnotationSuggestion::FIELDS
   # order. The rule is nil when the enrichment predates rule ids or the rule
   # was deleted since.
-  def rule_set_fields(entry)
+  def rules_by_field(entry)
     fields_by_entry_id.fetch(entry.id, {})
   end
 
   def rule_handled?(entry)
-    rule_set_fields(entry).any?
+    rules_by_field(entry).any?
   end
 
   private
