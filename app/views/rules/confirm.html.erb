@@ -45,7 +45,7 @@
 
     <%= render DS::Button.new(
       text: t(".confirm_changes"),
-      href: apply_rule_path(@rule),
+      href: apply_rule_path(@rule, respect_locks: params[:respect_locks].presence),
       method: :post,
       full_width: true,
       data: { turbo_frame: "_top" }) %>

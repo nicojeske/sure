@@ -5,8 +5,9 @@
 # what the rule matches ("merchant:<id>" or "name:<normalized stem>"), the key
 # a family dismisses a suggestion by.
 MonthlyReview::RuleSuggestion = Data.define(:conditions, :actions, :summary, :pattern_key) do
-  # The params for new_rule_path.
+  # The params for new_rule_path. respect_locks follows the rule through
+  # save and apply so it leaves the fields the reviewer accepted alone.
   def rule_params
-    { resource_type: "transaction", conditions: conditions, actions: actions }
+    { resource_type: "transaction", conditions: conditions, actions: actions, respect_locks: 1 }
   end
 end

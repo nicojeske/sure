@@ -153,6 +153,54 @@ class RulesControllerTest < ActionDispatch::IntegrationTest
     assert rule.reload.active?
   end
 
+  test "a rule from the review card carries respect_locks through to apply and keeps accepted fields" do
+    chosen = categories(:food_and_drink)
+    other = categories(:income)
+    entry = create_transaction(account: accounts(:depository), name: "EON Abschlag", amount: 20, category: chosen)
+    entry.transaction.lock_attr!(:category_id)
+    entry.mark_reviewed!(@user)
+    reviewed_at = entry.reload.reviewed_at
+    modal = { "Turbo-Frame" => "modal" }
+
+    get new_rule_url(resource_type: "transaction", respect_locks: 1), headers: modal
+    assert_select "form[action='#{rules_path}'] input[type=hidden][name=respect_locks][value='1']"
+
+    post rules_url, headers: modal, params: {
+      respect_locks: 1,
+      rule: {
+        resource_type: "transaction",
+        conditions_attributes: { "0" => { condition_type: "transaction_name", operator: "like", value: "EON" } },
+        actions_attributes: { "0" => { action_type: "set_transaction_category", value: other.id } }
+      }
+    }
+    rule = @user.family.rules.order(:created_at).last
+    assert_redirected_to confirm_rule_path(rule, reload_on_close: true, respect_locks: 1)
+
+    follow_redirect! headers: modal
+    assert_select "turbo-frame#modal dialog form[action*='#{apply_rule_path(rule)}'][action*='respect_locks=1']"
+
+    perform_enqueued_jobs(only: RuleJob) { post apply_rule_url(rule, respect_locks: 1) }
+
+    assert_equal chosen, entry.transaction.reload.category
+    assert_equal reviewed_at.to_i, entry.reload.reviewed_at.to_i
+  end
+
+  test "apply from the rules page still overwrites locked fields" do
+    chosen = categories(:food_and_drink)
+    other = categories(:income)
+    entry = create_transaction(account: accounts(:depository), name: "EON Abschlag", amount: 20, category: chosen)
+    entry.transaction.lock_attr!(:category_id)
+    rule = @user.family.rules.create!(
+      resource_type: "transaction",
+      conditions: [ Rule::Condition.new(condition_type: "transaction_name", operator: "like", value: "EON") ],
+      actions: [ Rule::Action.new(action_type: "set_transaction_category", value: other.id) ]
+    )
+
+    perform_enqueued_jobs(only: RuleJob) { post apply_rule_url(rule) }
+
+    assert_equal other, entry.transaction.reload.category
+  end
+
   test "should get edit" do
     get edit_rule_url(rules(:one))
     assert_response :success

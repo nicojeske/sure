@@ -4,6 +4,7 @@
                      data: { controller: "rules", rule_registry_value: rule.registry.to_json } do |f| %>
 
   <%= f.hidden_field :resource_type, value: rule.resource_type %>
+  <%= hidden_field_tag :respect_locks, params[:respect_locks] if params[:respect_locks].present? %>
 
   <% if @rule.errors.any? %>
     <%= render "shared/form_errors", model: @rule %>
