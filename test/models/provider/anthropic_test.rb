@@ -270,6 +270,15 @@ class Provider::AnthropicTest < ActiveSupport::TestCase
     assert_equal({ currency: "USD" }.to_json, req.function_args)
   end
 
+  test "transaction annotation prompt is told the rule-set fields" do
+    Provider::Anthropic::AnnotationSuggester.expects(:new).with do |_client, prompt:, **|
+      assert_equal %w[category], prompt.rule_set_fields
+      true
+    end.returns(stub(suggest: nil))
+
+    @anthropic.suggest_transaction_annotation(transaction: { name: "BURGER" }, rule_set_fields: %w[category])
+  end
+
   private
     def stub_anthropic_client_with(message)
       messages = mock
