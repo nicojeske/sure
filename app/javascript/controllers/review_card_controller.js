@@ -16,7 +16,8 @@ const FEEDBACK_DURATION = 4000;
 // outside it every letter is a shortcut, `/` or `h` focuses it and Esc leaves
 // it. The controller sits outside the card's Turbo frame, so the queue list
 // keeps its scroll position while cards swap; each new card announces itself
-// through the `card` target.
+// through the `card` target. The receipt view (document or text, `t`) is kept
+// as `data-receipt-view` on this element, so it carries over to the next card.
 //
 // Connects to data-controller="review-card"
 export default class extends Controller {
@@ -191,6 +192,7 @@ export default class extends Controller {
           : this.flash("nothing_to_undo"),
       f: () => this.openSearch(),
       o: () => this.openReceipt(),
+      t: () => this.toggleReceiptView(),
       e: () => this.toggleEdit(),
     };
     if (handlers[key]) {
@@ -271,6 +273,16 @@ export default class extends Controller {
       top: direction * pane.clientHeight * 0.6,
       behavior: "smooth",
     });
+  }
+
+  // The receipt panes show the document or its text by `data-receipt-view`.
+  toggleReceiptView() {
+    if (!this.element.querySelector("[data-receipt-view]"))
+      return this.flash("no_receipt");
+
+    const view =
+      this.element.dataset.receiptView === "text" ? "document" : "text";
+    this.element.dataset.receiptView = view;
   }
 
   openReceipt() {

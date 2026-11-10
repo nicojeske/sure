@@ -57,6 +57,8 @@ en:
       list:
         progress_html: "%{reviewed}/%{total} reviewed"
         title: Transactions
+      receipt_document:
+        open: Open %{title}
       receipt_pane:
         loading: Loading the receipt text…
         none_html: No receipt · %{key} searches Paperless
@@ -64,6 +66,8 @@ en:
         pick: Pick a receipt
         pick_help: "↑↓ choose · ⏎ link and read"
         scroll: scroll
+        show_document: document
+        show_text: text
         untitled: 'Document #%{id}'
       receipt_search:
         help: "↑↓ choose · ⏎ link and read · Esc closes"
@@ -81,6 +85,7 @@ en:
         scroll: scroll receipt
         skip: skip
         split: split
+        text: receipt text ⇄ document
         undo: undo
       show:
         heading: Review %{month}
