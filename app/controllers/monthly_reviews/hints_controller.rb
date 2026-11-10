@@ -10,9 +10,7 @@ class MonthlyReviews::HintsController < ApplicationController
     text = params[:hint].to_s.strip
     return redirect_to(review_card_path(@entry)) if text.blank?
 
-    receipt_link = Transaction::AnnotationSuggester.receipt_choice(@entry.transaction).link
-    input_hash = Transaction::AnnotationSuggester.input_hash(:hint, receipt_link: receipt_link, hint: text)
-    suggestion = suggest_unless_in_flight(input_hash) { suggester.suggest_from_hint(@entry, text) }
+    suggestion = request_suggestion(hint: text)
 
     redirect_to review_card_path(@entry, suggestion_id: suggestion.id)
   end

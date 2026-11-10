@@ -174,6 +174,44 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal existing, suggester.suggest_from_hint(@entry, "corer")
   end
 
+  test "a requested suggestion is claimed first, so a concurrent request does not call the LLM" do
+    second = suggester
+    entry = @entry
+    response = success(annotation(name: "Corer"))
+    concurrent = nil
+    calls = 0
+    provider = Object.new
+    provider.define_singleton_method(:suggest_transaction_annotation) do |**|
+      calls += 1
+      concurrent = second.request_suggestion(entry, hint: "corer")
+      response
+    end
+    Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+
+    first = suggester.request_suggestion(@entry, hint: "corer")
+
+    assert_equal 1, calls
+    assert_equal first, concurrent
+    assert concurrent.pending?
+    assert first.ready?
+  end
+
+  test "a requested suggestion reuses a stored result and retries a failed one only when asked" do
+    stub_annotation(annotation(name: "Corer"))
+    ready = suggester.request_suggestion(@entry, hint: "corer")
+    assert_equal ready, suggester.request_suggestion(@entry, hint: " Corer ")
+
+    @provider.unstub(:suggest_transaction_annotation)
+    @provider.expects(:suggest_transaction_annotation).never
+    ready.update!(status: "failed", error: "boom")
+
+    assert suggester.request_suggestion(@entry, hint: "corer", retry_failed: false).failed?
+
+    @provider.unstub(:suggest_transaction_annotation)
+    stub_annotation(annotation(name: "Corer"))
+    assert suggester.request_suggestion(@entry, hint: "corer").ready?
+  end
+
   test "sends redacted, truncated receipt text and the hint wins in one call" do
     link = receipt_links(:linked_one)
     entry = link.transaction_record.entry

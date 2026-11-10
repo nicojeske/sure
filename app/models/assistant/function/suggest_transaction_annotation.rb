@@ -107,23 +107,11 @@ class Assistant::Function::SuggestTransactionAnnotation < Assistant::Function
     end
 
     def suggest_from_receipt(entry, receipt_link)
-      unless_in_flight(entry, Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: receipt_link)) do
-        suggester.suggest_from_receipt(entry, receipt_link)
-      end
+      suggester.request_suggestion(entry, receipt_link: receipt_link)
     end
 
     def suggest_from_hint(entry, hint)
-      receipt_link = Transaction::AnnotationSuggester.receipt_choice(entry.transaction).link
-      unless_in_flight(entry, Transaction::AnnotationSuggester.input_hash(:hint, receipt_link: receipt_link, hint: hint)) do
-        suggester.suggest_from_hint(entry, hint)
-      end
-    end
-
-    # A run for the same input that is still in flight (usually the
-    # background prefetch) is waited for, never started a second time.
-    def unless_in_flight(entry, input_hash)
-      existing = entry.annotation_suggestions.find_by(input_hash: input_hash)
-      existing&.in_flight? ? existing : yield
+      suggester.request_suggestion(entry, hint: hint)
     end
 
     def serialize(card)

@@ -72,9 +72,7 @@ class MonthlyReviews::CardsController < ApplicationController
     # close candidate the user picked.
     def suggest!
       link = @entry.transaction.receipt_links.where.not(status: "dismissed").find(params[:receipt_link_id])
-      suggestion = suggest_unless_in_flight(Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link)) do
-        suggester.suggest_from_receipt(@entry, link)
-      end
+      suggestion = request_suggestion(receipt_link: link)
 
       redirect_to review_card_path(@entry, suggestion_id: suggestion.id)
     end

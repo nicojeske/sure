@@ -69,8 +69,7 @@ module MonthlyReviewScoped
     # Runs a user-requested suggestion unless a run for the same input is
     # still in flight (usually the background prefetch); the card then shows
     # a spinner and refreshes when that run is done.
-    def suggest_unless_in_flight(input_hash)
-      existing = @entry.annotation_suggestions.find_by(input_hash: input_hash)
-      existing&.in_flight? ? existing : yield
+    def request_suggestion(receipt_link: nil, hint: nil)
+      suggester.request_suggestion(@entry, receipt_link: receipt_link, hint: hint)
     end
 end

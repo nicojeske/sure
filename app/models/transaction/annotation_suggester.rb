@@ -85,7 +85,22 @@ class Transaction::AnnotationSuggester
   end
 
   def suggest_from_hint(entry, text)
-    run(entry, source: :hint, receipt_link: self.class.receipt_choice(entry.transaction).link, hint: text.to_s.strip)
+    run(entry, **hint_input(entry, text))
+  end
+
+  # A proposal someone asked for: from `receipt_link`, or from `hint` (read
+  # together with the transaction's chosen receipt). The input is claimed
+  # first, so a run that another request or the background prefetch owns is
+  # never started twice; its row comes back pending instead. A stored result
+  # is returned as is, and a failed one is run again only with `retry_failed`.
+  def request_suggestion(entry, receipt_link: nil, hint: nil, retry_failed: true)
+    input = hint.nil? ? { source: :receipt, receipt_link: receipt_link, hint: nil } : hint_input(entry, hint)
+    input_hash = self.class.input_hash(input[:source], receipt_link: input[:receipt_link], hint: input[:hint])
+    claimed = TransactionAnnotationSuggestion.claim_for(
+      entry, input_hash: input_hash, retry_failed: retry_failed, family: family, source: input[:source].to_s
+    )
+
+    claimed ? run(entry, **input) : entry.annotation_suggestions.find_by!(input_hash: input_hash)
   end
 
   # nil when the history has no answer or the answer is the current category.
@@ -113,6 +128,11 @@ class Transaction::AnnotationSuggester
   end
 
   private
+    # A hint is read together with the receipt the card would read.
+    def hint_input(entry, text)
+      { source: :hint, receipt_link: self.class.receipt_choice(entry.transaction).link, hint: text.to_s.strip }
+    end
+
     def run(entry, source:, receipt_link:, hint:)
       @last_error = nil
       suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
