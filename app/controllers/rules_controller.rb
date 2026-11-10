@@ -42,6 +42,11 @@ class RulesController < ApplicationController
         value: params[:action_value]
       )
     end
+
+    Rule::FormPrefill.new(@rule).apply(**params.slice(:conditions, :actions).permit(
+      conditions: [ :condition_type, :operator, :value ],
+      actions: [ :action_type, :value, { value: [] } ]
+    ).to_h.symbolize_keys)
   end
 
   def create
