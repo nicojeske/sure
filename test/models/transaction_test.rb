@@ -3,6 +3,15 @@ require "test_helper"
 class TransactionTest < ActiveSupport::TestCase
   include EntriesTestHelper
 
+  test "displayed_receipt falls back to the split parent's linked receipt" do
+    parent = entries(:transaction)
+    child = parent.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ]).first
+
+    assert_equal receipt_links(:linked_one), child.entryable.displayed_receipt
+    assert_equal receipt_links(:linked_one), parent.entryable.displayed_receipt
+    assert_nil entries(:transfer_out).entryable.displayed_receipt
+  end
+
   test "pending? is true when extra.simplefin.pending is truthy" do
     transaction = Transaction.new(extra: { "simplefin" => { "pending" => true } })
 

@@ -582,22 +582,32 @@ class TransactionsController < ApplicationController
     # Populates @primary_receipt_links (transaction_id => the "best" linked ReceiptLink, rendered
     # as the receipt pill and its preview-modal link) and @conflicting_receipt_transaction_ids
     # (rendered with a warning tone when the linked document's structured total, if any, differs
-    # from the transaction amount) for a page of already-loaded transactions, in one query instead
-    # of Transaction#linked_receipt per row.
+    # from the amount of the transaction it is linked to) for a page of already-loaded
+    # transactions, in one query instead of Transaction#displayed_receipt per row. A split child
+    # without a link of its own shows its hidden parent's, as Transaction#displayed_receipt does.
     def load_receipt_link_indicators(transactions)
-      transaction_ids = transactions.map(&:id)
       @primary_receipt_links = {}
       @conflicting_receipt_transaction_ids = Set.new
-      return if transaction_ids.empty?
+      return if transactions.empty?
 
-      transactions_by_id = transactions.index_by(&:id)
+      parent_entry_ids = transactions.filter_map { |t| t.entry.parent_entry_id }.uniq
+      parent_entries = parent_entry_ids.any? ? Entry.where(id: parent_entry_ids).index_by(&:id) : {}
+      entries_by_transaction_id = transactions.to_h { |t| [ t.id, t.entry ] }
+      parent_entries.each_value { |parent| entries_by_transaction_id[parent.entryable_id] ||= parent }
 
-      ReceiptLink.linked.where(transaction_id: transaction_ids).ordered.each do |link|
-        # `.ordered` (score desc) means the first link seen per transaction is the "best" one.
-        @primary_receipt_links[link.transaction_id] ||= link
+      # `.ordered` (score desc) means the first link seen per transaction is the "best" one.
+      best_links = {}
+      ReceiptLink.linked.where(transaction_id: entries_by_transaction_id.keys).ordered.each do |link|
+        best_links[link.transaction_id] ||= link
+      end
 
-        entry = transactions_by_id[link.transaction_id]&.entry
-        @conflicting_receipt_transaction_ids << link.transaction_id if link.amount_conflicts_with?(entry)
+      transactions.each do |transaction|
+        link = best_links[transaction.id] ||
+          parent_entries[transaction.entry.parent_entry_id]&.then { |parent| best_links[parent.entryable_id] }
+        next unless link
+
+        @primary_receipt_links[transaction.id] = link
+        @conflicting_receipt_transaction_ids << transaction.id if link.amount_conflicts_with?(entries_by_transaction_id[link.transaction_id])
       end
     end
 

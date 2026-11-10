@@ -76,6 +76,7 @@ module TransactionsHelper
     app/views/transactions/_transaction.html.erb
     app/views/transactions/_transaction_category.html.erb
     app/views/transactions/_transfer_match.html.erb
+    app/views/transactions/_receipt_pill.html.erb
     app/views/categories/_*.html.erb
     app/views/tags/_*.html.erb
     app/views/investment_activity/_*.html.erb
@@ -109,6 +110,9 @@ module TransactionsHelper
   #   dependency tracker cannot digest DS::* components (see
   #   account_sidebar_tabs)
   # - the Brandfetch settings that shape logo URLs
+  # - the receipt link the pill shows and whether it conflicts, when the list
+  #   preloaded them; linking a receipt doesn't touch the transaction, and a
+  #   split child shows its parent's
   #
   # Add a file to TRANSACTION_ROW_SOURCES when the row starts rendering it.
   def transaction_row_cache_key(entry, view_ctx:, in_split_group:)
@@ -148,7 +152,9 @@ module TransactionsHelper
       other_leg&.cache_key_with_version,
       account_key.(counterpart),
       (category_key.(other_leg.category) if transfer && !outflow_leg),
-      transaction.activity_security&.cache_key_with_version
+      transaction.activity_security&.cache_key_with_version,
+      @primary_receipt_links&.dig(transaction.id)&.cache_key_with_version,
+      @conflicting_receipt_transaction_ids&.include?(transaction.id)
     ]
   end
 

@@ -2,8 +2,9 @@
 <%# Wrapper always renders (even with no link) so turbo_stream.replace has a stable target —
     see ReceiptLinksController and PaperlessAutoLinkJob, which replace this node whenever
     linked-receipt state changes without re-rendering the whole transaction row. %>
-<% link = local_assigns.key?(:receipt_link) ? receipt_link : transaction.linked_receipt %>
-<% has_conflict = local_assigns.key?(:conflict) ? conflict : link&.amount_conflicts_with?(transaction.entry) %>
+<% link = local_assigns.key?(:receipt_link) ? receipt_link : transaction.displayed_receipt %>
+<% link_entry = link && link.transaction_id != transaction.id ? transaction.entry&.parent_entry : transaction.entry %>
+<% has_conflict = local_assigns.key?(:conflict) ? conflict : link&.amount_conflicts_with?(link_entry) %>
 <span id="<%= dom_id(transaction, :receipt_pill) %>" class="contents">
   <% if link %>
     <% receipt_pill = render DS::Pill.new(

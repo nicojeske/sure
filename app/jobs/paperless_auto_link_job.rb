@@ -61,5 +61,15 @@ class PaperlessAutoLinkJob < ApplicationJob
         target: dom_id(transaction, :receipt_pill),
         html: pill_html
       )
+
+      # A split parent's children show its receipt.
+      entry.child_entries.includes(:entryable).each do |child_entry|
+        child = child_entry.entryable
+        Turbo::StreamsChannel.broadcast_replace_to(
+          entry.account.family,
+          target: dom_id(child, :receipt_pill),
+          html: ApplicationController.render(partial: "transactions/receipt_pill", locals: { transaction: child })
+        )
+      end
     end
 end

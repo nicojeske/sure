@@ -1247,6 +1247,20 @@ end
     assert_select "a[href=?][data-turbo-frame=modal]", paperless_document_path(receipt_links(:linked_one).document_id)
   end
 
+  test "index shows a split parent's receipt on its children, checked against the parent's amount" do
+    # Splitting leaves receipt_links(:linked_one) on the hidden parent.
+    receipt_links(:linked_one).update!(document_amount: @entry.amount, document_currency: @entry.currency)
+    @entry.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
+
+    get transactions_url
+
+    assert_response :success
+    @entry.child_entries.each do |child|
+      assert_select "##{dom_id(child.entryable, :receipt_pill)} a[href=?]", paperless_document_path(receipt_links(:linked_one).document_id)
+    end
+    assert_select "span[title=?]", I18n.t("transactions.transaction.receipt_amount_conflict_tooltip"), count: 0
+  end
+
   test "index does not offer the receipt filter for a family with no configured Paperless connection" do
     sign_in users(:empty)
 

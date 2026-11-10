@@ -168,6 +168,18 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(transactions(:one), :receipt_pill)
   end
 
+  test "destroy on a split parent also refreshes its children's receipt pills" do
+    entry = entries(:transaction)
+    children = entry.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
+
+    delete transaction_receipt_link_path(entry, receipt_links(:linked_one))
+
+    assert_response :success
+    children.each do |child|
+      assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(child.entryable, :receipt_pill)
+    end
+  end
+
   test "a user without annotate permission on the account is refused" do
     sign_in users(:family_member)
     receipt_link = receipt_links(:dismissed_transfer_in)

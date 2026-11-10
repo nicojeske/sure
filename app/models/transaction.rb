@@ -436,6 +436,12 @@ class Transaction < ApplicationRecord
     receipt_links.linked.exists?
   end
 
+  # Splitting leaves the receipt link on the hidden parent, so a split child
+  # shows its parent's receipt when it has none of its own.
+  def displayed_receipt
+    linked_receipt || entry&.parent_entry&.entryable.try(:linked_receipt)
+  end
+
   # The bank's name for the transaction, saved before the first AI rename.
   def original_name
     extra&.dig("original_name").presence
