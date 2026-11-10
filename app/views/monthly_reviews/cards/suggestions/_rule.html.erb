@@ -1,0 +1,27 @@
+<%# A rule suggested for this transaction (MonthlyReview::RuleSuggestion).
+    Accepting opens the new-rule form prefilled in the modal; "Not now" only
+    hides the row until the card renders again. %>
+<%# locals: (suggestion:) %>
+<%= render DS::Inset.new(class: "flex flex-wrap items-center gap-x-3 gap-y-2", data: { review_rule_suggestion: suggestion.pattern_key }) do %>
+  <%= icon "git-branch", size: "sm" %>
+  <p class="min-w-0 flex-1 text-primary">
+    <%= t(".summary_html", summary: tag.strong(suggestion.summary)) %>
+  </p>
+  <div class="flex items-center gap-2">
+    <%= render DS::Link.new(
+          text: t(".create"),
+          variant: :outline,
+          size: :sm,
+          href: new_rule_path(suggestion.rule_params),
+          frame: :modal,
+          data: { review_suggestion: "rule", review_suggestion_action: "accept" }
+        ) %>
+    <%= render DS::Button.new(
+          text: t(".not_now"),
+          variant: :ghost,
+          size: :sm,
+          type: "button",
+          data: { review_suggestion: "rule", review_suggestion_action: "dismiss", action: "review-card#hideSuggestion" }
+        ) %>
+  </div>
+<% end %>

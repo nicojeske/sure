@@ -72,6 +72,9 @@ export default class extends Controller {
     const tag = target.tagName;
     if (tag === "SELECT" || tag === "TEXTAREA" || target.isContentEditable)
       return;
+    // A modal opened from the card (e.g. the suggested rule's form) keeps
+    // its own keys.
+    if (target.closest("dialog")) return;
 
     const inHint = this.hasHintTarget && target === this.hintTarget;
     const inSearch = this.hasSearchTarget && this.searchTarget.contains(target);
@@ -196,6 +199,8 @@ export default class extends Controller {
       e: () => this.toggleEdit(),
       b: () =>
         this.pressSuggestion("bill", event.shiftKey ? "dismiss" : "accept"),
+      r: () =>
+        this.pressSuggestion("rule", event.shiftKey ? "dismiss" : "accept"),
     };
     if (handlers[key]) {
       event.preventDefault();
@@ -267,7 +272,14 @@ export default class extends Controller {
     );
     if (!button) return this.flash(`no_${kind}_suggestion`);
 
-    button.form.requestSubmit(button);
+    if (button.form) button.form.requestSubmit(button);
+    else button.click();
+  }
+
+  // "Not now" on a suggestion: hides its strip row until the card renders
+  // again.
+  hideSuggestion(event) {
+    event.currentTarget.closest("[data-review-rule-suggestion]")?.remove();
   }
 
   toggleField(key) {

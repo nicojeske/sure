@@ -189,7 +189,15 @@ class MonthlyReview::Card
   # The suggestions strip's rows by kind, in display order. Each kind renders
   # monthly_reviews/cards/suggestions/_<kind>.
   def strip_suggestions
-    { bill: bill_suggestion }.compact
+    { rule: rule_suggestion, bill: bill_suggestion }.compact
+  end
+
+  # A MonthlyReview::RuleSuggestion from a repeating pattern in the family's
+  # reviewed transactions, or nil.
+  def rule_suggestion
+    return @rule_suggestion if defined?(@rule_suggestion)
+
+    @rule_suggestion = MonthlyReview::RuleSuggestionDetector.new(entry, user: user, rule_handled: rule_handled?).suggestion
   end
 
   def bill_suggestion

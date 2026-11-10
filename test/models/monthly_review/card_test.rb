@@ -235,7 +235,102 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_nil card_for(@entry).bill_suggestion
   end
 
+  test "a merchant reviewed the same way in several months suggests a rule on it" do
+    eon = @family.merchants.create!(name: "EON")
+    power = @family.categories.create!(name: "Strom")
+    @entry.transaction.update!(merchant: eon)
+    reviewed_history("EON Abschlag", merchant: eon, category: power, dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3), Date.new(2026, 9, 20) ])
+
+    suggestion = card_for(@entry).rule_suggestion
+
+    assert_equal [ { condition_type: "transaction_merchant", operator: "=", value: eon.id } ], suggestion.conditions
+    assert_equal [
+      { action_type: "set_transaction_category", value: power.id },
+      { action_type: "set_transaction_name", value: "EON Abschlag" }
+    ], suggestion.actions
+    assert_equal "EON → Strom, 3× in 2 months", suggestion.summary
+    assert_equal "merchant:#{eon.id}", suggestion.pattern_key
+    assert_equal [ :rule ], card_for(@entry).strip_suggestions.keys
+  end
+
+  test "no rule suggestion with fewer than three matches or all in one month" do
+    eon = @family.merchants.create!(name: "EON")
+    @entry.transaction.update!(merchant: eon)
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3) ])
+
+    assert_nil card_for(@entry).rule_suggestion
+
+    vattenfall = @family.merchants.create!(name: "Vattenfall")
+    @entry.transaction.update!(merchant: vattenfall)
+    reviewed_history("Vattenfall", merchant: vattenfall, category: categories(:food_and_drink), dates: [ Date.new(2026, 9, 1), Date.new(2026, 9, 10), Date.new(2026, 9, 28) ])
+
+    assert_nil card_for(@entry).rule_suggestion
+  end
+
+  test "no rule suggestion when the matches differ in category" do
+    eon = @family.merchants.create!(name: "EON")
+    @entry.transaction.update!(merchant: eon)
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3) ])
+    reviewed_history("EON", merchant: eon, category: categories(:one), dates: [ Date.new(2026, 9, 20) ])
+
+    assert_nil card_for(@entry).rule_suggestion
+  end
+
+  test "without a merchant the rule matches the raw name's stem and sets what all matches share" do
+    eon = @family.merchants.create!(name: "EON")
+    power = @family.categories.create!(name: "Strom")
+    entry = review_transaction("EON ENERGIE 1023 ABSCHLAG")
+    [ Date.new(2026, 7, 3), Date.new(2026, 8, 3), Date.new(2026, 9, 3) ].each do |date|
+      renamed = reviewed_history("EON Strom", merchant: eon, category: power, dates: [ date ]).first
+      renamed.transaction.update!(extra: { "original_name" => "EON  Energie #{date.strftime('%m%y')} ABSCHLAG" })
+    end
+    reviewed_history("EON ENERGIE NACHZAHLUNG", category: categories(:one), dates: [ Date.new(2026, 9, 9) ])
+
+    suggestion = card_for(entry).rule_suggestion
+
+    assert_equal [ { condition_type: "transaction_name", operator: "like", value: "EON ENERGIE" } ], suggestion.conditions
+    assert_equal [
+      { action_type: "set_transaction_category", value: power.id },
+      { action_type: "set_transaction_merchant", value: eon.id },
+      { action_type: "set_transaction_name", value: "EON Strom" }
+    ], suggestion.actions
+    assert_equal "EON ENERGIE → Strom, 3× in 3 months", suggestion.summary
+    assert_equal "name:eon energie", suggestion.pattern_key
+  end
+
+  test "tags are set only when every match has the same ones" do
+    eon = @family.merchants.create!(name: "EON")
+    @entry.transaction.update!(merchant: eon)
+    first, second = tags(:one), tags(:two)
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), tags: [ first, second ], dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3) ])
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), tags: [ second, first ], dates: [ Date.new(2026, 9, 20) ])
+
+    assert_includes card_for(@entry).rule_suggestion.actions, { action_type: "set_transaction_tags", value: [ first.id, second.id ].sort }
+
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), tags: [ first ], dates: [ Date.new(2026, 9, 25) ])
+
+    assert_equal %w[set_transaction_category set_transaction_name], card_for(@entry).rule_suggestion.actions.map { |action| action[:action_type] }
+  end
+
+  test "a rule-handled transaction gets no rule suggestion" do
+    reviewed_history("EDEKA SAGT DANKE", category: categories(:food_and_drink), dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3), Date.new(2026, 9, 20) ])
+    assert card_for(@entry).rule_suggestion
+
+    run_rule(category: categories(:food_and_drink))
+
+    assert_nil card_for(@entry.reload).rule_suggestion
+  end
+
   private
+    # Reviewed transactions before the review month, one per date.
+    def reviewed_history(name, dates:, category: nil, merchant: nil, tags: [])
+      dates.map do |date|
+        create_transaction(account: @account, date: date, name: name, amount: 85, category: category, merchant: merchant, tags: tags).tap do |entry|
+          entry.update_columns(reviewed_at: date.to_time)
+        end
+      end
+    end
+
     def card_for(entry, suggestion_id: nil)
       MonthlyReview::Card.new(@review, entry, user: @user, suggestion_id: suggestion_id)
     end

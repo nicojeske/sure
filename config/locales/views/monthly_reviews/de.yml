@@ -91,6 +91,8 @@ de:
         label: Tastenkürzel
         open: Beleg öffnen
         reviewed: geprüft
+        rule: Regel erstellen
+        rule_dismiss: nicht jetzt
         scroll: Beleg scrollen
         skip: überspringen
         split: aufteilen
@@ -102,6 +104,7 @@ de:
           first_card: Das ist die erste Buchung.
           no_bill_suggestion: Für diese Buchung gibt es keine vorgeschlagene Rechnung zum Bestätigen oder Verwerfen.
           no_receipt: Diese Buchung hat keinen Beleg. Mit f durchsuchst du Paperless.
+          no_rule_suggestion: Für diese Buchung gibt es keine vorgeschlagene Regel.
           nothing_proposed: Für dieses Feld gibt es keinen Vorschlag.
           nothing_to_undo: Diese Buchung ist nicht geprüft, es gibt nichts rückgängig zu machen.
           still_reading: Wird noch gelesen. Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
@@ -149,6 +152,10 @@ de:
           dismiss: Verwerfen
           suggested_html: 'Sieht nach einer wiederkehrenden Rechnung aus: <strong>%{name}</strong>, etwa %{amount}'
         label: Vorschläge
+        rule:
+          create: Regel erstellen
+          not_now: Nicht jetzt
+          summary_html: 'Als Regel anlegen? %{summary}'
       update:
         failed: Die Buchung konnte nicht aktualisiert werden. Lade die Karte neu und versuche es erneut.
     prefetches:
@@ -173,6 +180,8 @@ de:
         empty: Dieses Dokument hat keinen OCR-Text.
         failed: Der Belegtext konnte nicht aus Paperless geladen werden.
         label: Belegtext
+    rule_suggestion:
+      summary: "%{pattern} → %{category}, %{count}× in %{months} Monaten"
     index:
       months: Monate %{year}
       subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.

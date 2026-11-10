@@ -91,6 +91,8 @@ en:
         label: Keyboard shortcuts
         open: open receipt
         reviewed: reviewed
+        rule: create rule
+        rule_dismiss: not now
         scroll: scroll receipt
         skip: skip
         split: split
@@ -102,6 +104,7 @@ en:
           first_card: This is the first transaction.
           no_bill_suggestion: There is no suggested bill to confirm or dismiss for this transaction.
           no_receipt: This transaction has no receipt. Press f to search Paperless.
+          no_rule_suggestion: There is no suggested rule for this transaction.
           nothing_proposed: Nothing is proposed for this field.
           nothing_to_undo: This transaction isn't reviewed, so there is nothing to undo.
           still_reading: Still reading. The card updates when the proposal is ready.
@@ -149,6 +152,10 @@ en:
           dismiss: Dismiss
           suggested_html: 'Looks like a recurring bill: <strong>%{name}</strong>, about %{amount}'
         label: Suggestions
+        rule:
+          create: Create rule
+          not_now: Not now
+          summary_html: 'Make this a rule? %{summary}'
       update:
         failed: The transaction couldn't be updated. Reload the card and try again.
     prefetches:
@@ -173,6 +180,8 @@ en:
         empty: This document has no OCR text.
         failed: The receipt text couldn't be loaded from Paperless.
         label: Receipt text
+    rule_suggestion:
+      summary: "%{pattern} → %{category}, %{count}× in %{months} months"
     index:
       months: Months in %{year}
       subtitle: Go through each month's transactions one at a time, then note what stood out and complete the month.

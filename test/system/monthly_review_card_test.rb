@@ -6,6 +6,7 @@ require "application_system_test_case"
 # receipt shows as its document; `t` switches to its text.
 class MonthlyReviewCardTest < ApplicationSystemTestCase
   include MonthlyReviewTestHelper
+  include ActiveJob::TestHelper
 
   setup do
     setup_monthly_review
@@ -198,7 +199,44 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert series.reload.active?
   end
 
-  PIXEL_PNG = Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+  test "r opens the suggested rule prefilled, and the saved rule makes the card rule-handled" do
+    shop = @family.merchants.create!(name: "Unknown Shop GmbH")
+    @plain.transaction.update!(merchant: shop)
+    [ Date.new(2026, 8, 4), Date.new(2026, 9, 4), Date.new(2026, 9, 18) ].each do |date|
+      past = create_transaction(account: @account, date: date, name: "Unknown shop", amount: 20, merchant: shop, category: @category)
+      past.update_columns(reviewed_at: date.to_time)
+    end
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_selector "[data-review-rule-suggestion]", text: "Unknown Shop GmbH → #{@category.name}, 3× in 2 months"
+
+    send_keys [ :shift, "r" ]
+    assert_no_selector "[data-review-rule-suggestion]"
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    send_keys "r"
+
+    within "dialog" do
+      assert_equal "transaction_merchant", find("[data-rules-target='conditionsList'] select[name$='[condition_type]']").value
+      assert_equal shop.id, find("[data-rules-target='conditionsList'] select[name$='[value]']").value
+      assert_equal "set_transaction_category", find("[data-rules-target='actionsList'] select[name$='[action_type]']", match: :first).value
+      click_on "Create Rule"
+    end
+    assert_text "Confirm changes"
+    click_on "Confirm changes"
+
+    assert_no_selector "dialog[open]"
+    assert_selector "[data-review-card-entry-id='#{@plain.id}']"
+    rule = @family.rules.order(:created_at).last
+    assert rule.active?
+
+    perform_enqueued_jobs(only: RuleJob)
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_selector "[data-review-rule-badge] a[href='#{edit_rule_path(rule)}']"
+    assert_no_selector "[data-review-rule-suggestion]"
+  end
+
+  PIXEL_PNG =Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
 
   private
     # Scrolling is smooth, so wait for it to move.
