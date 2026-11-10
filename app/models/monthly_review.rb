@@ -16,6 +16,14 @@ class MonthlyReview < ApplicationRecord
         family.monthly_reviews.create_or_find_by!(start_date: start_date) { |review| review.end_date = end_date }
     end
 
+    # The stored review of the month containing `date`, else an unsaved one,
+    # for pages that only read it.
+    def find_or_build(family, date)
+      start_date, end_date = Budget.period_for(date, family: family)
+      family.monthly_reviews.find_by(start_date: start_date) ||
+        new(family_id: family.id, start_date: start_date, end_date: end_date)
+    end
+
     # The transaction entries in `dates` that belong in a review, unordered.
     # `entries` is the caller's access-scoped relation.
     def reviewable_entries(entries, dates, include_transfers: false)

@@ -62,6 +62,33 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "months outside the budget range 404 without creating a review" do
+    assert_no_difference "MonthlyReview.count" do
+      get monthly_review_url("jan-1900")
+      assert_response :not_found
+
+      get monthly_review_card_url("jan-1900")
+      assert_response :not_found
+
+      patch monthly_review_url("jan-1900"), params: { monthly_review: { notes: "Too old" } }
+      assert_response :not_found
+    end
+  end
+
+  test "opening a month's summary creates no review until something is saved" do
+    @review.destroy!
+
+    assert_no_difference "MonthlyReview.count" do
+      get monthly_review_url(@review)
+    end
+    assert_response :success
+
+    assert_difference "MonthlyReview.count", 1 do
+      patch monthly_review_url(@review), params: { monthly_review: { notes: "First note" } }
+    end
+    assert_equal "First note", MonthlyReview.for(@family, @review.start_date).notes
+  end
+
   test "saving the note keeps the month open" do
     patch monthly_review_url(@review), params: { monthly_review: { notes: "Car insurance went up" } }
 

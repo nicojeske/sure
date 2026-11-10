@@ -3,7 +3,8 @@
 class MonthlyReviewsController < ApplicationController
   include MonthlyReviewScoped
 
-  skip_before_action :set_monthly_review, only: :index
+  skip_before_action :set_monthly_review, only: %i[index show]
+  before_action :find_or_build_monthly_review, only: :show
   before_action :require_non_guest!, only: :update
   before_action :require_review_editor!, only: :update
 
@@ -38,6 +39,12 @@ class MonthlyReviewsController < ApplicationController
   end
 
   private
+    # Reading a summary stores nothing; the review row is created when its
+    # note or completion is first saved.
+    def find_or_build_monthly_review
+      @monthly_review = MonthlyReview.find_or_build(Current.family, review_date)
+    end
+
     # The note and completion belong to the people who review: a member who
     # can only read shared accounts has no card to review either.
     def can_edit_review?
