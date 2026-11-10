@@ -32,7 +32,14 @@ module Assistant
     Function::GetBillAudit,
     Function::CreateBill,
     Function::UpdateBill,
-    Function::RecordBillPayment
+    Function::RecordBillPayment,
+    # Monthly review: walking a month's transactions with AI proposals and
+    # signing the month off.
+    Function::GetMonthlyReview,
+    Function::SuggestTransactionAnnotation,
+    Function::ApplyTransactionAnnotation,
+    Function::MarkTransactionsReviewed,
+    Function::UpdateMonthlyReview
   ].freeze
 
   # Guests may view family configuration but not change it, so these tools are
