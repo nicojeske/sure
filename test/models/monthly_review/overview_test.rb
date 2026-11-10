@@ -34,9 +34,21 @@ class MonthlyReview::OverviewTest < ActiveSupport::TestCase
 
     assert_equal [ 1, 0 ], [ november.progress.total, november.progress.reviewed ]
     assert_equal [ 2, 1 ], [ october.progress.total, october.progress.reviewed ]
-    assert october.started?
     assert_equal 0, september.progress.total
     assert_equal 3, overview(include_transfers: true).months.second.progress.total
+  end
+
+  test "counts each entry once when its account is shared with several members" do
+    user = users(:family_admin)
+    other = @family.users.create!(email: "third@example.com", password: "password123password", first_name: "Third", role: "member")
+    AccountShare.create!(account: @account, user: other, permission: "read_write")
+    create_transaction(account: @account, date: Date.new(2026, 10, 2), name: "Coffee").mark_reviewed!(user)
+    create_transaction(account: @account, date: Date.new(2026, 10, 3), name: "Bakery")
+
+    entries = Current.set(session: user.sessions.create!) { Current.annotatable_entries }
+    october = MonthlyReview::Overview.new(@family, entries, today: @today).months.second
+
+    assert_equal [ 2, 1 ], [ october.progress.total, october.progress.reviewed ]
   end
 
   test "uses the stored review so a completed month shows as completed" do

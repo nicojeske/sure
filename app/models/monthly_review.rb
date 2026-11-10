@@ -27,6 +27,19 @@ class MonthlyReview < ApplicationRecord
 
       include_transfers ? scope : scope.where.not(transactions: { kind: Transaction::TRANSFER_KINDS })
     end
+
+    # { date => Progress } for the reviewable entries in `dates`. Counts are
+    # distinct because access-scoped relations join account shares.
+    def progress_by_date(entries, dates, include_transfers: false)
+      reviewable_entries(entries, dates, include_transfers: include_transfers)
+        .group("entries.date")
+        .pluck(
+          Arel.sql("entries.date"),
+          Arel.sql("COUNT(DISTINCT entries.id)"),
+          Arel.sql("COUNT(DISTINCT entries.id) FILTER (WHERE entries.reviewed_at IS NOT NULL)")
+        )
+        .to_h { |date, total, reviewed| [ date, Progress.new(total: total, reviewed: reviewed) ] }
+    end
   end
 
   def to_param
@@ -67,8 +80,13 @@ class MonthlyReview < ApplicationRecord
   end
 
   def progress(entries, include_transfers: false)
-    scope = month_entries(entries, include_transfers: include_transfers).unscope(:order)
-    Progress.new(total: scope.count, reviewed: scope.reviewed.count)
+    progress_from(self.class.progress_by_date(entries, period.date_range, include_transfers: include_transfers))
+  end
+
+  # This month's progress out of `progress_by_date` counts that may cover
+  # more than the month.
+  def progress_from(progress_by_date)
+    Progress.sum(progress_by_date.filter_map { |date, progress| progress if date.between?(start_date, end_date) })
   end
 
   # Queues a background run of receipt-backed suggestions for `user`'s queue.
@@ -150,6 +168,10 @@ class MonthlyReview < ApplicationRecord
   end
 
   Progress = Data.define(:total, :reviewed) do
+    def self.sum(progresses)
+      new(total: progresses.sum(&:total), reviewed: progresses.sum(&:reviewed))
+    end
+
     def remaining = total - reviewed
     def done? = remaining.zero?
   end
