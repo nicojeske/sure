@@ -54,7 +54,8 @@ class Provider::Openai::AnnotationSuggester
         Output JSON only, exactly this shape (no markdown, no explanation):
         {"name": ..., "merchant_name": ..., "category_name": ..., "tag_names": [...], "notes": ...,
          "receipt_total": ..., "split": null or [{"name": ..., "amount": ..., "category_name": ...,
-         "tag_names": [...], "notes": ...}], "confidence": ..., "rationale": ...}
+         "tag_names": [...], "notes": ...}], "confidence": ..., "rationale": ...,
+         "rule_proposal": null or #{Provider::TransactionAnnotationPrompt::RULE_PROPOSAL_SHAPE}}
       INSTRUCTIONS
     end
 

@@ -78,7 +78,32 @@ class Provider::Anthropic::AnnotationSuggester
               }
             },
             confidence: nullable_number,
-            rationale: nullable_string
+            rationale: nullable_string,
+            rule_proposal: {
+              type: [ "object", "null" ],
+              properties: {
+                conditions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { field: { type: "string", enum: %w[name merchant amount] }, operator: { type: "string" }, value: { type: "string" } },
+                    required: %w[field operator value],
+                    additionalProperties: false
+                  }
+                },
+                actions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { field: { type: "string", enum: %w[category tags merchant name] }, value: { type: [ "string", "array" ], items: { type: "string" } } },
+                    required: %w[field value],
+                    additionalProperties: false
+                  }
+                }
+              },
+              required: %w[conditions actions],
+              additionalProperties: false
+            }
           },
           required: Provider::TransactionAnnotationPrompt::OUTPUT_KEYS,
           additionalProperties: false
