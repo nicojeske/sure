@@ -2403,7 +2403,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_130000) do
     t.uuid "family_id", null: false
     t.string "pattern_key", null: false
     t.datetime "updated_at", null: false
-    t.uuid "user_id", null: false
+    t.uuid "user_id"
     t.index ["family_id", "pattern_key"], name: "index_rule_suggestion_dismissals_on_family_id_and_pattern_key", unique: true
     t.index ["family_id"], name: "index_rule_suggestion_dismissals_on_family_id"
     t.index ["user_id"], name: "index_rule_suggestion_dismissals_on_user_id"
@@ -3376,7 +3376,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_130000) do
   add_foreign_key "rule_groups", "families"
   add_foreign_key "rule_runs", "rules"
   add_foreign_key "rule_suggestion_dismissals", "families"
-  add_foreign_key "rule_suggestion_dismissals", "users"
+  add_foreign_key "rule_suggestion_dismissals", "users", on_delete: :nullify
   add_foreign_key "rules", "families"
   add_foreign_key "rules", "rule_groups", on_delete: :nullify
   add_foreign_key "security_prices", "securities"
