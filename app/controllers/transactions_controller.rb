@@ -79,8 +79,7 @@ class TransactionsController < ApplicationController
     # Preload which entries on this page are split parents (have children) to avoid N+1
     @split_parent_entry_ids = Entry.split_parent_ids_among(entry_ids)
 
-    # Preload receipt-link status for this page's rows to avoid an N+1 from Transaction#receipt_linked?
-    load_receipt_link_indicators(@transactions)
+    @displayed_receipts = Transaction.displayed_receipts_for(@transactions)
 
     # Counts what the categorize wizard can act on, so read-only shares don't
     # keep the "Categorize" menu item visible.
@@ -579,28 +578,6 @@ class TransactionsController < ApplicationController
   end
 
   private
-    # Populates @primary_receipt_links (transaction_id => the "best" linked ReceiptLink, rendered
-    # as the receipt pill and its preview-modal link) and @conflicting_receipt_transaction_ids
-    # (rendered with a warning tone when the linked document's structured total, if any, differs
-    # from the transaction amount) for a page of already-loaded transactions, in one query instead
-    # of Transaction#linked_receipt per row.
-    def load_receipt_link_indicators(transactions)
-      transaction_ids = transactions.map(&:id)
-      @primary_receipt_links = {}
-      @conflicting_receipt_transaction_ids = Set.new
-      return if transaction_ids.empty?
-
-      transactions_by_id = transactions.index_by(&:id)
-
-      ReceiptLink.linked.where(transaction_id: transaction_ids).ordered.each do |link|
-        # `.ordered` (score desc) means the first link seen per transaction is the "best" one.
-        @primary_receipt_links[link.transaction_id] ||= link
-
-        entry = transactions_by_id[link.transaction_id]&.entry
-        @conflicting_receipt_transaction_ids << link.transaction_id if link.amount_conflicts_with?(entry)
-      end
-    end
-
     # Scoped by user (not just family) because Current.annotatable_entries is
     # user-scoped for family sharing (see Current#annotatable_entries).
     #

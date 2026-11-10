@@ -151,8 +151,7 @@
                         row re-render (see transactions/_receipt_pill). %>
                     <%= render "transactions/receipt_pill",
                           transaction: transaction,
-                          receipt_link: @primary_receipt_links ? @primary_receipt_links[transaction.id] : transaction.linked_receipt,
-                          conflict: @conflicting_receipt_transaction_ids&.include?(transaction.id) %>
+                          receipt_link: displayed_receipt_for(transaction) %>
 
                   </div>
 

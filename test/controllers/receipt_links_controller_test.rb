@@ -168,6 +168,32 @@ class ReceiptLinksControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(transactions(:one), :receipt_pill)
   end
 
+  test "destroy on a split parent also refreshes its children's receipt pills" do
+    entry = entries(:transaction)
+    children = entry.split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ])
+
+    delete transaction_receipt_link_path(entry, receipt_links(:linked_one))
+
+    assert_response :success
+    children.each do |child|
+      assert_select "turbo-stream[action=replace][target=?]", ActionView::RecordIdentifier.dom_id(child.entryable, :receipt_pill)
+    end
+  end
+
+  test "unlinking a split child's own receipt falls back to its parent's in the child's pill" do
+    child = entries(:transaction).split!([ { name: "Part 1", amount: 6, category_id: nil }, { name: "Part 2", amount: 4, category_id: nil } ]).first
+    own_link = ReceiptLink.create!(
+      transaction_record: child.entryable, paperless_connection: @connection, document_id: 4242, status: "linked", source: "manual"
+    )
+
+    delete transaction_receipt_link_path(child, own_link)
+
+    assert_response :success
+    pill_stream = css_select("turbo-stream[action=replace][target='#{ActionView::RecordIdentifier.dom_id(child.entryable, :receipt_pill)}']").first
+    assert pill_stream, "expected the child's receipt pill to be refreshed"
+    assert_includes pill_stream.to_html, paperless_document_path(receipt_links(:linked_one).document_id)
+  end
+
   test "a user without annotate permission on the account is refused" do
     sign_in users(:family_member)
     receipt_link = receipt_links(:dismissed_transfer_in)

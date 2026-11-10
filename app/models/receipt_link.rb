@@ -51,6 +51,12 @@ class ReceiptLink < ApplicationRecord
   # drives the warning-toned receipt pill. Shared by TransactionsController's per-page preload
   # and the standalone rendering path so the two can't drift.
   # `tolerance` lets the monthly review accept small rounding/fee differences.
+  # Checked against the entry the link belongs to, which for a split child
+  # showing its parent's receipt is the parent's.
+  def amount_conflict?
+    amount_conflicts_with?(transaction_record&.entry)
+  end
+
   def amount_conflicts_with?(entry, tolerance: 0)
     return false if document_amount.blank? || entry.nil?
 

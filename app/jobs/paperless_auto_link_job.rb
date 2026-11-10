@@ -49,17 +49,14 @@ class PaperlessAutoLinkJob < ApplicationJob
       )
 
       # The row's receipt pill lives in the transactions list, outside the drawer's receipt_links
-      # frame above — broadcast a second replace so a background match shows up there too, live.
-      link = receipt_links.detect(&:linked?)
-      pill_html = ApplicationController.render(
-        partial: "transactions/receipt_pill",
-        locals: { transaction: transaction, receipt_link: link, conflict: link&.amount_conflicts_with?(entry) }
-      )
-
-      Turbo::StreamsChannel.broadcast_replace_to(
-        entry.account.family,
-        target: dom_id(transaction, :receipt_pill),
-        html: pill_html
-      )
+      # frame above — broadcast a replace per pill so a background match shows up there too, live.
+      # A split parent's children show its receipt, so theirs are refreshed as well.
+      transaction.self_and_split_children.each do |pill_transaction|
+        Turbo::StreamsChannel.broadcast_replace_to(
+          entry.account.family,
+          target: dom_id(pill_transaction, :receipt_pill),
+          html: ApplicationController.render(partial: "transactions/receipt_pill", locals: { transaction: pill_transaction })
+        )
+      end
     end
 end

@@ -178,6 +178,7 @@ class AccountsController < ApplicationController
     end
 
     @transfer_hint_transaction_ids = Current.family.transaction_ids_with_transfer_candidates(transactions, user: Current.user)
+    @displayed_receipts = Transaction.displayed_receipts_for(transactions)
 
     entry_ids = @entries.map(&:id)
     @split_parent_entry_ids = Entry.split_parent_ids_among(entry_ids)

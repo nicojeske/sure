@@ -39,7 +39,7 @@ class ReceiptLinksController < ApplicationController
     render turbo_stream: [
       turbo_stream.replace(dom_id(@entry.transaction, :receipt_links), partial: "receipt_links/index"),
       turbo_stream.replace("modal", view_context.turbo_frame_tag("modal")),
-      receipt_pill_stream
+      *receipt_pill_streams
     ]
   end
 
@@ -97,23 +97,19 @@ class ReceiptLinksController < ApplicationController
 
       render turbo_stream: [
         turbo_stream.replace(dom_id(@entry.transaction, :receipt_links), partial: "receipt_links/index"),
-        receipt_pill_stream
+        *receipt_pill_streams
       ]
     end
 
     # Refreshes the row's receipt pill (see transactions/_receipt_pill) alongside the drawer's
     # receipt_links frame — the pill lives outside that frame, in the transactions list, so it
     # would otherwise stay stale until a full page reload. Harmless no-op when the mutation
-    # didn't touch linked state (e.g. dismissing a suggestion).
-    def receipt_pill_stream
-      transaction = @entry.transaction
-      link = @receipt_links.detect(&:linked?)
-
-      turbo_stream.replace(
-        dom_id(transaction, :receipt_pill),
-        partial: "transactions/receipt_pill",
-        locals: { transaction: transaction, receipt_link: link, conflict: link&.amount_conflicts_with?(@entry) }
-      )
+    # didn't touch linked state (e.g. dismissing a suggestion). A split parent's children show
+    # its receipt, so their pills are refreshed too.
+    def receipt_pill_streams
+      @entry.transaction.self_and_split_children.map do |transaction|
+        turbo_stream.replace(dom_id(transaction, :receipt_pill), partial: "transactions/receipt_pill", locals: { transaction: transaction })
+      end
     end
 
     def receipt_search

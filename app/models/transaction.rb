@@ -436,6 +436,48 @@ class Transaction < ApplicationRecord
     receipt_links.linked.exists?
   end
 
+  # The receipt link the transaction's pill shows. Splitting leaves the link on
+  # the hidden parent, so a split child shows its parent's when it has none of
+  # its own.
+  def displayed_receipt
+    linked_receipt || split_parent_transaction&.linked_receipt
+  end
+
+  # #displayed_receipt for a page of loaded transactions (with their entries),
+  # as { transaction_id => ReceiptLink }, in a fixed number of queries.
+  def self.displayed_receipts_for(transactions)
+    return {} if transactions.empty?
+
+    owners = transactions.index_by(&:id)
+    parent_entry_ids = transactions.filter_map { |transaction| transaction.entry&.parent_entry_id }.uniq
+    parent_entries = parent_entry_ids.any? ? Entry.where(id: parent_entry_ids).includes(:entryable).to_a : []
+    parent_entries.each do |parent|
+      next unless parent.transaction?
+
+      parent.entryable.association(:entry).target = parent
+      owners[parent.entryable_id] = parent.entryable
+    end
+    parent_transaction_ids = parent_entries.to_h { |parent| [ parent.id, parent.entryable_id ] }
+
+    # `.ordered` (score desc) puts each transaction's best link first, as in #linked_receipt.
+    best_links = ReceiptLink.linked.where(transaction_id: owners.keys).ordered
+      .group_by(&:transaction_id).transform_values(&:first)
+    # ReceiptLink#amount_conflict? reads the owner's entry; hand it the loaded one.
+    best_links.each_value { |link| link.association(:transaction_record).target = owners[link.transaction_id] }
+
+    transactions.each_with_object({}) do |transaction, links|
+      link = best_links[transaction.id] || best_links[parent_transaction_ids[transaction.entry&.parent_entry_id]]
+      links[transaction.id] = link if link
+    end
+  end
+
+  # This transaction and its split children: the rows whose receipt pill shows
+  # this transaction's receipt. Loaded fresh, so no cached receipt association
+  # outlives a link change.
+  def self_and_split_children
+    Transaction.joins(:entry).merge(Entry.where(id: entry.id).or(Entry.where(parent_entry_id: entry.id)))
+  end
+
   # The bank's name for the transaction, saved before the first AI rename.
   def original_name
     extra&.dig("original_name").presence
@@ -657,6 +699,11 @@ class Transaction < ApplicationRecord
   end
 
   private
+    def split_parent_transaction
+      parent = entry&.parent_entry
+      parent.entryable if parent&.transaction?
+    end
+
     # Moves the pending transaction's attachments (the attachment rows themselves, so the
     # blobs are not purged with the pending entry) and adds its tags to the posted one.
     def carry_over_user_additions(from:, to:)
