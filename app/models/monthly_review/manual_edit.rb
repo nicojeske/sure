@@ -1,33 +1,31 @@
-# Saves the values typed into a review card's edit mode as the user's own
-# edit (locked, user-modified, like the transaction drawer) and marks the
-# entry reviewed. Only the fields this user may change are written, and ids
-# are kept to the family's own categories, merchants and tags.
+# Saves a review card's edit mode. The typed values become a proposal of
+# their own (marked "edited", from the same source as the proposal the card
+# showed) that is applied like an accepted one, so undo restores the previous
+# values from its snapshot. Ids are kept to the family's own categories,
+# merchants and tags; a blank field leaves the value as it is.
 class MonthlyReview::ManualEdit
-  attr_reader :entry, :user
+  attr_reader :entry, :user, :proposal
 
-  def initialize(entry, user:)
+  # proposal: the suggestion the card showed, if any.
+  def initialize(entry, user:, proposal: nil)
     @entry = entry
     @user = user
+    @proposal = proposal
   end
 
-  # attributes: name, notes, category_id, merchant_id, tag_ids (any subset).
+  # attributes: the edit form's entry params, i.e. name, notes and
+  # entryable_attributes (category_id, merchant_id, tag_ids).
   def save!(attributes)
-    attributes = attributes.to_h.symbolize_keys
-    permitted = TransactionAnnotationSuggestion::Applier.permitted_fields(entry, user)
-    raise TransactionAnnotationSuggestion::Applier::Error, "Not allowed to annotate this transaction" if permitted.empty?
+    attributes = attributes.to_h.with_indifferent_access
+    values = payload_for(attributes.except(:entryable_attributes).merge(attributes.fetch(:entryable_attributes, {})))
 
-    entry_values = {}
-    entry_values[:name] = attributes[:name] if permitted.include?("name") && attributes[:name].present?
-    entry_values[:notes] = attributes[:notes].presence if permitted.include?("notes") && attributes.key?(:notes)
-    transaction_values = transaction_values(attributes, permitted)
-
-    Entry.transaction do
-      entry.update!(entry_values.merge(entryable_attributes: transaction_values.merge(id: entry.entryable_id)))
-      entry.lock_saved_attributes!
-      entry.mark_user_modified!
-      entry.transaction.lock_attr!(:tag_ids) if transaction_values.key?(:tag_ids)
-      entry.mark_reviewed!(user)
-    end
+    suggestion = TransactionAnnotationSuggestion.create!(
+      entry: entry, family: family, status: "ready",
+      source: proposal&.source || "hint", hint_text: proposal&.hint_text, receipt_link: proposal&.receipt_link,
+      input_hash: TransactionAnnotationSuggestion.input_hash_for(:edit, SecureRandom.uuid),
+      payload: values.merge("edited" => true)
+    )
+    suggestion.apply!(user: user, fields: suggestion.proposed_fields)
   end
 
   private
@@ -35,21 +33,13 @@ class MonthlyReview::ManualEdit
       entry.account.family
     end
 
-    def transaction_values(attributes, permitted)
-      values = {}
-
-      if permitted.include?("category") && attributes.key?(:category_id) && entry.transaction.category_editable?
-        values[:category_id] = attributes[:category_id].presence && family.categories.find(attributes[:category_id]).id
-      end
-
-      if permitted.include?("merchant") && attributes.key?(:merchant_id)
-        values[:merchant_id] = attributes[:merchant_id].presence && family.assignable_merchants_for(user).find(attributes[:merchant_id]).id
-      end
-
-      if permitted.include?("tags") && attributes.key?(:tag_ids)
-        values[:tag_ids] = family.tags.where(id: Array(attributes[:tag_ids]).compact_blank).pluck(:id)
-      end
-
-      values
+    def payload_for(attributes)
+      {
+        "name" => attributes[:name].presence,
+        "notes" => attributes[:notes].presence,
+        "category_id" => attributes[:category_id].presence && family.categories.find(attributes[:category_id]).id,
+        "merchant_id" => attributes[:merchant_id].presence && family.assignable_merchants_for(user).find(attributes[:merchant_id]).id,
+        "tag_ids" => family.tags.where(id: Array(attributes[:tag_ids]).compact_blank).pluck(:id)
+      }
     end
 end

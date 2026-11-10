@@ -65,6 +65,39 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_text I18n.t("monthly_reviews.cards.finished.skipped", count: 1)
   end
 
+  test "edit mode starts with the proposal, its summary does not accept, and undo restores" do
+    long_receipt = ([ "BEAN BAR" ] + (1..80).map { |line| "Line #{line} 0,10" }).join("\n")
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => long_receipt })
+
+    visit monthly_review_card_path(@review)
+    assert_card @coffee, state: "proposal"
+    assert_text "Line 1 0,10"
+
+    summary = find("[data-review-card-target='edit'] summary")
+    summary.send_keys(:enter)
+    assert_selector "[data-review-card-target='edit'][open]"
+    assert_card @coffee, state: "proposal"
+
+    name = find_field("entry[name]")
+    assert_equal "Flat white", name.value
+
+    # Shift+Down scrolls the receipt even from inside the edit form.
+    name.send_keys([ :shift, :arrow_down ])
+    assert receipt_scrolled?, "expected the receipt text to scroll"
+
+    name.fill_in(with: "Flat white large")
+    name.send_keys(:enter)
+    assert_card @plain, state: "empty"
+    assert_equal "Flat white large", @coffee.reload.name
+
+    send_keys [ :alt, :arrow_left ]
+    assert_card @coffee, state: "reviewed"
+    send_keys "u"
+    assert_card @coffee, state: "proposal"
+    assert_equal "CARD 4711 COFFEE", @coffee.reload.name
+    assert_not @coffee.reviewed?
+  end
+
   test "Enter in the hint input sends the hint once" do
     calls = Concurrent::AtomicFixnum.new
     result = Provider::LlmConcept::TransactionAnnotation.new(
@@ -92,6 +125,18 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
   end
 
   private
+    # Scrolling is smooth, so wait for it to move.
+    def receipt_scrolled?
+      Timeout.timeout(Capybara.default_max_wait_time) do
+        sleep 0.1 until evaluate_script(<<~JS) > 0
+          Math.max(0, ...[...document.querySelectorAll("[data-receipt-scroll]")].filter((el) => el.offsetParent).map((el) => el.scrollTop))
+        JS
+        true
+      end
+    rescue Timeout::Error
+      false
+    end
+
     def send_keys(*keys)
       find("body").send_keys(*keys)
     end

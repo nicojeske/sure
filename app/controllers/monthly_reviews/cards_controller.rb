@@ -75,7 +75,10 @@ class MonthlyReviews::CardsController < ApplicationController
     end
 
     def edit!
-      MonthlyReview::ManualEdit.new(@entry, user: Current.user).save!(edit_params)
+      unless @entry.reviewed?
+        proposal = @entry.annotation_suggestions.find_by(id: params[:suggestion_id]) if params[:suggestion_id].present?
+        MonthlyReview::ManualEdit.new(@entry, user: Current.user, proposal: proposal).save!(edit_params)
+      end
       redirect_to_next
     end
 
@@ -85,7 +88,6 @@ class MonthlyReviews::CardsController < ApplicationController
     end
 
     def edit_params
-      permitted = params.require(:entry).permit(:name, :notes, entryable_attributes: [ :category_id, :merchant_id, { tag_ids: [] } ])
-      permitted.slice(:name, :notes).merge(permitted.fetch(:entryable_attributes, {}).to_h).to_h
+      params.require(:entry).permit(:name, :notes, entryable_attributes: [ :category_id, :merchant_id, { tag_ids: [] } ])
     end
 end

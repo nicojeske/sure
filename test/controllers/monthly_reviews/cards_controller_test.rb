@@ -253,6 +253,50 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert @first.reviewed?
   end
 
+  test "edit mode starts with the proposed values" do
+    link = link_receipt(@first, document_id: 1)
+    category = categories(:food_and_drink)
+    suggestion = ready_suggestion(@first, receipt_link: link, name: "Espresso beans", category_id: category.id)
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+
+    assert_select "[data-review-card-target='edit']" do
+      assert_select "input[name='suggestion_id'][value='#{suggestion.id}']"
+      assert_select "input[name='entry[name]'][value='Espresso beans']"
+      assert_select "input[name='entry[entryable_attributes][category_id]'][value='#{category.id}']"
+    end
+  end
+
+  test "undo after edit restores the previous values" do
+    link = link_receipt(@first, document_id: 1)
+    suggestion = ready_suggestion(@first, receipt_link: link, name: "Espresso beans")
+    category = categories(:food_and_drink)
+
+    patch monthly_review_card_url(@review), params: {
+      decision: "edit", entry_id: @first.id, suggestion_id: suggestion.id,
+      entry: { name: "Flat white", notes: "with Anna", entryable_attributes: { category_id: category.id } }
+    }
+    assert_equal "Flat white", @first.reload.name
+    assert suggestion.reload.ready?
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+    assert_select "[data-review-card-state='reviewed']"
+
+    patch monthly_review_card_url(@review), params: { decision: "undo", entry_id: @first.id }
+
+    assert_redirected_to monthly_review_card_path(@review, entry_id: @first.id)
+    @first.reload
+    assert_equal "Coffee shop", @first.name
+    assert_nil @first.notes
+    assert_nil @first.transaction.category
+    assert_not @first.locked?(:name)
+    assert_not @first.reviewed?
+
+    follow_redirect!
+    assert_select "[data-review-card-state='proposal']"
+    assert_select "input[name='suggestion_id'][value='#{suggestion.id}']"
+  end
+
   test "keeps the transfers toggle in the redirect" do
     patch monthly_review_card_url(@review), params: { decision: "skip", entry_id: @first.id, include_transfers: "1" }
 

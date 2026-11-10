@@ -46,6 +46,19 @@ class MonthlyReview::Card
     state == :unread && review.prefetched_at.present? && review.prefetched_at > MonthlyReview::PREFETCH_INTERVAL.ago
   end
 
+  def edited?
+    suggestion&.edited? == true
+  end
+
+  # What edit mode starts with: the proposed value of a field the proposal
+  # changes, else the current one. A merchant that does not exist yet can't be
+  # picked, so it starts with the current merchant.
+  def edit_value(key)
+    field = fields.find { |candidate| candidate.key == key }
+    proposed = field.proposed if field.change?
+    proposed.nil? || proposed.is_a?(NewMerchant) ? field.current : proposed
+  end
+
   def original_name
     transaction.extra&.dig("original_name").presence
   end
@@ -176,19 +189,25 @@ class MonthlyReview::Card
     end
 
     def latest_hint_suggestion
-      suggestions.find { |suggestion| suggestion.hint? && suggestion.status.in?(OPEN_STATUSES) }
+      suggestions.find { |suggestion| suggestion.hint? && open_proposal?(suggestion) }
     end
 
     def receipt_suggestion
       return nil unless (link = receipt_choice.link)
 
       input_hash = Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link)
-      suggestions.find { |suggestion| suggestion.input_hash == input_hash && suggestion.status.in?(OPEN_STATUSES) }
+      suggestions.find { |suggestion| suggestion.input_hash == input_hash && open_proposal?(suggestion) }
     end
 
     def candidate_suggestion
       candidate_ids = receipt_choice.candidates.map(&:id)
-      suggestions.find { |suggestion| suggestion.receipt? && suggestion.receipt_link_id.in?(candidate_ids) && suggestion.status.in?(OPEN_STATUSES) }
+      suggestions.find { |suggestion| suggestion.receipt? && suggestion.receipt_link_id.in?(candidate_ids) && open_proposal?(suggestion) }
+    end
+
+    # A proposal the card may still offer. Edits saved from edit mode are
+    # offered only while the URL names them.
+    def open_proposal?(suggestion)
+      suggestion.status.in?(OPEN_STATUSES) && !suggestion.edited?
     end
 
     def learned_suggestion

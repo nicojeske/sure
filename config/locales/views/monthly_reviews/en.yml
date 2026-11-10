@@ -9,6 +9,7 @@ en:
         reviewed: Reviewed
         skip: Skip
       badges:
+        edited: Edited by you
         learned: Learned
         mismatch: The receipt total doesn't match this transaction, so no split is proposed.
         sources:

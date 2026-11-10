@@ -25,6 +25,10 @@ class TransactionAnnotationSuggestion < ApplicationRecord
 
   validates :input_hash, presence: true, uniqueness: { scope: :entry_id }
 
+  # Values saved from a review card's edit mode (payload "edited"), stored as
+  # a proposal so they apply and undo like one.
+  scope :not_edited, -> { where("NOT (payload @> ?)", { edited: true }.to_json) }
+
   # Identifies the input a proposal was built from: a Paperless document id
   # for receipts, the whitespace- and case-normalized text for hints.
   def self.input_hash_for(source, input)
@@ -71,6 +75,10 @@ class TransactionAnnotationSuggestion < ApplicationRecord
     suggestions = owner.annotation_suggestions.applied.where(updated_at: entry.reviewed_at..)
     suggestions = suggestions.where("applied_fields ->> 'split' = 'true'") if owner != entry
     suggestions.order(updated_at: :desc).first
+  end
+
+  def edited?
+    payload&.dig("edited") == true
   end
 
   # A pending row some run is still working on.

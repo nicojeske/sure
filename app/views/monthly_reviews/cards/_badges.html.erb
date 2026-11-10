@@ -6,7 +6,9 @@
 <% end %>
 <% if card.suggestion && (card.proposal? || card.reviewed?) %>
   <div class="flex min-w-0 items-center gap-2">
-    <% if card.learned? %>
+    <% if card.edited? %>
+      <%= render DS::Pill.new(label: t(".edited"), tone: :neutral, icon: "pencil", marker: false) %>
+    <% elsif card.learned? %>
       <%= render DS::Pill.new(label: t(".learned"), tone: :info, icon: "sparkles", marker: false) %>
     <% else %>
       <% confidence = review_confidence_label(card) %>

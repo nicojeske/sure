@@ -9,6 +9,7 @@ de:
         reviewed: Geprüft
         skip: Überspringen
       badges:
+        edited: Von dir bearbeitet
         learned: Gelernt
         mismatch: Die Summe des Belegs passt nicht zu dieser Buchung, deshalb wird keine Aufteilung vorgeschlagen.
         sources:
