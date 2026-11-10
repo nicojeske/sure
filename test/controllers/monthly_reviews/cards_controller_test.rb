@@ -98,6 +98,16 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-review-card-state='loading']"
   end
 
+  test "a field a rule set before rule ids were recorded is marked without a link" do
+    @first.transaction.enrich_attribute(:category_id, categories(:food_and_drink).id, source: "rule")
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+
+    assert_select "[data-review-rule-badge]", text: /Rule/
+    assert_select "[data-review-field-row='category'] [data-review-rule-set]", text: /set by rule/
+    assert_select "[data-review-rule-set] a", 0
+  end
+
   test "a ready receipt proposal shows the change with its checkbox" do
     link = link_receipt(@first, document_id: 1)
     ready_suggestion(@first, receipt_link: link, name: "Espresso beans")

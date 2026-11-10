@@ -16,7 +16,7 @@ class MonthlyReviews::CardsController < ApplicationController
     @entry = @list.current_entry(entry_id: params[:entry_id])
     return redirect_to(month_summary_path) unless @entry
 
-    @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id])
+    @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id], rule_provenance: @list.rule_provenance)
     @card.read_receipt_later!
 
     @next_entry = @list.next_unreviewed_after(@entry)

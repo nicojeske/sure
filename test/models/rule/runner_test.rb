@@ -24,6 +24,18 @@ class Rule::RunnerTest < ActiveSupport::TestCase
     assert_equal @groceries, @whole_foods.reload.category
   end
 
+  test "the rule that set a field is recorded with the enrichment" do
+    rule = create_rule("Groceries", "Whole Foods", category: @groceries, tags: [ @tag_a ], name: "Whole Foods")
+
+    run_active_rules
+
+    @whole_foods.reload
+    category = @whole_foods.data_enrichments.find_by!(source: "rule", attribute_name: "category_id")
+    tags = @whole_foods.data_enrichments.find_by!(source: "rule", attribute_name: "tag_ids")
+    name = @whole_foods.entry.data_enrichments.find_by!(source: "rule", attribute_name: "name")
+    assert_equal [ rule.id ] * 3, [ category, tags, name ].map { |enrichment| enrichment.metadata["rule_id"] }
+  end
+
   test "reordering changes which rule wins" do
     top = create_rule("Top", "Whole Foods", category: @groceries)
     bottom = create_rule("Bottom", "Whole Foods", category: @dining)

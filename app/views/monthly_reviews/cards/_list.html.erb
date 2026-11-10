@@ -10,7 +10,7 @@
     </div>
     <ol class="-mx-5 -mb-5 max-h-[75vh] overflow-y-auto divide-y divide-subdued border-t border-primary" data-review-card-target="list">
       <% list.each do |entry| %>
-        <%= render "monthly_reviews/cards/list_row", entry: entry, status: list.status(entry, current_entry) %>
+        <%= render "monthly_reviews/cards/list_row", entry: entry, status: list.status(entry, current_entry), rule_handled: list.rule_handled?(entry) %>
       <% end %>
     </ol>
   <% end %>

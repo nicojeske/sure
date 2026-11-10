@@ -244,7 +244,7 @@ module Enrichable
       )
 
       de.value = attribute_value
-      de.metadata = metadata
+      de.metadata = Rule::Provenance.metadata_for(source, metadata)
       de.save
     end
 
