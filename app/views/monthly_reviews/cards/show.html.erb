@@ -1,6 +1,6 @@
 <% content_for :title, t(".title", month: review_month_label(@monthly_review)) %>
 
-<%= tag.div class: "@container/page pb-48 md:pb-12",
+<%= tag.div class: "group/review @container/page pb-48 md:pb-12",
       data: {
         controller: "review-card",
         action: "keydown@document->review-card#key",
@@ -9,7 +9,8 @@
           nothing_to_undo: t(".messages.nothing_to_undo"),
           no_receipt: t(".messages.no_receipt"),
           first_card: t(".messages.first_card"),
-          still_reading: t(".messages.still_reading")
+          still_reading: t(".messages.still_reading"),
+          no_bill_suggestion: t(".messages.no_bill_suggestion")
         }.to_json
       } do %>
   <%= render DS::PageHeader.new(title: t(".heading", month: review_month_label(@monthly_review)), preview: true, size: :md, class: "mb-4") do |header| %>

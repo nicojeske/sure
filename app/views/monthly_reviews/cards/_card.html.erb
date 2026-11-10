@@ -38,6 +38,7 @@
   <%= render "monthly_reviews/cards/fields", card: card, form_id: form_id %>
   <%= render "monthly_reviews/cards/split", card: card, form_id: form_id %>
   <%= render "monthly_reviews/cards/badges", card: card %>
+  <%= render "monthly_reviews/cards/suggestions", card: card %>
 
   <% unless card.reviewed? %>
     <%= render "monthly_reviews/cards/edit", card: card %>

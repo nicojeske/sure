@@ -1,0 +1,32 @@
+<%# The bill this entry belongs to, or a detected series to confirm or
+    dismiss. The buttons post to the recurring series' own confirm and
+    dismiss, which redirect back to this card. %>
+<%# locals: (suggestion:) %>
+<% series = suggestion.series %>
+<% amount = tag.span(format_money(series.amount_money.abs), class: "privacy-sensitive") %>
+<%= render DS::Inset.new(class: "flex flex-wrap items-center gap-x-3 gap-y-2", data: { review_bill: series.status }) do %>
+  <%= icon "calendar-clock", size: "sm" %>
+  <p class="min-w-0 flex-1 text-primary">
+    <%= suggestion.active? ? t(".active_html", name: series.display_name, amount: amount) : t(".suggested_html", name: series.display_name, amount: amount) %>
+  </p>
+  <% if suggestion.suggested? %>
+    <div class="flex items-center gap-2">
+      <%= render DS::Button.new(
+            text: t(".confirm"),
+            variant: :outline,
+            size: :sm,
+            href: confirm_recurring_transaction_path(series),
+            method: :post,
+            data: { review_suggestion: "bill", review_suggestion_action: "accept" }
+          ) %>
+      <%= render DS::Button.new(
+            text: t(".dismiss"),
+            variant: :ghost,
+            size: :sm,
+            href: dismiss_recurring_transaction_path(series),
+            method: :post,
+            data: { review_suggestion: "bill", review_suggestion_action: "dismiss" }
+          ) %>
+    </div>
+  <% end %>
+<% end %>

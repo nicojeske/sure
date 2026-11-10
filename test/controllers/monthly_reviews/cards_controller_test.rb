@@ -120,6 +120,31 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-review-field-row]", 5
   end
 
+  test "a linked PDF receipt shows as the document in the receipt column and as a thumbnail in the card" do
+    link = link_receipt(@first, document_id: 7, mime_type: "application/pdf")
+    ready_suggestion(@first, receipt_link: link, name: "Espresso beans")
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] iframe[src='#{preview_paperless_document_path(7)}']"
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] img", 0
+    assert_select "[data-receipt-variant='narrow'] [data-receipt-view='document'] a[href='#{paperless_document_path(7)}'][data-turbo-frame='modal'] img[src='#{thumbnail_paperless_document_path(7)}']"
+    assert_select "[data-receipt-variant='narrow'] iframe", 0
+    %w[wide narrow].each do |variant|
+      assert_select "[data-receipt-variant='#{variant}'] [data-receipt-view='text'] turbo-frame[src*='receipt_text']"
+    end
+  end
+
+  test "a linked image receipt shows as an image in the receipt column" do
+    link = link_receipt(@first, document_id: 8, mime_type: "image/jpeg")
+    ready_suggestion(@first, receipt_link: link, name: "Espresso beans")
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] img[src='#{preview_paperless_document_path(8)}']"
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] iframe", 0
+  end
+
   test "opening a review with nothing left goes to the summary" do
     [ @first, @second, @third ].each { |entry| entry.mark_reviewed!(@user) }
 
@@ -349,6 +374,46 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     patch monthly_review_card_url(@review), params: { decision: "skip", entry_id: @first.id, include_transfers: "1" }
 
     assert_redirected_to monthly_review_card_path(@review, entry_id: @second.id, include_transfers: "1")
+  end
+
+  test "confirming a suggested bill from the card makes it a bill and refreshes the card" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Coffee shop", amount: 20, currency: "USD", expected_day_of_month: 3,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+    card_url = monthly_review_card_url(@review, entry_id: @first.id)
+    frame = { "Turbo-Frame" => "monthly_review_card" }
+
+    get card_url, headers: frame
+    assert_select "[data-review-suggestion='bill'][data-review-suggestion-action='accept']"
+    assert_select "form[action='#{confirm_recurring_transaction_path(series)}']"
+    assert_select "form[action='#{dismiss_recurring_transaction_path(series)}']"
+
+    post confirm_recurring_transaction_url(series), headers: frame.merge("Referer" => card_url)
+
+    assert_redirected_to card_url
+    assert series.reload.active?
+
+    follow_redirect!(headers: frame)
+    assert_select "[data-review-card-entry-id='#{@first.id}']"
+    assert_select "[data-review-bill='active']", text: /Coffee shop/
+    assert_select "[data-review-suggestion='bill']", count: 0
+  end
+
+  test "dismissing a suggested bill from the card removes the suggestion" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Coffee shop", amount: 20, currency: "USD", expected_day_of_month: 3,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+    card_url = monthly_review_card_url(@review, entry_id: @first.id)
+
+    post dismiss_recurring_transaction_url(series), headers: { "Referer" => card_url }
+
+    assert_redirected_to card_url
+    assert series.reload.ended?
+    follow_redirect!
+    assert_select "[data-review-bill]", count: 0
+    assert_select "[data-review-suggestion='bill']", count: 0
   end
 
   test "rejects an unknown decision" do

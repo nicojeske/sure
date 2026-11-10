@@ -208,6 +208,33 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_nil card.rule_for("name")
   end
 
+  test "an entry of an active bill shows the bill as context" do
+    bill = bill_series(name: "EDEKA SAGT DANKE", amount: 20, status: "active")
+
+    suggestion = card_for(@entry).bill_suggestion
+
+    assert_equal bill, suggestion.series
+    assert suggestion.active?
+    assert_not suggestion.suggested?
+  end
+
+  test "an entry of a suggested series offers it as a bill" do
+    detected = bill_series(name: "EDEKA SAGT DANKE", amount: 20, status: "suggested")
+
+    suggestion = card_for(@entry).bill_suggestion
+
+    assert_equal detected, suggestion.series
+    assert suggestion.suggested?
+  end
+
+  test "no bill suggestion without a series covering the entry, or for a paused one" do
+    bill_series(name: "Somewhere else", amount: 20, status: "active")
+    assert_nil card_for(@entry).bill_suggestion
+
+    bill_series(name: "EDEKA SAGT DANKE", amount: 20, status: "paused")
+    assert_nil card_for(@entry).bill_suggestion
+  end
+
   private
     def card_for(entry, suggestion_id: nil)
       MonthlyReview::Card.new(@review, entry, user: @user, suggestion_id: suggestion_id)
@@ -225,5 +252,13 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
       )
       Rule::Runner.new(@family, rules: [ rule ], execution_type: "manual").run
       rule
+    end
+
+    def bill_series(name:, amount:, status:)
+      @family.recurring_transactions.create!(
+        account: @account, name: name, amount: amount, currency: "USD", expected_day_of_month: 5,
+        last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current,
+        status: status, occurrence_count: 3
+      )
     end
 end

@@ -20,9 +20,10 @@ module MonthlyReviewTestHelper
     create_transaction(account: @account, date: Date.new(2026, 10, day), name: name, amount: amount, **attributes)
   end
 
-  def link_receipt(entry, document_id:, status: "linked", score: 0.9, title: "Receipt #{document_id}")
+  def link_receipt(entry, document_id:, status: "linked", score: 0.9, title: "Receipt #{document_id}", mime_type: "application/pdf")
     entry.transaction.receipt_links.create!(
-      paperless_connection: @connection, document_id: document_id, status: status, score: score, document_title: title
+      paperless_connection: @connection, document_id: document_id, status: status, score: score, document_title: title,
+      document_mime_type: mime_type
     )
   end
 

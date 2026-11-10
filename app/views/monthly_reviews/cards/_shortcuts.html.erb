@@ -1,7 +1,7 @@
 <% keys = [
      [ "/ h", "hint" ], [ "⏎", "accept" ], [ "#{t("monthly_reviews.cards.keys.ctrl")}+⏎", "reviewed" ], [ t("monthly_reviews.cards.keys.esc"), "skip" ],
-     [ "#{t("monthly_reviews.cards.keys.alt")}+←", "back" ], [ "1–5", "fields" ], [ "x", "split" ], [ "f", "find" ], [ "o", "open" ], [ "e", "edit" ],
-     [ "u", "undo" ], [ t("monthly_reviews.cards.keys.scroll"), "scroll" ]
+     [ "#{t("monthly_reviews.cards.keys.alt")}+←", "back" ], [ "1–5", "fields" ], [ "x", "split" ], [ "f", "find" ], [ "o", "open" ], [ "t", "text" ], [ "e", "edit" ],
+     [ "u", "undo" ], [ "b", "bill" ], [ "⇧B", "bill_dismiss" ], [ t("monthly_reviews.cards.keys.scroll"), "scroll" ]
    ] %>
 <div class="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary md:flex" aria-label="<%= t(".label") %>">
   <% keys.each do |key, action| %>

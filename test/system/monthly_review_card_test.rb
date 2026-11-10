@@ -2,7 +2,8 @@ require "application_system_test_case"
 
 # Steps through three review cards with the keyboard only: accept a receipt
 # proposal, go back and undo it, accept it again, skip a card without a
-# proposal and accept the last one, which ends on the month's summary.
+# proposal and accept the last one, which ends on the month's summary. The
+# receipt shows as its document; `t` switches to its text.
 class MonthlyReviewCardTest < ApplicationSystemTestCase
   include MonthlyReviewTestHelper
 
@@ -18,6 +19,7 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     @bakery = review_transaction("Bakery", day: 6)
 
     Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "BEAN BAR\nFlat white 4,80\nSUMME EUR 4,80" })
+    Provider::Paperless.any_instance.stubs(:file).returns([ PIXEL_PNG, "image/png" ])
     Family::BayesCategorizer.any_instance.stubs(:classify).returns(nil)
     forbid_llm
 
@@ -27,6 +29,7 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
   test "steps through three cards with the keyboard, including undo" do
     visit monthly_review_card_path(@review)
     assert_card @coffee, state: "proposal"
+    send_keys "t"
     assert_text "BEAN BAR"
     assert_field_rows
 
@@ -73,6 +76,7 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
 
     visit monthly_review_card_path(@review)
     assert_card @coffee, state: "proposal"
+    send_keys "t"
     assert_text "Line 1 0,10"
 
     summary = find("[data-review-card-target='edit'] summary")
@@ -98,6 +102,40 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_card @coffee, state: "proposal"
     assert_equal "CARD 4711 COFFEE", @coffee.reload.name
     assert_not @coffee.reviewed?
+  end
+
+  test "the receipt column embeds the document and t toggles its text" do
+    page.current_window.resize_to(1920, 1400)
+    visit monthly_review_card_path(@review)
+    assert_card @coffee, state: "proposal"
+
+    within "aside" do
+      assert_selector "[data-receipt-view='document'] iframe[src$='/paperless/documents/11/preview']"
+      assert_no_text "BEAN BAR"
+    end
+
+    send_keys "t"
+    within "aside" do
+      assert_text "BEAN BAR"
+      assert_no_selector "iframe"
+    end
+
+    send_keys "t"
+    within "aside" do
+      assert_selector "[data-receipt-view='document'] iframe"
+      assert_no_text "BEAN BAR"
+    end
+  end
+
+  test "in the card the receipt is a thumbnail that opens the full document" do
+    page.current_window.resize_to(1024, 1400)
+    visit monthly_review_card_path(@review)
+    assert_card @coffee, state: "proposal"
+
+    find("[data-receipt-variant='narrow'] a img[src$='/paperless/documents/11/thumbnail']").click
+    within "dialog" do
+      assert_selector "iframe[src$='/paperless/documents/11/preview']"
+    end
   end
 
   test "Enter in the hint input sends the hint once" do
@@ -143,6 +181,24 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_selector "[data-review-entry-id='#{@plain.id}'] [data-review-rule-handled]"
     assert_no_selector "[data-review-entry-id='#{@coffee.id}'] [data-review-rule-handled]"
   end
+
+  test "b confirms a suggested bill and the card shows it as the bill" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Bakery", amount: 20, currency: "USD", expected_day_of_month: 6,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+
+    visit monthly_review_card_path(@review, entry_id: @bakery.id)
+    assert_selector "[data-review-bill='suggested']"
+
+    send_keys "b"
+
+    assert_selector "[data-review-bill='active']"
+    assert_card @bakery, state: "empty"
+    assert series.reload.active?
+  end
+
+  PIXEL_PNG = Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
 
   private
     # Scrolling is smooth, so wait for it to move.

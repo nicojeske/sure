@@ -186,6 +186,18 @@ class MonthlyReview::Card
     rule_provenance.rule_set_fields(entry).values.compact.first
   end
 
+  # The suggestions strip's rows by kind, in display order. Each kind renders
+  # monthly_reviews/cards/suggestions/_<kind>.
+  def strip_suggestions
+    { bill: bill_suggestion }.compact
+  end
+
+  def bill_suggestion
+    return @bill_suggestion if defined?(@bill_suggestion)
+
+    @bill_suggestion = MonthlyReview::BillSuggestion.for(entry, user: user)
+  end
+
   private
     def rule_provenance
       @rule_provenance ||= MonthlyReview::RuleProvenance.new(review.family, [ entry ])

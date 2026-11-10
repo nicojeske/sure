@@ -62,6 +62,8 @@ en:
         title: Transactions
       list_row:
         rule_handled: Handled by a rule
+      receipt_document:
+        open: Open %{title}
       receipt_pane:
         loading: Loading the receipt text…
         none_html: No receipt · %{key} searches Paperless
@@ -69,6 +71,8 @@ en:
         pick: Pick a receipt
         pick_help: "↑↓ choose · ⏎ link and read"
         scroll: scroll
+        show_document: document
+        show_text: text
         untitled: 'Document #%{id}'
       receipt_search:
         help: "↑↓ choose · ⏎ link and read · Esc closes"
@@ -78,6 +82,8 @@ en:
       shortcuts:
         accept: accept
         back: back
+        bill: confirm bill
+        bill_dismiss: dismiss bill
         edit: edit
         fields: fields
         find: find receipt
@@ -88,11 +94,13 @@ en:
         scroll: scroll receipt
         skip: skip
         split: split
+        text: receipt text ⇄ document
         undo: undo
       show:
         heading: Review %{month}
         messages:
           first_card: This is the first transaction.
+          no_bill_suggestion: There is no suggested bill to confirm or dismiss for this transaction.
           no_receipt: This transaction has no receipt. Press f to search Paperless.
           nothing_proposed: Nothing is proposed for this field.
           nothing_to_undo: This transaction isn't reviewed, so there is nothing to undo.
@@ -134,6 +142,13 @@ en:
         unread: The receipt hasn't been read yet.
       strip:
         label: Nearby transactions
+      suggestions:
+        bill:
+          active_html: Part of the bill <strong>%{name}</strong>, expected %{amount}
+          confirm: Confirm as bill
+          dismiss: Dismiss
+          suggested_html: 'Looks like a recurring bill: <strong>%{name}</strong>, about %{amount}'
+        label: Suggestions
       update:
         failed: The transaction couldn't be updated. Reload the card and try again.
     prefetches:

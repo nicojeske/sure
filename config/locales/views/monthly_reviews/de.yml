@@ -62,6 +62,8 @@ de:
         title: Buchungen
       list_row:
         rule_handled: Von einer Regel bearbeitet
+      receipt_document:
+        open: "%{title} öffnen"
       receipt_pane:
         loading: Belegtext wird geladen…
         none_html: Kein Beleg · %{key} durchsucht Paperless
@@ -69,6 +71,8 @@ de:
         pick: Beleg auswählen
         pick_help: "↑↓ auswählen · ⏎ verknüpfen und lesen"
         scroll: scrollen
+        show_document: Dokument
+        show_text: Text
         untitled: 'Dokument #%{id}'
       receipt_search:
         help: "↑↓ auswählen · ⏎ verknüpfen und lesen · Esc schließt"
@@ -78,6 +82,8 @@ de:
       shortcuts:
         accept: übernehmen
         back: zurück
+        bill: Rechnung bestätigen
+        bill_dismiss: Rechnung verwerfen
         edit: bearbeiten
         fields: Felder
         find: Beleg suchen
@@ -88,11 +94,13 @@ de:
         scroll: Beleg scrollen
         skip: überspringen
         split: aufteilen
+        text: Belegtext ⇄ Dokument
         undo: rückgängig
       show:
         heading: "%{month} prüfen"
         messages:
           first_card: Das ist die erste Buchung.
+          no_bill_suggestion: Für diese Buchung gibt es keine vorgeschlagene Rechnung zum Bestätigen oder Verwerfen.
           no_receipt: Diese Buchung hat keinen Beleg. Mit f durchsuchst du Paperless.
           nothing_proposed: Für dieses Feld gibt es keinen Vorschlag.
           nothing_to_undo: Diese Buchung ist nicht geprüft, es gibt nichts rückgängig zu machen.
@@ -134,6 +142,13 @@ de:
         unread: Der Beleg wurde noch nicht gelesen.
       strip:
         label: Benachbarte Buchungen
+      suggestions:
+        bill:
+          active_html: Gehört zur Rechnung <strong>%{name}</strong>, erwartet %{amount}
+          confirm: Als Rechnung bestätigen
+          dismiss: Verwerfen
+          suggested_html: 'Sieht nach einer wiederkehrenden Rechnung aus: <strong>%{name}</strong>, etwa %{amount}'
+        label: Vorschläge
       update:
         failed: Die Buchung konnte nicht aktualisiert werden. Lade die Karte neu und versuche es erneut.
     prefetches:
