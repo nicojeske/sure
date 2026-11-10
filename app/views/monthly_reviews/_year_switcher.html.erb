@@ -1,0 +1,22 @@
+<%# The overview's ‹ year › switcher, offering only the years that can be reviewed. %>
+<%# locals: (overview:) %>
+<div class="flex items-center gap-1">
+  <% if overview.previous_year %>
+    <%= render DS::Link.new(
+          icon: "chevron-left",
+          variant: :ghost,
+          size: :sm,
+          href: monthly_reviews_path(year: overview.previous_year, **transfers_param),
+          "aria-label": t(".previous", year: overview.previous_year)
+        ) %>
+  <% end %>
+  <% if overview.next_year %>
+    <%= render DS::Link.new(
+          icon: "chevron-right",
+          variant: :ghost,
+          size: :sm,
+          href: monthly_reviews_path(year: overview.next_year, **transfers_param),
+          "aria-label": t(".next", year: overview.next_year)
+        ) %>
+  <% end %>
+</div>

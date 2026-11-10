@@ -21,7 +21,8 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
-  test "index lists the last twelve months with progress and a completed badge" do
+  test "index lists the current year's months with progress and a completed badge" do
+    create_transaction(account: @account, date: Date.new(2024, 3, 9), name: "Oldest")
     @first.mark_reviewed!(@user)
     MonthlyReview.for(@family, Date.new(2026, 9, 1)).complete!
 
@@ -30,11 +31,61 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_select "[data-review-month]", 12
+    assert_select "[data-review-month]", 11
+    assert_select "[data-review-month='nov-2026']"
+    assert_select "[data-review-month='jan-2026']"
     assert_select "[data-review-month='oct-2026'][href=?]", monthly_review_path(@review), text: /1 of 3 reviewed/
     assert_select "[data-review-month='oct-2026']", text: /In progress/
     assert_select "[data-review-month='sep-2026']", text: /Completed/
     assert_select "[data-breadcrumbs] > span:last-child", text: I18n.t("breadcrumbs.monthly_reviews")
+  end
+
+  test "index switches between the years from the oldest entry to the current one, keeping transfers" do
+    create_transaction(account: @account, date: Date.new(2024, 3, 9), name: "Oldest")
+
+    travel_to Date.new(2026, 11, 10) do
+      get monthly_reviews_url(year: 2025, include_transfers: "1")
+      assert_response :success
+      assert_select "[data-review-month]", 12
+      assert_select "[data-review-month='dec-2025'][href=?]", monthly_review_path("dec-2025", include_transfers: "1")
+      assert_select "a[href=?]", monthly_reviews_path(year: 2024, include_transfers: "1")
+      assert_select "a[href=?]", monthly_reviews_path(year: 2026, include_transfers: "1")
+      assert_select "a[href=?]", monthly_reviews_path(year: 2025), text: I18n.t("monthly_reviews.transfers_toggle.hide")
+
+      get monthly_reviews_url
+      assert_select "a[href=?]", monthly_reviews_path(year: 2025)
+      assert_select "a[href*='year=2027']", count: 0
+
+      get monthly_reviews_url(year: 1999)
+      assert_select "[data-review-month]", 10
+      assert_select "[data-review-month='mar-2024']"
+      assert_select "a[href*='year=2023']", count: 0
+    end
+  end
+
+  test "a month in an older year opens and links back to its year" do
+    create_transaction(account: @account, date: Date.new(2024, 3, 9), name: "Oldest")
+
+    travel_to Date.new(2026, 11, 10) do
+      get monthly_review_url("mar-2024")
+    end
+
+    assert_response :success
+    assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path(year: 2024), text: I18n.t("breadcrumbs.monthly_reviews")
+  end
+
+  test "with a custom month start, the month holding the oldest entry opens" do
+    @family.update!(month_start_day: 25)
+    create_transaction(account: @account, date: Date.new(2024, 3, 9), name: "Oldest")
+
+    travel_to Date.new(2026, 11, 10) do
+      get monthly_reviews_url(year: 2024)
+      assert_select "[data-review-month='feb-2024']"
+
+      get monthly_review_url("feb-2024")
+    end
+
+    assert_response :success
   end
 
   test "summary shows income, expense, review counts and the unreviewed transactions" do
@@ -53,7 +104,7 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /\$1,000\.00/
     assert_select "main", text: /\$60\.00/
     assert_select "a[href=?]", monthly_review_card_path(@review), text: /Continue review \(3 left\)/
-    assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path, text: I18n.t("breadcrumbs.monthly_reviews")
+    assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path(year: 2026), text: I18n.t("breadcrumbs.monthly_reviews")
     assert_select "[data-breadcrumbs] > span:last-child", text: "October 2026"
     assert_select "textarea[name='monthly_review[notes]']:not([autofocus])"
   end

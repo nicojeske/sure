@@ -167,7 +167,7 @@ en:
         failed: The receipt text couldn't be loaded from Paperless.
         label: Receipt text
     index:
-      months: Months
+      months: Months in %{year}
       subtitle: Go through each month's transactions one at a time, then note what stood out and complete the month.
       title: Monthly review
     cards_link:
@@ -218,3 +218,6 @@ en:
       completed: The month is completed.
       reopened: The month is open again.
       saved: The note was saved.
+    year_switcher:
+      next: Next year (%{year})
+      previous: Previous year (%{year})

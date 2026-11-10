@@ -146,7 +146,7 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
   test "the breadcrumbs lead back to the month's summary and the overview" do
     get monthly_review_card_url(@review)
 
-    assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path, text: I18n.t("breadcrumbs.monthly_reviews")
+    assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path(year: 2026), text: I18n.t("breadcrumbs.monthly_reviews")
     assert_select "[data-breadcrumbs] a[href=?]", monthly_review_path(@review), text: "October 2026"
     assert_select "[data-breadcrumbs] > span:last-child", text: I18n.t("breadcrumbs.monthly_review_cards")
   end

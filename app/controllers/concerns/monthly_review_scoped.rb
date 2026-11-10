@@ -17,12 +17,12 @@ module MonthlyReviewScoped
       @monthly_review = MonthlyReview.for(Current.family, review_date)
     end
 
-    # The month param as a date, 404 when it doesn't parse or lies outside
-    # the months budgets cover.
+    # The month param as a date, 404 when it doesn't parse or the month can't
+    # be reviewed.
     def review_date
       param = params[:monthly_review_month_year] || params[:month_year]
       date = Budget.param_to_date(param.to_s, family: Current.family)
-      raise ActiveRecord::RecordNotFound unless Budget.budget_date_valid?(date, family: Current.family)
+      raise ActiveRecord::RecordNotFound unless MonthlyReview.reviewable_month?(Current.family, date)
 
       date
     rescue Date::Error
@@ -45,7 +45,7 @@ module MonthlyReviewScoped
     def set_review_breadcrumbs(*trail)
       @breadcrumbs = [
         [ t("breadcrumbs.home"), root_path ],
-        [ t("breadcrumbs.monthly_reviews"), monthly_reviews_path ],
+        [ t("breadcrumbs.monthly_reviews"), monthly_reviews_path(year: @monthly_review.start_date.year, **transfers_param) ],
         [ helpers.review_month_label(@monthly_review), (monthly_review_path(@monthly_review, transfers_param) if trail.any?) ],
         *trail
       ]
