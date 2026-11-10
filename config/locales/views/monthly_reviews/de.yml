@@ -173,6 +173,8 @@ de:
         empty: Dieses Dokument hat keinen OCR-Text.
         failed: Der Belegtext konnte nicht aus Paperless geladen werden.
         label: Belegtext
+    rule_suggestion:
+      summary: "%{pattern} → %{category}, %{count}× in %{months} Monaten"
     index:
       months: Monate %{year}
       subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.

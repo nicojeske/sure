@@ -192,6 +192,14 @@ class MonthlyReview::Card
     { bill: bill_suggestion }.compact
   end
 
+  # A MonthlyReview::RuleSuggestion from a repeating pattern in the family's
+  # reviewed transactions, or nil.
+  def rule_suggestion
+    return @rule_suggestion if defined?(@rule_suggestion)
+
+    @rule_suggestion = MonthlyReview::RuleSuggestionDetector.new(entry, user: user, rule_handled: rule_handled?).suggestion
+  end
+
   def bill_suggestion
     return @bill_suggestion if defined?(@bill_suggestion)
 

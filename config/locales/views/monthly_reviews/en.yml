@@ -173,6 +173,8 @@ en:
         empty: This document has no OCR text.
         failed: The receipt text couldn't be loaded from Paperless.
         label: Receipt text
+    rule_suggestion:
+      summary: "%{pattern} → %{category}, %{count}× in %{months} months"
     index:
       months: Months in %{year}
       subtitle: Go through each month's transactions one at a time, then note what stood out and complete the month.
