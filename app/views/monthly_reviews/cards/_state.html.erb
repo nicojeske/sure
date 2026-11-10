@@ -47,7 +47,7 @@
   <div class="flex flex-wrap items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-primary">
     <%= icon "circle-check", size: "sm", color: "success" %>
     <span class="flex-1"><%= t(".reviewed", count: card.applied_change_count) %></span>
-    <span class="inline-flex items-center gap-1 text-secondary"><%= render "monthly_reviews/cards/kbd", key: "u" %></span>
+    <span class="inline-flex items-center gap-1 text-secondary"><%= render DS::Kbd.new(key: "u") %></span>
     <%= render DS::Button.new(
           text: t(".undo"), variant: :ghost, size: :sm, icon: "undo-2", type: :submit,
           form: form_id, name: "decision", value: "undo", data: { review_decision: "undo" }

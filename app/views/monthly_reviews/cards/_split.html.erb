@@ -4,7 +4,7 @@
     <% if card.split_selectable? %>
       <label class="flex cursor-pointer items-center gap-2 text-sm text-primary">
         <%= check_box_tag "split", "1", card.split_checked?, id: "review_field_split", form: form_id, class: "checkbox checkbox--light", data: { review_field: "split" } %>
-        <%= render "monthly_reviews/cards/kbd", key: "x" %>
+        <%= render DS::Kbd.new(key: "x") %>
         <%= t(".title", count: card.split_parts.size) %>
       </label>
     <% else %>

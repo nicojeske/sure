@@ -20,7 +20,7 @@
           <%= icon "check", size: "sm", color: "success" %>
         <% end %>
       </span>
-      <span class="w-5 shrink-0 <%= "opacity-50" unless field.change? %>"><%= render "monthly_reviews/cards/kbd", key: field.number %></span>
+      <span class="w-5 shrink-0 <%= "opacity-50" unless field.change? %>"><%= render DS::Kbd.new(key: field.number) %></span>
       <span class="w-20 shrink-0 text-xs text-secondary"><%= t(".labels.#{field.key}") %></span>
       <span class="flex min-w-0 flex-1 flex-col">
         <% if field.status.in?(%i[change locked]) %>

@@ -1,0 +1,5 @@
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary">
+  <% hints.each do |key, action| %>
+    <span class="inline-flex items-center gap-1"><%= render DS::Kbd.new(key: key) %><%= action %></span>
+  <% end %>
+</div>

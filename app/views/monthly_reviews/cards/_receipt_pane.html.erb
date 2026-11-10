@@ -34,8 +34,8 @@
         </span>
       </span>
       <span class="hidden shrink-0 items-center gap-1 md:inline-flex">
-        <%= render "monthly_reviews/cards/kbd", key: "o" %> <%= t(".open") %>
-        <%= render "monthly_reviews/cards/kbd", key: t("monthly_reviews.cards.keys.scroll") %> <%= t(".scroll") %>
+        <%= render DS::Kbd.new(key: "o") %> <%= t(".open") %>
+        <%= render DS::Kbd.new(key: t("monthly_reviews.cards.keys.scroll")) %> <%= t(".scroll") %>
       </span>
     </div>
     <%= turbo_frame_tag review_receipt_frame_id(variant, link),
@@ -50,6 +50,6 @@
 <% else %>
   <p class="flex items-center gap-1 rounded-lg bg-container-inset p-3 text-sm text-secondary">
     <%= icon "receipt", size: "sm" %>
-    <%= t(".none_html", key: render("monthly_reviews/cards/kbd", key: "f")) %>
+    <%= t(".none_html", key: render(DS::Kbd.new(key: "f"))) %>
   </p>
 <% end %>
