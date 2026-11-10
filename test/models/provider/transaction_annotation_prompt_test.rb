@@ -17,12 +17,22 @@ class Provider::TransactionAnnotationPromptTest < ActiveSupport::TestCase
     assert_equal [ "fr" ], rules.scan(/locale "([^"]+)"/).flatten.uniq
   end
 
+  test "rule-set fields are kept unless the hint explicitly asks to change them" do
+    rules = prompt(locale: "en", rule_set_fields: %w[category tags]).rules.squish
+
+    assert_match(/- category_name, tag_names: set by the user's rules\. Keep them null \(\[\] for tag_names\) unless the hint explicitly asks to change them/, rules)
+  end
+
+  test "without rule-set fields the prompt says nothing about rules" do
+    assert_no_match(/user's rules/, prompt(locale: "en").rules)
+  end
+
   private
-    def prompt(**locales)
+    def prompt(**options)
       Provider::TransactionAnnotationPrompt.new(
         transaction: { date: "2026-10-03", amount: "12.50", currency: "EUR", name: "BURGER" },
         receipt_text: nil, hint: nil, examples: [],
-        categories: [], merchants: [], tags: [], **locales
+        categories: [], merchants: [], tags: [], **options
       )
     end
 end

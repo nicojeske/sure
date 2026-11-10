@@ -9,8 +9,8 @@
 # Every proposal is stored as a TransactionAnnotationSuggestion keyed by its
 # input, so the same receipt or hint never reaches the LLM twice. Provider
 # output is normalized here: names resolve to this family's records, unknown
-# categories and tags are dropped, and a split survives only when it is safe
-# to apply as-is.
+# categories and tags are dropped, a split survives only when it is safe to
+# apply as-is, and fields a rule set are only proposed when a hint asks.
 class Transaction::AnnotationSuggester
   Error = Class.new(StandardError)
   # The receipt cannot be used (wrong transaction or family, no OCR text);
@@ -150,7 +150,9 @@ class Transaction::AnnotationSuggester
           suggestion.update!(receipt_link: receipt_link)
         end
 
-        payload = normalize(entry, request_annotation(entry, receipt_link, hint), receipt_link)
+        rule_set_fields = MonthlyReview::RuleProvenance.new(family, [ entry ]).rule_set_fields(entry).keys
+        payload = normalize(entry, request_annotation(entry, receipt_link, hint, rule_set_fields), receipt_link)
+        payload = without_rule_set_proposals(payload, rule_set_fields) if hint.blank?
         suggestion.update!(status: "ready", payload: payload)
       rescue StandardError => e
         @last_error = e
@@ -173,7 +175,7 @@ class Transaction::AnnotationSuggester
       @llm_provider ||= Provider::Registry.preferred_llm_provider
     end
 
-    def request_annotation(entry, receipt_link, hint)
+    def request_annotation(entry, receipt_link, hint, rule_set_fields)
       raise Error, "No LLM provider configured" unless llm_provider
 
       response = llm_provider.suggest_transaction_annotation(
@@ -186,6 +188,7 @@ class Transaction::AnnotationSuggester
         tags: family.tags.alphabetically.pluck(:name),
         locale: family.ai_interface_locale_for(user),
         content_locale: family.ai_content_locale_for(user),
+        rule_set_fields: rule_set_fields,
         family: family
       )
       raise Error, "Provider failed: #{response.error&.message}" unless response.success?
@@ -246,6 +249,18 @@ class Transaction::AnnotationSuggester
       return [ usual.id, nil ] if usual
 
       Family::BayesCategorizer.new(family).classify(transaction)
+    end
+
+    # Only a hint may override what a rule set; the prompt says so too, and
+    # this holds whatever the model returns.
+    def without_rule_set_proposals(payload, rule_set_fields)
+      rule_set_fields.each_with_object(payload.dup) do |field, kept|
+        case field
+        when "merchant" then kept.merge!("merchant_id" => nil, "new_merchant_name" => nil)
+        when "tags" then kept["tag_ids"] = []
+        else kept[TransactionAnnotationSuggestion::FIELD_ATTRIBUTES.fetch(field)] = nil
+        end
+      end
     end
 
     def normalize(entry, raw, receipt_link)
