@@ -71,6 +71,8 @@ de:
       shortcuts:
         accept: übernehmen
         back: zurück
+        bill: Rechnung bestätigen
+        bill_dismiss: Rechnung verwerfen
         edit: bearbeiten
         fields: Felder
         find: Beleg suchen
@@ -86,6 +88,7 @@ de:
         heading: "%{month} prüfen"
         messages:
           first_card: Das ist die erste Buchung.
+          no_bill_suggestion: Für diese Buchung gibt es keine vorgeschlagene Rechnung zum Bestätigen oder Verwerfen.
           no_receipt: Diese Buchung hat keinen Beleg. Mit f durchsuchst du Paperless.
           nothing_proposed: Für dieses Feld gibt es keinen Vorschlag.
           nothing_to_undo: Diese Buchung ist nicht geprüft, es gibt nichts rückgängig zu machen.

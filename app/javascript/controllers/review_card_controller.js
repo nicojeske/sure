@@ -192,6 +192,8 @@ export default class extends Controller {
       f: () => this.openSearch(),
       o: () => this.openReceipt(),
       e: () => this.toggleEdit(),
+      b: () =>
+        this.pressSuggestion("bill", event.shiftKey ? "dismiss" : "accept"),
     };
     if (handlers[key]) {
       event.preventDefault();
@@ -250,6 +252,19 @@ export default class extends Controller {
       if (missingMessage) this.flash(missingMessage);
       return;
     }
+    button.form.requestSubmit(button);
+  }
+
+  // Presses a suggestions-strip button (accept or dismiss) of the `kind`
+  // suggestion, so the key does exactly what the button does.
+  pressSuggestion(kind, action) {
+    if (this.busy()) return;
+
+    const button = this.cardTarget.querySelector(
+      `[data-review-suggestion="${kind}"][data-review-suggestion-action="${action}"]`,
+    );
+    if (!button) return this.flash(`no_${kind}_suggestion`);
+
     button.form.requestSubmit(button);
   }
 
