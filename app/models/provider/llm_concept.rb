@@ -32,22 +32,30 @@ module Provider::LlmConcept
     :category_name, :bill_type, :autopay, :confidence, :rationale
   )
 
-  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil, content_locale: nil)
     raise NotImplementedError, "Subclasses must implement #suggest_bill_setup"
   end
 
   # A proposed annotation for one transaction, from receipt OCR text and/or a
   # typed hint. Names are raw model output; callers resolve them to records.
   # split is nil or an array of TransactionAnnotationSplit.
+  # rule_proposal is nil or a RuleProposal, for a hint that asks for a rule.
   TransactionAnnotation = Data.define(
     :name, :merchant_name, :category_name, :tag_names, :notes,
-    :receipt_total, :split, :confidence, :rationale
-  )
+    :receipt_total, :split, :confidence, :rationale, :rule_proposal
+  ) do
+    def initialize(rule_proposal: nil, **attributes) = super
+  end
+  # Raw model output: conditions are { "field", "operator", "value" } and
+  # actions { "field", "value" } hashes (value a list for tags).
+  RuleProposal = Data.define(:conditions, :actions)
   TransactionAnnotationSplit = Data.define(:name, :amount, :category_name, :tag_names, :notes)
 
   # transaction: { date:, amount:, currency:, name:, merchant:, category: }
   # examples: [{ name:, merchant:, category:, tags: [], notes: }]
-  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", model: "", family: nil)
+  # rule_set_fields: review fields (name, merchant, category, tags) a rule set,
+  # which the model leaves unchanged unless the hint asks otherwise.
+  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", content_locale: nil, rule_set_fields: [], model: "", family: nil)
     raise NotImplementedError, "Subclasses must implement #suggest_transaction_annotation"
   end
 

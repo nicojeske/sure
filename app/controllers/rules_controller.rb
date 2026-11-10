@@ -42,13 +42,18 @@ class RulesController < ApplicationController
         value: params[:action_value]
       )
     end
+
+    Rule::FormPrefill.new(@rule).apply(**params.slice(:conditions, :actions).permit(
+      conditions: [ :condition_type, :operator, :value ],
+      actions: [ :action_type, :value, { value: [] } ]
+    ).to_h.symbolize_keys)
   end
 
   def create
     @rule = Current.family.rules.build(rule_params)
 
     if save_rule
-      redirect_to confirm_rule_path(@rule, reload_on_close: true)
+      redirect_to confirm_rule_path(@rule, reload_on_close: true, respect_locks: params[:respect_locks].presence)
     else
       render_invalid_rule :new
     end
@@ -63,7 +68,9 @@ class RulesController < ApplicationController
       return
     end
 
-    @rule.apply_later(ignore_attribute_locks: true)
+    # A rule saved from a monthly review card passes respect_locks so it does
+    # not overwrite fields the reviewer accepted.
+    @rule.apply_later(ignore_attribute_locks: params[:respect_locks].blank?)
     redirect_back_or_to rules_path, notice: "#{@rule.resource_type.humanize} rule activated"
   end
 

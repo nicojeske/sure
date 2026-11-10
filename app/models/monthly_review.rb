@@ -23,6 +23,15 @@ class MonthlyReview < ApplicationRecord
         family.monthly_reviews.create_or_find_by!(start_date: start_date) { |review| review.end_date = end_date }
     end
 
+    # Whether the month containing `date` can be opened: the months budgets
+    # cover, plus the one holding the oldest entry, which budgets leave out
+    # when a custom month start makes it begin before that entry's calendar
+    # month.
+    def reviewable_month?(family, date)
+      Budget.budget_date_valid?(date, family: family) ||
+        Budget.period_for(date, family: family) == Budget.period_for(family.oldest_entry_date, family: family)
+    end
+
     # The stored review of the month containing `date`, else an unsaved one,
     # for pages that only read it.
     def find_or_build(family, date)
@@ -151,7 +160,7 @@ class MonthlyReview < ApplicationRecord
 
   # The month's entries for the card page, loaded once.
   def card_list(entries, include_transfers: false)
-    CardList.new(month_entries(entries, include_transfers: include_transfers).preload(:account, entryable: [ :merchant, :receipt_links ]))
+    CardList.new(month_entries(entries, include_transfers: include_transfers).preload(:account, entryable: [ :merchant, :receipt_links ]), family: family)
   end
 
   # Undoes a card's review: reverts the proposal that marked it reviewed,

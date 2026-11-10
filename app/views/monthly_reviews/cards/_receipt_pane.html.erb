@@ -1,8 +1,10 @@
-<%# The receipt, always open: its text in a height-capped scroll area
-    (Shift+↑/↓), or the picker when several receipts match about equally well.
-    Rendered twice, in the receipt column (variant "wide") and in the card
-    ("narrow"); only the visible copy loads its text, since a lazy frame inside
-    display:none never loads. %>
+<%# The receipt, always open: the document itself (embedded in the receipt
+    column, a thumbnail in the card) or, toggled with `t`, its text in a
+    height-capped scroll area (Shift+↑/↓); or the picker when several receipts
+    match about equally well. Rendered twice, in the receipt column (variant
+    "wide") and in the card ("narrow"); only the visible text view loads its
+    text, since a lazy frame inside display:none never loads. The review
+    page's `data-receipt-view` decides which view shows. %>
 <%# locals: (card:, variant:) %>
 <% if card.receipt_candidates.any? %>
   <div class="flex min-w-0 flex-col gap-2">
@@ -24,7 +26,7 @@
     <p class="text-xs text-subdued"><%= t(".pick_help") %></p>
   </div>
 <% elsif (link = card.receipt_link) %>
-  <div class="flex min-w-0 flex-col gap-2">
+  <div class="flex min-w-0 flex-col gap-2" data-receipt-variant="<%= variant %>">
     <div class="flex items-start justify-between gap-2 text-xs text-secondary">
       <span class="flex min-w-0 items-start gap-1">
         <%= icon "receipt", size: "xs", class: "mt-0.5" %>
@@ -35,17 +37,27 @@
       </span>
       <span class="hidden shrink-0 items-center gap-1 md:inline-flex">
         <%= render DS::Kbd.new(key: "o") %> <%= t(".open") %>
-        <%= render DS::Kbd.new(key: t("monthly_reviews.cards.keys.scroll")) %> <%= t(".scroll") %>
+        <%= render DS::Kbd.new(key: "t") %>
+        <span class="group-data-[receipt-view=text]/review:hidden"><%= t(".show_text") %></span>
+        <span class="hidden group-data-[receipt-view=text]/review:inline"><%= t(".show_document") %></span>
+        <span class="hidden items-center gap-1 group-data-[receipt-view=text]/review:inline-flex">
+          <%= render DS::Kbd.new(key: t("monthly_reviews.cards.keys.scroll")) %> <%= t(".scroll") %>
+        </span>
       </span>
     </div>
-    <%= turbo_frame_tag review_receipt_frame_id(variant, link),
-          src: monthly_review_receipt_text_path(@monthly_review, entry_id: card.entry.id, receipt_link_id: link.id, variant: variant),
-          loading: :lazy,
-          data: { turbo_permanent: true } do %>
-      <%= render DS::Inset.new(text_size: :xs, class: "#{review_receipt_scroll_class(variant)} flex items-center gap-2") do %>
-        <%= icon "loader-circle", size: "sm", class: "animate-spin" %> <%= t(".loading") %>
+    <div class="group-data-[receipt-view=text]/review:hidden" data-receipt-view="document">
+      <%= render "monthly_reviews/cards/receipt_document", link: link, variant: variant %>
+    </div>
+    <div class="hidden group-data-[receipt-view=text]/review:block" data-receipt-view="text">
+      <%= turbo_frame_tag review_receipt_frame_id(variant, link),
+            src: monthly_review_receipt_text_path(@monthly_review, entry_id: card.entry.id, receipt_link_id: link.id, variant: variant),
+            loading: :lazy,
+            data: { turbo_permanent: true } do %>
+        <%= render DS::Inset.new(text_size: :xs, class: "#{review_receipt_scroll_class(variant)} flex items-center gap-2") do %>
+          <%= icon "loader-circle", size: "sm", class: "animate-spin" %> <%= t(".loading") %>
+        <% end %>
       <% end %>
-    <% end %>
+    </div>
   </div>
 <% else %>
   <%= render DS::Inset.new(tag: :p, class: "flex items-center gap-1") do %>

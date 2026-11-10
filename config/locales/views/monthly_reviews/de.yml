@@ -33,6 +33,7 @@ de:
       fields:
         applied: Übernommen
         apply: "%{field} übernehmen"
+        from_rule: aus Regel
         labels:
           category: Kategorie
           merchant: Händler
@@ -41,9 +42,11 @@ de:
           tags: Tags
         locked: Dieses Feld kannst du in einem geteilten Konto nicht ändern
         no_change: Keine Änderung
+        set_by_rule: durch Regel gesetzt
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
         original_name: 'Bank: %{name}'
+        rule: Regel
       hint:
         help_html: "%{focus} oder h zum Tippen · %{send} fragt die KI · %{leave} verlässt das Feld"
         label: Hinweis für die KI
@@ -57,6 +60,10 @@ de:
       list:
         progress_html: "%{reviewed}/%{total} geprüft"
         title: Buchungen
+      list_row:
+        rule_handled: Von einer Regel bearbeitet
+      receipt_document:
+        open: "%{title} öffnen"
       receipt_pane:
         loading: Belegtext wird geladen…
         none_html: Kein Beleg · %{key} durchsucht Paperless
@@ -64,13 +71,19 @@ de:
         pick: Beleg auswählen
         pick_help: "↑↓ auswählen · ⏎ verknüpfen und lesen"
         scroll: scrollen
+        show_document: Dokument
+        show_text: Text
         untitled: 'Dokument #%{id}'
       receipt_search:
         help: "↑↓ auswählen · ⏎ verknüpfen und lesen · Esc schließt"
         placeholder: Paperless durchsuchen
+      rule_marker:
+        open: 'Regel öffnen: %{name}'
       shortcuts:
         accept: übernehmen
         back: zurück
+        bill: Rechnung bestätigen
+        bill_dismiss: Rechnung verwerfen
         edit: bearbeiten
         fields: Felder
         find: Beleg suchen
@@ -78,15 +91,21 @@ de:
         label: Tastenkürzel
         open: Beleg öffnen
         reviewed: geprüft
+        rule: Regel erstellen
+        rule_dismiss: nicht jetzt
+        rule_never: nie für dieses Muster
         scroll: Beleg scrollen
         skip: überspringen
         split: aufteilen
+        text: Belegtext ⇄ Dokument
         undo: rückgängig
       show:
         heading: "%{month} prüfen"
         messages:
           first_card: Das ist die erste Buchung.
+          no_bill_suggestion: Für diese Buchung gibt es keine vorgeschlagene Rechnung zum Bestätigen oder Verwerfen.
           no_receipt: Diese Buchung hat keinen Beleg. Mit f durchsuchst du Paperless.
+          no_rule_suggestion: Für diese Buchung gibt es keine vorgeschlagene Regel.
           nothing_proposed: Für dieses Feld gibt es keinen Vorschlag.
           nothing_to_undo: Diese Buchung ist nicht geprüft, es gibt nichts rückgängig zu machen.
           still_reading: Wird noch gelesen. Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
@@ -127,6 +146,18 @@ de:
         unread: Der Beleg wurde noch nicht gelesen.
       strip:
         label: Benachbarte Buchungen
+      suggestions:
+        bill:
+          active_html: Gehört zur Rechnung <strong>%{name}</strong>, erwartet %{amount}
+          confirm: Als Rechnung bestätigen
+          dismiss: Verwerfen
+          suggested_html: 'Sieht nach einer wiederkehrenden Rechnung aus: <strong>%{name}</strong>, etwa %{amount}'
+        label: Vorschläge
+        rule:
+          create: Regel erstellen
+          never: Nie für dieses Muster
+          not_now: Nicht jetzt
+          summary_html: 'Als Regel anlegen? %{summary}'
       update:
         failed: Die Buchung konnte nicht aktualisiert werden. Lade die Karte neu und versuche es erneut.
     prefetches:
@@ -151,8 +182,23 @@ de:
         empty: Dieses Dokument hat keinen OCR-Text.
         failed: Der Belegtext konnte nicht aus Paperless geladen werden.
         label: Belegtext
+    rule_suggestion:
+      action: "%{field}: %{value}"
+      condition: "%{field} %{operator} %{value}"
+      fields:
+        amount: Betrag
+        category: Kategorie
+        merchant: Händler
+        name: Name
+        tags: Tags
+      hint_summary: "%{conditions} → %{actions}"
+      operators:
+        contains: enthält
+        ends_with: endet mit
+        starts_with: beginnt mit
+      summary: "%{pattern} → %{category}, %{count}× in %{months} Monaten"
     index:
-      months: Monate
+      months: Monate %{year}
       subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.
       title: Monatsprüfung
     cards_link:
@@ -203,3 +249,6 @@ de:
       completed: Der Monat ist abgeschlossen.
       reopened: Der Monat ist wieder offen.
       saved: Die Notiz wurde gespeichert.
+    year_switcher:
+      next: Nächstes Jahr (%{year})
+      previous: Vorheriges Jahr (%{year})

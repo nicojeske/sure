@@ -444,6 +444,7 @@ Rails.application.routes.draw do
       delete "tokens/:token_id", to: "mcp#revoke", as: :revoke_token
     end
     resource :ai_prompts, only: %i[show update]
+    resource :ai_content_language, only: :update
     resource :classifier, only: %i[show update] do
       patch :rule
       post :add_rule
@@ -634,6 +635,7 @@ Rails.application.routes.draw do
     scope module: :monthly_reviews do
       resource :card, only: %i[show update]
       resources :hints, only: :create
+      resources :rule_suggestion_dismissals, only: :create
       resources :receipt_searches, only: %i[index create]
       resource :receipt_text, only: :show
       resource :prefetch, only: :create

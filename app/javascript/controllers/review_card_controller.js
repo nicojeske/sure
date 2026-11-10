@@ -16,7 +16,8 @@ const FEEDBACK_DURATION = 4000;
 // outside it every letter is a shortcut, `/` or `h` focuses it and Esc leaves
 // it. The controller sits outside the card's Turbo frame, so the queue list
 // keeps its scroll position while cards swap; each new card announces itself
-// through the `card` target.
+// through the `card` target. The receipt view (document or text, `t`) is kept
+// as `data-receipt-view` on this element, so it carries over to the next card.
 //
 // Connects to data-controller="review-card"
 export default class extends Controller {
@@ -71,6 +72,9 @@ export default class extends Controller {
     const tag = target.tagName;
     if (tag === "SELECT" || tag === "TEXTAREA" || target.isContentEditable)
       return;
+    // A modal opened from the card (e.g. the suggested rule's form) keeps
+    // its own keys.
+    if (target.closest("dialog")) return;
 
     const inHint = this.hasHintTarget && target === this.hintTarget;
     const inSearch = this.hasSearchTarget && this.searchTarget.contains(target);
@@ -191,7 +195,13 @@ export default class extends Controller {
           : this.flash("nothing_to_undo"),
       f: () => this.openSearch(),
       o: () => this.openReceipt(),
+      t: () => this.toggleReceiptView(),
       e: () => this.toggleEdit(),
+      b: () =>
+        this.pressSuggestion("bill", event.shiftKey ? "dismiss" : "accept"),
+      r: () =>
+        this.pressSuggestion("rule", event.shiftKey ? "dismiss" : "accept"),
+      n: () => this.pressSuggestion("rule", "never"),
     };
     if (handlers[key]) {
       event.preventDefault();
@@ -253,6 +263,26 @@ export default class extends Controller {
     button.form.requestSubmit(button);
   }
 
+  // Presses a suggestions-strip button (accept or dismiss) of the `kind`
+  // suggestion, so the key does exactly what the button does.
+  pressSuggestion(kind, action) {
+    if (this.busy()) return;
+
+    const button = this.cardTarget.querySelector(
+      `[data-review-suggestion="${kind}"][data-review-suggestion-action="${action}"]`,
+    );
+    if (!button) return this.flash(`no_${kind}_suggestion`);
+
+    if (button.form) button.form.requestSubmit(button);
+    else button.click();
+  }
+
+  // "Not now" on a suggestion: hides its strip row until the card renders
+  // again.
+  hideSuggestion(event) {
+    event.currentTarget.closest("[data-review-rule-suggestion]")?.remove();
+  }
+
   toggleField(key) {
     const input = this.cardTarget.querySelector(`[data-review-field="${key}"]`);
     if (!input) return this.flash("nothing_proposed");
@@ -271,6 +301,16 @@ export default class extends Controller {
       top: direction * pane.clientHeight * 0.6,
       behavior: "smooth",
     });
+  }
+
+  // The receipt panes show the document or its text by `data-receipt-view`.
+  toggleReceiptView() {
+    if (!this.element.querySelector("[data-receipt-view]"))
+      return this.flash("no_receipt");
+
+    const view =
+      this.element.dataset.receiptView === "text" ? "document" : "text";
+    this.element.dataset.receiptView = view;
   }
 
   openReceipt() {

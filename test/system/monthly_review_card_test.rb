@@ -2,9 +2,11 @@ require "application_system_test_case"
 
 # Steps through three review cards with the keyboard only: accept a receipt
 # proposal, go back and undo it, accept it again, skip a card without a
-# proposal and accept the last one, which ends on the month's summary.
+# proposal and accept the last one, which ends on the month's summary. The
+# receipt shows as its document; `t` switches to its text.
 class MonthlyReviewCardTest < ApplicationSystemTestCase
   include MonthlyReviewTestHelper
+  include ActiveJob::TestHelper
 
   setup do
     setup_monthly_review
@@ -18,6 +20,7 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     @bakery = review_transaction("Bakery", day: 6)
 
     Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "BEAN BAR\nFlat white 4,80\nSUMME EUR 4,80" })
+    Provider::Paperless.any_instance.stubs(:file).returns([ PIXEL_PNG, "image/png" ])
     Family::BayesCategorizer.any_instance.stubs(:classify).returns(nil)
     forbid_llm
 
@@ -27,6 +30,7 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
   test "steps through three cards with the keyboard, including undo" do
     visit monthly_review_card_path(@review)
     assert_card @coffee, state: "proposal"
+    send_keys "t"
     assert_text "BEAN BAR"
     assert_field_rows
 
@@ -73,6 +77,7 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
 
     visit monthly_review_card_path(@review)
     assert_card @coffee, state: "proposal"
+    send_keys "t"
     assert_text "Line 1 0,10"
 
     summary = find("[data-review-card-target='edit'] summary")
@@ -100,6 +105,40 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_not @coffee.reviewed?
   end
 
+  test "the receipt column embeds the document and t toggles its text" do
+    page.current_window.resize_to(1920, 1400)
+    visit monthly_review_card_path(@review)
+    assert_card @coffee, state: "proposal"
+
+    within "aside" do
+      assert_selector "[data-receipt-view='document'] iframe[src$='/paperless/documents/11/preview']"
+      assert_no_text "BEAN BAR"
+    end
+
+    send_keys "t"
+    within "aside" do
+      assert_text "BEAN BAR"
+      assert_no_selector "iframe"
+    end
+
+    send_keys "t"
+    within "aside" do
+      assert_selector "[data-receipt-view='document'] iframe"
+      assert_no_text "BEAN BAR"
+    end
+  end
+
+  test "in the card the receipt is a thumbnail that opens the full document" do
+    page.current_window.resize_to(1024, 1400)
+    visit monthly_review_card_path(@review)
+    assert_card @coffee, state: "proposal"
+
+    find("[data-receipt-variant='narrow'] a img[src$='/paperless/documents/11/thumbnail']").click
+    within "dialog" do
+      assert_selector "iframe[src$='/paperless/documents/11/preview']"
+    end
+  end
+
   test "Enter in the hint input sends the hint once" do
     calls = Concurrent::AtomicFixnum.new
     result = Provider::LlmConcept::TransactionAnnotation.new(
@@ -125,6 +164,100 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_equal 1, calls.value
     assert_not @plain.reload.reviewed?
   end
+
+  test "a rule-handled card shows the rule badge, the field marker and the list icon" do
+    rule = @family.rules.create!(
+      name: "Unknown shop", resource_type: "transaction", active: true,
+      conditions: [ Rule::Condition.new(condition_type: "transaction_name", operator: "like", value: "Unknown shop") ],
+      actions: [ Rule::Action.new(action_type: "set_transaction_category", value: @category.id) ]
+    )
+    Rule::Runner.new(@family, rules: [ rule ], execution_type: "manual").run
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_card @plain, state: "empty"
+
+    assert_selector "[data-review-rule-badge] a[href='#{edit_rule_path(rule)}']", text: "Rule"
+    assert_selector "[data-review-field-row='category'] [data-review-rule-set] a[href='#{edit_rule_path(rule)}']", text: "from rule"
+    assert_no_selector "[data-review-field-row='name'] [data-review-rule-set]"
+    assert_selector "[data-review-entry-id='#{@plain.id}'] [data-review-rule-handled]"
+    assert_no_selector "[data-review-entry-id='#{@coffee.id}'] [data-review-rule-handled]"
+  end
+
+  test "b confirms a suggested bill and the card shows it as the bill" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Bakery", amount: 20, currency: "USD", expected_day_of_month: 6,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+
+    visit monthly_review_card_path(@review, entry_id: @bakery.id)
+    assert_selector "[data-review-bill='suggested']"
+
+    send_keys "b"
+
+    assert_selector "[data-review-bill='active']"
+    assert_card @bakery, state: "empty"
+    assert series.reload.active?
+  end
+
+  test "r opens the suggested rule prefilled, and the saved rule makes the card rule-handled" do
+    shop = @family.merchants.create!(name: "Unknown Shop GmbH")
+    @plain.transaction.update!(merchant: shop)
+    [ Date.new(2026, 8, 4), Date.new(2026, 9, 4), Date.new(2026, 9, 18) ].each do |date|
+      past = create_transaction(account: @account, date: date, name: "Unknown shop", amount: 20, merchant: shop, category: @category)
+      past.update_columns(reviewed_at: date.to_time)
+    end
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_selector "[data-review-rule-suggestion]", text: "Unknown Shop GmbH → #{@category.name}, 3× in 2 months"
+
+    send_keys [ :shift, "r" ]
+    assert_no_selector "[data-review-rule-suggestion]"
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    send_keys "r"
+
+    within "dialog" do
+      assert_equal "transaction_merchant", find("[data-rules-target='conditionsList'] select[name$='[condition_type]']").value
+      assert_equal shop.id, find("[data-rules-target='conditionsList'] select[name$='[value]']").value
+      assert_equal "set_transaction_category", find("[data-rules-target='actionsList'] select[name$='[action_type]']", match: :first).value
+      click_on "Create Rule"
+    end
+    assert_text "Confirm changes"
+    click_on "Confirm changes"
+
+    assert_no_selector "dialog[open]"
+    assert_selector "[data-review-card-entry-id='#{@plain.id}']"
+    rule = @family.rules.order(:created_at).last
+    assert rule.active?
+
+    perform_enqueued_jobs(only: RuleJob)
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_selector "[data-review-rule-badge] a[href='#{edit_rule_path(rule)}']"
+    assert_no_selector "[data-review-rule-suggestion]"
+  end
+
+  test "n dismisses the suggested rule for good" do
+    shop = @family.merchants.create!(name: "Unknown Shop GmbH")
+    @plain.transaction.update!(merchant: shop)
+    [ Date.new(2026, 8, 4), Date.new(2026, 9, 4), Date.new(2026, 9, 18) ].each do |date|
+      past = create_transaction(account: @account, date: date, name: "Unknown shop", amount: 20, merchant: shop, category: @category)
+      past.update_columns(reviewed_at: date.to_time)
+    end
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_selector "[data-review-rule-suggestion]"
+
+    send_keys "n"
+
+    assert_no_selector "[data-review-rule-suggestion]"
+    assert_selector "[data-review-card-entry-id='#{@plain.id}']"
+    assert @family.rule_suggestion_dismissals.exists?(pattern_key: "merchant:#{shop.id}")
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_no_selector "[data-review-rule-suggestion]"
+  end
+
+  PIXEL_PNG =Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
 
   private
     # Scrolling is smooth, so wait for it to move.

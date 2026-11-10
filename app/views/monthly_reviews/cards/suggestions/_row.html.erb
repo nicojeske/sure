@@ -1,0 +1,11 @@
+<%# One suggestion row on a review card: icon, text and, when the block gives
+    any, the buttons. %>
+<%# locals: (icon:, text:, data: {}) %>
+<%= render DS::Inset.new(class: "flex flex-wrap items-center gap-x-3 gap-y-2", data: data) do %>
+  <%= icon icon, size: "sm" %>
+  <p class="min-w-0 flex-1 text-primary"><%= text %></p>
+  <% buttons = yield %>
+  <% if buttons.present? %>
+    <div class="flex items-center gap-2"><%= buttons %></div>
+  <% end %>
+<% end %>

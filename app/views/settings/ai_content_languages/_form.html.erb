@@ -1,0 +1,12 @@
+<%# locals: (family:) %>
+<%= settings_section title: t(".title"), subtitle: t(".subtitle") do %>
+  <%= styled_form_with model: family,
+                       url: settings_ai_content_language_path,
+                       method: :patch,
+                       data: { controller: "auto-submit-form" } do |form| %>
+    <%= form.select :ai_content_language,
+        Family::AiContentLanguage.options,
+        { label: t(".label"), include_blank: t(".same_as_interface") },
+        { data: { auto_submit_form_target: "auto" } } %>
+  <% end %>
+<% end %>

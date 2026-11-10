@@ -30,6 +30,177 @@ class RulesControllerTest < ActionDispatch::IntegrationTest
     assert_select "select[name*='[value]'] option[selected][value='#{category.id}']"
   end
 
+  test "new prefills several conditions and actions" do
+    merchant = merchants(:netflix)
+    category = categories(:food_and_drink)
+
+    get new_rule_url(
+      resource_type: "transaction",
+      conditions: [
+        { condition_type: "transaction_merchant", operator: "=", value: merchant.id },
+        { condition_type: "transaction_amount", operator: ">", value: "10" }
+      ],
+      actions: [
+        { action_type: "set_transaction_category", value: category.id },
+        { action_type: "set_transaction_tags", value: [ tags(:one).id, tags(:two).id ] },
+        { action_type: "set_transaction_name", value: "Netflix Abo" }
+      ]
+    )
+    assert_response :success
+
+    assert_select "ul[data-rules-target='conditionsList'] > li", 2
+    assert_select "select[name='rule[conditions_attributes][0][condition_type]'] option[selected][value='transaction_merchant']"
+    assert_select "select[name='rule[conditions_attributes][0][value]'] option[selected][value='#{merchant.id}']"
+    assert_select "select[name='rule[conditions_attributes][1][condition_type]'] option[selected][value='transaction_amount']"
+    assert_select "select[name='rule[conditions_attributes][1][operator]'] option[selected][value='>']"
+    assert_select "input[name='rule[conditions_attributes][1][value]'][value='10']"
+
+    assert_select "ul[data-rules-target='actionsList'] > li", 3
+    assert_select "select[name='rule[actions_attributes][0][action_type]'] option[selected][value='set_transaction_category']"
+    assert_select "select[name='rule[actions_attributes][0][value]'] option[selected][value='#{category.id}']"
+    assert_select "select[name='rule[actions_attributes][1][action_type]'] option[selected][value='set_transaction_tags']"
+    assert_select "ul[data-rules-target='actionsList'] > li:nth-child(2) [role='option'][aria-selected='true']", 2
+    assert_select "ul[data-rules-target='actionsList'] > li:nth-child(2) [aria-selected='true'][data-tag-id='#{tags(:one).id}']"
+    assert_select "input[name='rule[actions_attributes][2][value]'][value='Netflix Abo']"
+  end
+
+  test "new prefill ignores conditions and actions the form cannot show" do
+    get new_rule_url(
+      resource_type: "transaction",
+      conditions: [
+        { condition_type: "garbage", operator: "=", value: "x" },
+        { condition_type: "compound", operator: "and" },
+        { condition_type: "transaction_amount", operator: "like", value: "10" },
+        { condition_type: "transaction_amount", operator: ">", value: "ten" },
+        { condition_type: "transaction_name", operator: "like", value: "" },
+        { condition_type: "transaction_merchant", operator: "=", value: SecureRandom.uuid },
+        { condition_type: "transaction_name", operator: "like", value: "Netflix" }
+      ],
+      actions: [
+        { action_type: "garbage", value: "x" },
+        { action_type: "set_transaction_category", value: SecureRandom.uuid },
+        { action_type: "set_transaction_tags", value: [ SecureRandom.uuid ] },
+        { action_type: "split_transaction", value: "{}" },
+        { action_type: "set_transaction_tags", value: [ SecureRandom.uuid, tags(:one).id ] }
+      ]
+    )
+    assert_response :success
+
+    assert_select "ul[data-rules-target='conditionsList'] > li", 1
+    assert_select "input[name='rule[conditions_attributes][0][value]'][value='Netflix']"
+    assert_select "ul[data-rules-target='actionsList'] > li", 1
+    assert_select "ul[data-rules-target='actionsList'] > li [role='option'][aria-selected='true']", 1
+    assert_select "ul[data-rules-target='actionsList'] > li [aria-selected='true'][data-tag-id='#{tags(:one).id}']"
+
+    get new_rule_url(resource_type: "transaction", conditions: "garbage", actions: "garbage")
+    assert_response :success
+    assert_select "ul[data-rules-target='conditionsList'] > li", 0
+    assert_select "ul[data-rules-target='actionsList'] > li", 0
+  end
+
+  test "new prefill accepts lists keyed by index" do
+    category = categories(:food_and_drink)
+
+    get new_rule_url(
+      resource_type: "transaction",
+      conditions: { "0" => { condition_type: "transaction_name", operator: "like", value: "EON" } },
+      actions: { "0" => { action_type: "set_transaction_category", value: category.id } }
+    )
+    assert_response :success
+
+    assert_select "input[name='rule[conditions_attributes][0][value]'][value='EON']"
+    assert_select "select[name='rule[actions_attributes][0][value]'] option[selected][value='#{category.id}']"
+  end
+
+  test "new prefill renders inside the modal frame" do
+    get new_rule_url(
+      resource_type: "transaction",
+      conditions: [ { condition_type: "transaction_name", operator: "like", value: "EON" } ]
+    ), headers: { "Turbo-Frame" => "modal" }
+    assert_response :success
+
+    assert_select "turbo-frame#modal dialog form[action='#{rules_path}']" do
+      assert_select "input[name='rule[conditions_attributes][0][value]'][value='EON']"
+    end
+  end
+
+  test "a rule saved from the modal asks to apply it and is active once applied" do
+    category = categories(:food_and_drink)
+    modal = { "Turbo-Frame" => "modal" }
+
+    post rules_url, headers: modal, params: {
+      rule: {
+        resource_type: "transaction",
+        conditions_attributes: {
+          "0" => { condition_type: "transaction_name", operator: "like", value: "EON" },
+          "1" => { condition_type: "transaction_amount", operator: ">", value: "10" }
+        },
+        actions_attributes: {
+          "0" => { action_type: "set_transaction_category", value: category.id },
+          "1" => { action_type: "set_transaction_name", value: "EON Strom" }
+        }
+      }
+    }
+    rule = @user.family.rules.order(:created_at).last
+    assert_equal 2, rule.conditions.count
+    assert_equal 2, rule.actions.count
+    assert_redirected_to confirm_rule_path(rule, reload_on_close: true)
+
+    follow_redirect! headers: modal
+    assert_select "turbo-frame#modal dialog form[action='#{apply_rule_path(rule)}']"
+
+    post apply_rule_url(rule)
+    assert rule.reload.active?
+  end
+
+  test "a rule from the review card carries respect_locks through to apply and keeps accepted fields" do
+    chosen = categories(:food_and_drink)
+    other = categories(:income)
+    entry = create_transaction(account: accounts(:depository), name: "EON Abschlag", amount: 20, category: chosen)
+    entry.transaction.lock_attr!(:category_id)
+    entry.mark_reviewed!(@user)
+    reviewed_at = entry.reload.reviewed_at
+    modal = { "Turbo-Frame" => "modal" }
+
+    get new_rule_url(resource_type: "transaction", respect_locks: 1), headers: modal
+    assert_select "form[action='#{rules_path}'] input[type=hidden][name=respect_locks][value='1']"
+
+    post rules_url, headers: modal, params: {
+      respect_locks: 1,
+      rule: {
+        resource_type: "transaction",
+        conditions_attributes: { "0" => { condition_type: "transaction_name", operator: "like", value: "EON" } },
+        actions_attributes: { "0" => { action_type: "set_transaction_category", value: other.id } }
+      }
+    }
+    rule = @user.family.rules.order(:created_at).last
+    assert_redirected_to confirm_rule_path(rule, reload_on_close: true, respect_locks: 1)
+
+    follow_redirect! headers: modal
+    assert_select "turbo-frame#modal dialog form[action*='#{apply_rule_path(rule)}'][action*='respect_locks=1']"
+
+    perform_enqueued_jobs(only: RuleJob) { post apply_rule_url(rule, respect_locks: 1) }
+
+    assert_equal chosen, entry.transaction.reload.category
+    assert_equal reviewed_at.to_i, entry.reload.reviewed_at.to_i
+  end
+
+  test "apply from the rules page still overwrites locked fields" do
+    chosen = categories(:food_and_drink)
+    other = categories(:income)
+    entry = create_transaction(account: accounts(:depository), name: "EON Abschlag", amount: 20, category: chosen)
+    entry.transaction.lock_attr!(:category_id)
+    rule = @user.family.rules.create!(
+      resource_type: "transaction",
+      conditions: [ Rule::Condition.new(condition_type: "transaction_name", operator: "like", value: "EON") ],
+      actions: [ Rule::Action.new(action_type: "set_transaction_category", value: other.id) ]
+    )
+
+    perform_enqueued_jobs(only: RuleJob) { post apply_rule_url(rule) }
+
+    assert_equal other, entry.transaction.reload.category
+  end
+
   test "should get edit" do
     get edit_rule_url(rules(:one))
     assert_response :success

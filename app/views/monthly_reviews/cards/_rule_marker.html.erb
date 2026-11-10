@@ -1,0 +1,8 @@
+<%# A rule badge or rule-set field marker, linked to the rule when it is known. %>
+<%# locals: (rule:, label:) %>
+<% pill = render DS::Pill.new(label: label, tone: :violet, icon: "git-branch", marker: false, title: (rule ? t(".open", name: rule.name) : label)) %>
+<% if rule %>
+  <%= link_to pill, edit_rule_path(rule), class: "rounded-full focus-ring", data: { turbo_frame: "modal" } %>
+<% else %>
+  <%= pill %>
+<% end %>

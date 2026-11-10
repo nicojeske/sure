@@ -9,8 +9,8 @@
 # Every proposal is stored as a TransactionAnnotationSuggestion keyed by its
 # input, so the same receipt or hint never reaches the LLM twice. Provider
 # output is normalized here: names resolve to this family's records, unknown
-# categories and tags are dropped, and a split survives only when it is safe
-# to apply as-is.
+# categories and tags are dropped, a split survives only when it is safe to
+# apply as-is, and fields a rule set are only proposed when a hint asks.
 class Transaction::AnnotationSuggester
   Error = Class.new(StandardError)
   # The receipt cannot be used (wrong transaction or family, no OCR text);
@@ -107,6 +107,7 @@ class Transaction::AnnotationSuggester
   def learned_suggestion(entry)
     category_id, confidence = learned_category(entry)
     return nil if category_id.nil? || category_id == entry.transaction.category_id
+    return nil if rule_set_fields_of(entry).include?("category")
 
     suggestion = TransactionAnnotationSuggestion.find_or_create_for!(
       entry,
@@ -150,7 +151,11 @@ class Transaction::AnnotationSuggester
           suggestion.update!(receipt_link: receipt_link)
         end
 
-        payload = normalize(entry, request_annotation(entry, receipt_link, hint), receipt_link)
+        rule_set_fields = rule_set_fields_of(entry)
+        raw = request_annotation(entry, receipt_link, hint, rule_set_fields)
+        payload = normalize(entry, raw, receipt_link)
+        payload = without_rule_set_proposals(payload, rule_set_fields) if hint.blank?
+        payload["rule_proposal"] = MonthlyReview::HintRule.normalize(raw.rule_proposal, entry: entry, user: user) if hint.present?
         suggestion.update!(status: "ready", payload: payload)
       rescue StandardError => e
         @last_error = e
@@ -173,7 +178,7 @@ class Transaction::AnnotationSuggester
       @llm_provider ||= Provider::Registry.preferred_llm_provider
     end
 
-    def request_annotation(entry, receipt_link, hint)
+    def request_annotation(entry, receipt_link, hint, rule_set_fields)
       raise Error, "No LLM provider configured" unless llm_provider
 
       response = llm_provider.suggest_transaction_annotation(
@@ -184,7 +189,9 @@ class Transaction::AnnotationSuggester
         categories: family.categories.alphabetically.pluck(:name),
         merchants: merchants.alphabetically.limit(MAX_MERCHANTS).pluck(:name),
         tags: family.tags.alphabetically.pluck(:name),
-        locale: locale,
+        locale: family.ai_interface_locale_for(user),
+        content_locale: family.ai_content_locale_for(user),
+        rule_set_fields: rule_set_fields,
         family: family
       )
       raise Error, "Provider failed: #{response.error&.message}" unless response.success?
@@ -245,6 +252,22 @@ class Transaction::AnnotationSuggester
       return [ usual.id, nil ] if usual
 
       Family::BayesCategorizer.new(family).classify(transaction)
+    end
+
+    def rule_set_fields_of(entry)
+      MonthlyReview::RuleProvenance.new(family, [ entry ]).rules_by_field(entry).keys
+    end
+
+    # Only a hint may override what a rule set; the prompt says so too, and
+    # this holds whatever the model returns.
+    def without_rule_set_proposals(payload, rule_set_fields)
+      rule_set_fields.each_with_object(payload.dup) do |field, kept|
+        case field
+        when "merchant" then kept.merge!("merchant_id" => nil, "new_merchant_name" => nil)
+        when "tags" then kept["tag_ids"] = []
+        else kept[TransactionAnnotationSuggestion::FIELD_ATTRIBUTES.fetch(field)] = nil
+        end
+      end
     end
 
     def normalize(entry, raw, receipt_link)
@@ -337,10 +360,6 @@ class Transaction::AnnotationSuggester
     # Postgres rejects next to ORDER BY on a column outside the select list.
     def accessible_transactions
       Transaction.joins(:entry).where(entries: { account_id: family.accounts.accessible_by(user).select(:id) })
-    end
-
-    def locale
-      (user&.locale.presence || family.locale.presence || I18n.default_locale).to_s
     end
 
     def capture_failure(entry, suggestion, error)

@@ -93,6 +93,135 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     suggester.suggest_from_hint(@entry, "corer")
   end
 
+  test "stored values use the family's AI content language and the rationale the reviewer's language" do
+    @family.update!(locale: "fr", ai_content_language: "de")
+    @user.update!(locale: "en")
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal "de", args[:content_locale]
+      assert_equal "en", args[:locale]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
+  test "without an AI content language stored values follow the reviewer's interface language" do
+    @family.update!(locale: "fr", ai_content_language: nil)
+    @user.update!(locale: "en")
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal "en", args[:content_locale]
+      assert_equal "en", args[:locale]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
+  test "tells the provider which fields a rule set" do
+    @entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+
+    @provider.expects(:suggest_transaction_annotation).with do |**args|
+      assert_equal %w[category], args[:rule_set_fields]
+      true
+    end.returns(success(annotation))
+
+    suggester.suggest_from_hint(@entry, "corer")
+  end
+
+  test "a receipt suggestion, as prefetched without a hint, drops proposals for rule-set fields" do
+    entry = receipt_links(:linked_one).transaction_record.entry
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "Latte 3.50" })
+    entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+    entry.transaction.enrich_attribute(:merchant_id, @family.merchants.create!(name: "Edeka").id, source: "rule")
+    entry.transaction.enrich_attribute(:tag_ids, [ tags(:one).id ], source: "rule")
+    stub_annotation(annotation(
+      name: "Latte", notes: "Oat milk", category_name: "Outdoor", merchant_name: "Starbucks", tag_names: [ "Trips" ]
+    ))
+
+    payload = suggester.suggest_from_receipt(entry.reload, receipt_links(:linked_one)).payload
+
+    assert_nil payload["category_id"]
+    assert_nil payload["merchant_id"]
+    assert_nil payload["new_merchant_name"]
+    assert_equal [], payload["tag_ids"]
+    assert_equal "Latte", payload["name"]
+    assert_equal "Oat milk", payload["notes"]
+  end
+
+  test "a hint may change rule-set fields" do
+    @entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+    @entry.enrich_attribute(:name, "Kitchen stuff", source: "rule")
+    stub_annotation(annotation(name: "Hand warmer", category_name: "Outdoor"))
+
+    payload = suggester.suggest_from_hint(@entry.reload, "this time it's a hand warmer").payload
+
+    assert_equal @outdoor.id, payload["category_id"]
+    assert_equal "Hand warmer", payload["name"]
+  end
+
+  test "a rule proposal from a hint resolves names to this family's records" do
+    eon = @family.merchants.create!(name: "EON")
+    stub_annotation(annotation(rule_proposal: proposal(
+      conditions: [ condition("merchant", "=", "eon"), condition("amount", ">", "10.5") ],
+      actions: [ action("category", "kitchen"), action("tags", [ "Trips", "Invented" ]), action("name", "Strom") ]
+    )))
+
+    rule = suggester.suggest_from_hint(@entry, "always map EON to Kitchen").payload["rule_proposal"]
+
+    assert_equal [
+      { "condition_type" => "transaction_merchant", "operator" => "=", "value" => eon.id },
+      { "condition_type" => "transaction_amount", "operator" => ">", "value" => "10.5" }
+    ], rule["conditions"]
+    assert_equal [
+      { "action_type" => "set_transaction_category", "value" => @kitchen.id },
+      { "action_type" => "set_transaction_tags", "value" => [ tags(:one).id ] },
+      { "action_type" => "set_transaction_name", "value" => "Strom" }
+    ], rule["actions"]
+    assert_equal "merchant:#{eon.id}", rule["pattern_key"]
+  end
+
+  test "a name condition keys the proposal by its lowercase text" do
+    stub_annotation(annotation(rule_proposal: proposal(
+      conditions: [ condition("name", "like", "EON Abschlag") ], actions: [ action("category", "Kitchen") ]
+    )))
+
+    rule = suggester.suggest_from_hint(@entry, "make a rule").payload["rule_proposal"]
+
+    assert_equal "name:eon abschlag", rule["pattern_key"]
+  end
+
+  test "a rule proposal drops notes, unsupported and unresolvable parts" do
+    stub_annotation(annotation(rule_proposal: proposal(
+      conditions: [ condition("name", "like", "EON"), condition("notes", "like", "x"), condition("merchant", "=", "Nobody"), condition("amount", "like", "abc") ],
+      actions: [ action("notes", "hi"), action("category", "Gadgets"), action("merchant", "Nobody"), action("category", "Outdoor") ]
+    )))
+
+    rule = suggester.suggest_from_hint(@entry, "always").payload["rule_proposal"]
+
+    assert_equal [ { "condition_type" => "transaction_name", "operator" => "like", "value" => "EON" } ], rule["conditions"]
+    assert_equal [ { "action_type" => "set_transaction_category", "value" => @outdoor.id } ], rule["actions"]
+  end
+
+  test "a rule proposal without conditions or without actions is no proposal" do
+    stub_annotation(annotation(rule_proposal: proposal(conditions: [ condition("notes", "like", "x") ], actions: [ action("category", "Kitchen") ])))
+    assert_nil suggester.suggest_from_hint(@entry, "a").payload["rule_proposal"]
+
+    stub_annotation(annotation(rule_proposal: proposal(conditions: [ condition("name", "like", "EON") ], actions: [ action("notes", "x") ])))
+    assert_nil suggester.suggest_from_hint(@entry, "b").payload["rule_proposal"]
+  end
+
+  test "no rule intent means no rule proposal, and a receipt run never has one" do
+    stub_annotation(annotation(name: "Corer"))
+    assert_nil suggester.suggest_from_hint(@entry, "corer").payload["rule_proposal"]
+
+    entry = receipt_links(:linked_one).transaction_record.entry
+    Provider::Paperless.any_instance.stubs(:document).returns({ "content" => "Latte 3.50" })
+    stub_annotation(annotation(rule_proposal: proposal(conditions: [ condition("name", "like", "EON") ], actions: [ action("category", "Kitchen") ])))
+    assert_nil suggester.suggest_from_receipt(entry, receipt_links(:linked_one)).payload["rule_proposal"]
+  end
+
   test "a provider failure is recorded on the suggestion and in the debug log" do
     @provider.stubs(:suggest_transaction_annotation).returns(Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("boom")))
 
@@ -291,6 +420,14 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal @kitchen.id, suggestion.payload["category_id"]
   end
 
+  test "learned suggestion proposes nothing for a category a rule set" do
+    create_transaction(name: "AMAZON MKTPL 123", category: @outdoor)
+    @entry.transaction.enrich_attribute(:category_id, @kitchen.id, source: "rule")
+
+    assert_nil suggester.learned_suggestion(@entry)
+    assert_not @entry.annotation_suggestions.where(source: "learned").exists?
+  end
+
   test "learned suggestion falls back to Bayes and is nil without an answer" do
     Family::BayesCategorizer.any_instance.stubs(:classify).returns([ @outdoor.id, 0.9 ])
     assert_equal @outdoor.id, suggester.learned_suggestion(@entry).payload["category_id"]
@@ -317,6 +454,18 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
         name: nil, merchant_name: nil, category_name: nil, tag_names: [], notes: nil,
         receipt_total: nil, split: nil, confidence: 0.8, rationale: nil
       }.merge(attributes))
+    end
+
+    def proposal(conditions:, actions:)
+      Provider::LlmConcept::RuleProposal.new(conditions: conditions, actions: actions)
+    end
+
+    def condition(field, operator, value)
+      { "field" => field, "operator" => operator, "value" => value }
+    end
+
+    def action(field, value)
+      { "field" => field, "value" => value }
     end
 
     def part(name, amount, category_name)

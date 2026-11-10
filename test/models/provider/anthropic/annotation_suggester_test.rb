@@ -24,6 +24,32 @@ class Provider::Anthropic::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal [], result.tag_names
   end
 
+  test "the report tool accepts an optional rule proposal and maps it" do
+    messages = mock
+    messages.expects(:create).with do |params|
+      schema = params[:tools].first[:input_schema]
+      rule = schema[:properties][:rule_proposal]
+      assert_includes schema[:required], "rule_proposal"
+      assert_equal %w[conditions actions], rule[:properties].keys.map(&:to_s)
+      assert_includes params[:system_], "rule_proposal"
+      true
+    end.returns(OpenStruct.new(
+      id: "msg_test", model: "claude-haiku-4-5",
+      content: [ OpenStruct.new(type: :tool_use, id: "toolu_1", name: "report_transaction_annotation", input: tool_input.merge(
+        "rule_proposal" => {
+          "conditions" => [ { "field" => "merchant", "operator" => "=", "value" => "Amazon" } ],
+          "actions" => [ { "field" => "category", "value" => "Küche" } ]
+        }
+      )) ],
+      usage: OpenStruct.new(input_tokens: 100, output_tokens: 50)
+    ))
+
+    result = Provider::Anthropic::AnnotationSuggester.new(stub(messages: messages), model: "claude-haiku-4-5", prompt: prompt).suggest
+
+    assert_equal [ { "field" => "merchant", "operator" => "=", "value" => "Amazon" } ], result.rule_proposal.conditions
+    assert_equal [ { "field" => "category", "value" => "Küche" } ], result.rule_proposal.actions
+  end
+
   private
     def prompt
       Provider::TransactionAnnotationPrompt.new(

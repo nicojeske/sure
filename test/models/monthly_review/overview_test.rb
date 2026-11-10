@@ -8,18 +8,47 @@ class MonthlyReview::OverviewTest < ActiveSupport::TestCase
     @account = accounts(:depository)
     @family.accounts.each { |account| account.entries.delete_all }
     @today = Date.new(2026, 11, 10)
+    # The family's oldest entry, so the years 2024 to 2026 can be reviewed.
+    create_transaction(account: @account, date: Date.new(2024, 3, 9), name: "Oldest")
   end
 
-  test "lists the last twelve months, newest first, without creating reviews" do
+  test "opens on the current year, newest first, hiding future months, without creating reviews" do
     assert_no_difference "MonthlyReview.count" do
       months = overview.months
 
-      assert_equal 12, months.size
+      assert_equal 2026, overview.year
+      assert_equal 11, months.size
       assert_equal Date.new(2026, 11, 1), months.first.review.start_date
-      assert_equal Date.new(2025, 12, 1), months.last.review.start_date
-      assert_equal Date.new(2025, 12, 31), months.last.review.end_date
+      assert_equal Date.new(2026, 1, 1), months.last.review.start_date
+      assert_equal Date.new(2026, 1, 31), months.last.review.end_date
       assert_equal "nov-2026", months.first.review.to_param
     end
+  end
+
+  test "lists every month of an earlier year" do
+    review = overview(year: 2025)
+
+    assert_equal 2025, review.year
+    assert_equal (1..12).to_a.reverse, review.months.map { |month| month.review.start_date.month }
+    assert_equal [ Date.new(2025, 12, 1), Date.new(2025, 1, 1) ], [ review.months.first.review.start_date, review.months.last.review.start_date ]
+  end
+
+  test "clamps the year to the year of the oldest entry and the current year" do
+    assert_equal 2024, overview(year: 1999).year
+    assert_equal 2026, overview(year: 2031).year
+  end
+
+  test "starts the oldest year at the month of the oldest entry" do
+    months = overview(year: 2024).months
+
+    assert_equal 10, months.size
+    assert_equal Date.new(2024, 3, 1), months.last.review.start_date
+  end
+
+  test "offers the previous and next year only where they can be reviewed" do
+    assert_equal [ 2025, nil ], [ overview.previous_year, overview.next_year ]
+    assert_equal [ 2024, 2026 ], [ overview(year: 2025).previous_year, overview(year: 2025).next_year ]
+    assert_equal [ nil, 2025 ], [ overview(year: 2024).previous_year, overview(year: 2024).next_year ]
   end
 
   test "counts each month's reviewable transactions and reviewed ones" do
@@ -69,8 +98,19 @@ class MonthlyReview::OverviewTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 9, 15), months.second.review.start_date
   end
 
+  test "with a custom month start, a year holds the months labelled in it" do
+    @family.update!(month_start_day: 25)
+    @today = Date.new(2026, 1, 10)
+
+    assert_equal 2025, overview.year
+    assert_equal 2025, overview(year: 2026).year
+    assert_equal [ Date.new(2025, 12, 25), Date.new(2026, 1, 24) ], [ overview.months.first.review.start_date, overview.months.first.review.end_date ]
+    assert_equal "dec-2025", overview.months.first.review.to_param
+    assert_equal Date.new(2025, 1, 25), overview.months.last.review.start_date
+  end
+
   private
-    def overview(include_transfers: false)
-      MonthlyReview::Overview.new(@family, @family.entries, include_transfers: include_transfers, today: @today)
+    def overview(year: nil, include_transfers: false)
+      MonthlyReview::Overview.new(@family, @family.entries, year: year, include_transfers: include_transfers, today: @today)
     end
 end

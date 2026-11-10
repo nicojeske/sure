@@ -19,6 +19,33 @@ class Provider::Openai::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_nil result.split
   end
 
+  test "asks for a rule proposal in the JSON shape and parses it" do
+    content = {
+      "name" => "Strom", "rule_proposal" => {
+        "conditions" => [ { "field" => "name", "operator" => "like", "value" => "EON" }, "junk", { "field" => "name" } ],
+        "actions" => [ { "field" => "category", "value" => "Strom" }, { "field" => "tags", "value" => "Fixed" } ]
+      }
+    }.to_json
+    client = mock
+    client.expects(:chat).with do |parameters:|
+      instructions = parameters[:messages].first[:content]
+      assert_includes instructions, '"rule_proposal": null or {"conditions"'
+      assert_includes instructions, "never notes"
+      true
+    end.returns({ "choices" => [ { "message" => { "content" => content } } ], "usage" => nil })
+
+    result = Provider::Openai::AnnotationSuggester.new(client, model: "gpt-4.1", prompt: prompt).suggest
+
+    assert_equal [ { "field" => "name", "operator" => "like", "value" => "EON" } ], result.rule_proposal.conditions
+    assert_equal [ { "field" => "category", "value" => "Strom" }, { "field" => "tags", "value" => [ "Fixed" ] } ], result.rule_proposal.actions
+  end
+
+  test "a missing or empty rule proposal parses to nil" do
+    assert_nil Provider::TransactionAnnotationPrompt.annotation_from({}).rule_proposal
+    assert_nil Provider::TransactionAnnotationPrompt.annotation_from("rule_proposal" => { "conditions" => [], "actions" => [] }).rule_proposal
+    assert_nil Provider::TransactionAnnotationPrompt.annotation_from("rule_proposal" => "yes").rule_proposal
+  end
+
   private
     def prompt
       Provider::TransactionAnnotationPrompt.new(
