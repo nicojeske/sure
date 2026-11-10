@@ -9,6 +9,11 @@
       <% if card.original_name %>
         <p class="truncate font-mono text-xs text-subdued"><%= t(".original_name", name: card.original_name) %></p>
       <% end %>
+      <% if card.rule_handled? %>
+        <div class="mt-1" data-review-rule-badge>
+          <%= render "monthly_reviews/cards/rule_marker", rule: card.rule, label: t(".rule") %>
+        </div>
+      <% end %>
     </div>
   </div>
   <p class="shrink-0 text-lg font-medium text-primary privacy-sensitive"><%= format_money(-entry.amount_money) %></p>

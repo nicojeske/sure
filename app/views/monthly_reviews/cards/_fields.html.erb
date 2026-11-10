@@ -38,6 +38,12 @@
           <span class="text-xs text-subdued"><%= field.status == :applied ? t(".applied") : t(".no_change") %></span>
         <% end %>
       </span>
+      <% if card.rule_set?(field.key) %>
+        <% rule = card.rule_for(field.key) %>
+        <span class="shrink-0" data-review-rule-set>
+          <%= render "monthly_reviews/cards/rule_marker", rule: rule, label: rule ? t(".from_rule") : t(".set_by_rule") %>
+        </span>
+      <% end %>
     <% end %>
   <% end %>
 </div>

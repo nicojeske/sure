@@ -126,6 +126,24 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_not @plain.reload.reviewed?
   end
 
+  test "a rule-handled card shows the rule badge, the field marker and the list icon" do
+    rule = @family.rules.create!(
+      name: "Unknown shop", resource_type: "transaction", active: true,
+      conditions: [ Rule::Condition.new(condition_type: "transaction_name", operator: "like", value: "Unknown shop") ],
+      actions: [ Rule::Action.new(action_type: "set_transaction_category", value: @category.id) ]
+    )
+    Rule::Runner.new(@family, rules: [ rule ], execution_type: "manual").run
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_card @plain, state: "empty"
+
+    assert_selector "[data-review-rule-badge] a[href='#{edit_rule_path(rule)}']", text: "Rule"
+    assert_selector "[data-review-field-row='category'] [data-review-rule-set] a[href='#{edit_rule_path(rule)}']", text: "from rule"
+    assert_no_selector "[data-review-field-row='name'] [data-review-rule-set]"
+    assert_selector "[data-review-entry-id='#{@plain.id}'] [data-review-rule-handled]"
+    assert_no_selector "[data-review-entry-id='#{@coffee.id}'] [data-review-rule-handled]"
+  end
+
   private
     # Scrolling is smooth, so wait for it to move.
     def receipt_scrolled?

@@ -33,6 +33,7 @@ en:
       fields:
         applied: Applied
         apply: Apply %{field}
+        from_rule: from rule
         labels:
           category: Category
           merchant: Merchant
@@ -41,9 +42,11 @@ en:
           tags: Tags
         locked: You can't change this field on a shared account
         no_change: No change
+        set_by_rule: set by rule
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
         original_name: 'Bank: %{name}'
+        rule: Rule
       hint:
         help_html: "%{focus} or h to type · %{send} asks the AI · %{leave} leaves the field"
         label: Hint for the AI
@@ -57,6 +60,8 @@ en:
       list:
         progress_html: "%{reviewed}/%{total} reviewed"
         title: Transactions
+      list_row:
+        rule_handled: Handled by a rule
       receipt_pane:
         loading: Loading the receipt text…
         none_html: No receipt · %{key} searches Paperless
@@ -68,6 +73,8 @@ en:
       receipt_search:
         help: "↑↓ choose · ⏎ link and read · Esc closes"
         placeholder: Search Paperless
+      rule_marker:
+        open: 'Open rule: %{name}'
       shortcuts:
         accept: accept
         back: back

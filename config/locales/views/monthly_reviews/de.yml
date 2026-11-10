@@ -33,6 +33,7 @@ de:
       fields:
         applied: Übernommen
         apply: "%{field} übernehmen"
+        from_rule: aus Regel
         labels:
           category: Kategorie
           merchant: Händler
@@ -41,9 +42,11 @@ de:
           tags: Tags
         locked: Dieses Feld kannst du in einem geteilten Konto nicht ändern
         no_change: Keine Änderung
+        set_by_rule: durch Regel gesetzt
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
         original_name: 'Bank: %{name}'
+        rule: Regel
       hint:
         help_html: "%{focus} oder h zum Tippen · %{send} fragt die KI · %{leave} verlässt das Feld"
         label: Hinweis für die KI
@@ -57,6 +60,8 @@ de:
       list:
         progress_html: "%{reviewed}/%{total} geprüft"
         title: Buchungen
+      list_row:
+        rule_handled: Von einer Regel bearbeitet
       receipt_pane:
         loading: Belegtext wird geladen…
         none_html: Kein Beleg · %{key} durchsucht Paperless
@@ -68,6 +73,8 @@ de:
       receipt_search:
         help: "↑↓ auswählen · ⏎ verknüpfen und lesen · Esc schließt"
         placeholder: Paperless durchsuchen
+      rule_marker:
+        open: 'Regel öffnen: %{name}'
       shortcuts:
         accept: übernehmen
         back: zurück
