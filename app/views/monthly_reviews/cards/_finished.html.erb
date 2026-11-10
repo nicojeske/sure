@@ -1,0 +1,16 @@
+<%# The end of the queue. Skipped transactions are still unreviewed: starting
+    over goes through them. %>
+<%# locals: (entries:) %>
+<% reviewed = entries.count(&:reviewed?) %>
+<%= render DS::Card.new(
+      class: "items-center gap-3 text-center @3xl/page:col-span-1 @7xl/page:col-span-2",
+      data: { review_card_target: "card", review_card_state: "finished", review_card_total: entries.size, review_card_reviewed_ids: entries.select(&:reviewed?).map(&:id).to_json }
+    ) do %>
+  <%= icon "circle-check", size: "2xl", color: "success" %>
+  <h2 class="text-lg font-medium text-primary"><%= t(".title", month: review_month_label(@monthly_review)) %></h2>
+  <p class="text-sm text-secondary"><%= t(".summary", reviewed: reviewed, total: entries.size) %></p>
+  <% if reviewed < entries.size %>
+    <p class="text-sm text-secondary"><%= t(".skipped", count: entries.size - reviewed) %></p>
+    <%= render DS::Link.new(text: t(".restart"), variant: :outline, href: review_card_path, data: { turbo_frame: "monthly_review_card", turbo_action: "advance" }) %>
+  <% end %>
+<% end %>

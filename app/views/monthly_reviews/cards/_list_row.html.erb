@@ -1,0 +1,13 @@
+<%# locals: (entry:, status:) %>
+<%= tag.li class: "group/item", data: { review_entry_id: entry.id, status: status } do %>
+  <%= link_to review_card_path(entry),
+        class: "flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-container-inset group-data-[status=current]/item:bg-container-inset",
+        aria: { current: (status == "current" ? "true" : nil) },
+        data: { turbo_frame: "monthly_review_card", turbo_action: "advance" } do %>
+    <%= render "monthly_reviews/cards/status_dot" %>
+    <span class="w-12 shrink-0 text-xs text-secondary"><%= l(entry.date, format: :short) %></span>
+    <%= render "monthly_reviews/cards/merchant_avatar", merchant: entry.transaction.merchant, name: entry.name, size: :sm %>
+    <span class="flex-1 min-w-0 truncate text-secondary group-data-[status=current]/item:font-medium group-data-[status=current]/item:text-primary"><%= entry.name %></span>
+    <span class="shrink-0 text-xs text-secondary privacy-sensitive"><%= format_money(entry.amount_money) %></span>
+  <% end %>
+<% end %>

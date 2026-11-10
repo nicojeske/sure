@@ -1,0 +1,19 @@
+<%# locals: (key:, value:, entry:) %>
+<% case key %>
+<% when "merchant" %>
+  <% if value %>
+    <span class="inline-flex min-w-0 items-center gap-1.5 align-middle">
+      <%= render "monthly_reviews/cards/merchant_avatar", merchant: value, name: value.name, size: :sm %>
+      <span class="truncate"><%= value.name %></span>
+      <% if value.is_a?(MonthlyReview::Card::NewMerchant) %><%= render DS::Pill.new(label: t(".new"), tone: :violet) %><% end %>
+    </span>
+  <% else %>
+    <%= t(".empty") %>
+  <% end %>
+<% when "category" %>
+  <%= value&.name || t(".uncategorized") %>
+<% when "tags" %>
+  <%= value.present? ? value.map(&:name).join(", ") : t(".empty") %>
+<% else %>
+  <%= value.presence || t(".empty") %>
+<% end %>

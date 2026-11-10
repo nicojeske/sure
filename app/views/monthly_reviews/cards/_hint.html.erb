@@ -1,0 +1,15 @@
+<%# The hint is not autofocused: outside it every letter is a shortcut; / or h
+    focuses it. Permanent per entry, so a live refresh keeps what is typed. %>
+<%# locals: (card:) %>
+<%= styled_form_with url: monthly_review_hints_path(@monthly_review), method: :post, class: "flex flex-col gap-1" do |f| %>
+  <%= hidden_field_tag :entry_id, card.entry.id, id: nil %>
+  <%= hidden_field_tag :include_transfers, "1", id: nil if include_transfers? %>
+  <%= f.text_field :hint,
+        label: t(".label"),
+        value: card.hint_text,
+        id: "review_hint_#{card.entry.id}",
+        placeholder: t(".placeholder"),
+        autocomplete: "off",
+        data: { turbo_permanent: true, review_card_target: "hint" } %>
+  <p class="hidden text-xs text-subdued md:block"><%= t(".help_html", focus: render("monthly_reviews/cards/kbd", key: "/"), send: render("monthly_reviews/cards/kbd", key: "⏎"), leave: render("monthly_reviews/cards/kbd", key: "Esc")) %></p>
+<% end %>

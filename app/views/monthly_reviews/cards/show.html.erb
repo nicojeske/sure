@@ -1,0 +1,59 @@
+<% content_for :title, t(".title", month: review_month_label(@monthly_review)) %>
+<% current_index = @entry && @entries.index(@entry) %>
+
+<%= tag.div class: "@container/page pb-48 md:pb-12",
+      data: {
+        controller: "review-card",
+        action: "keydown@document->review-card#key",
+        review_card_messages_value: {
+          nothing_proposed: t(".messages.nothing_proposed"),
+          nothing_to_undo: t(".messages.nothing_to_undo"),
+          no_receipt: t(".messages.no_receipt"),
+          first_card: t(".messages.first_card"),
+          still_reading: t(".messages.still_reading")
+        }.to_json
+      } do %>
+  <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-2 min-w-0">
+      <h1 class="text-xl font-semibold text-primary truncate"><%= t(".heading", month: review_month_label(@monthly_review)) %></h1>
+      <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
+    </div>
+    <div class="flex items-center gap-2">
+      <%= render DS::Link.new(
+            text: include_transfers? ? t(".hide_transfers") : t(".include_transfers"),
+            variant: :ghost,
+            size: :sm,
+            icon: "arrow-right-left",
+            href: monthly_review_card_path(@monthly_review, include_transfers: (include_transfers? ? nil : "1"))
+          ) %>
+      <%= render DS::Button.new(
+            text: t(".refresh"),
+            variant: :outline,
+            size: :sm,
+            icon: "refresh-cw",
+            href: monthly_review_prefetch_path(@monthly_review, include_transfers: ("1" if include_transfers?)),
+            method: :post,
+            title: t(".refresh_hint")
+          ) %>
+    </div>
+  </header>
+
+  <div class="grid grid-cols-1 @3xl/page:grid-cols-[18rem_minmax(0,1fr)] @7xl/page:grid-cols-[18rem_minmax(0,1fr)_24rem] gap-4 items-start">
+    <%= render "monthly_reviews/cards/list", entries: @entries, current_entry: @entry, current_index: current_index %>
+
+    <%= turbo_frame_tag "monthly_review_card", class: "group/frame contents", data: { turbo_action: "advance" } do %>
+      <% if @card %>
+        <%= turbo_stream_from Current.family, :monthly_review, @entry, hidden: true %>
+        <%= render "monthly_reviews/cards/strip", entries: @entries, current_index: current_index %>
+        <%= render "monthly_reviews/cards/card", card: @card, entries: @entries, current_index: current_index, next_entry: @next_entry %>
+        <aside class="hidden @7xl/page:col-start-3 @7xl/page:block sticky top-4" aria-label="<%= t(".receipt_column") %>">
+          <%= render DS::Card.new do %>
+            <%= render "monthly_reviews/cards/receipt_pane", card: @card, frame_id: "receipt_text_wide", scroll_class: "max-h-[calc(100vh-12rem)]" %>
+          <% end %>
+        </aside>
+      <% else %>
+        <%= render "monthly_reviews/cards/finished", entries: @entries %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

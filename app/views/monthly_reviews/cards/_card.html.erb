@@ -1,0 +1,52 @@
+<%# One transaction with its proposal. The data-review-card-* attributes tell
+    the review-card controller (on the page, outside this frame) which card is
+    showing and what its keys should do. %>
+<%# locals: (card:, entries:, current_index:, next_entry:) %>
+<% entry = card.entry %>
+<% form_id = "review_card_decision" %>
+<% next_link = next_entry && Transaction::AnnotationSuggester.receipt_choice(next_entry.transaction).link %>
+<%= render DS::Card.new(
+      class: "@container/card min-w-0 gap-4 @3xl/page:col-start-2 @3xl/page:sticky @3xl/page:top-4",
+      aria: { label: t(".label", name: entry.name) },
+      data: {
+        review_card_target: "card",
+        review_card_entry_id: entry.id,
+        review_card_state: card.state,
+        review_card_queued: card.queued?,
+        review_card_reviewed_ids: entries.select(&:reviewed?).map(&:id).to_json,
+        review_card_total: entries.size,
+        review_card_paperless_url: card.receipt_link&.paperless_connection&.document_url(card.receipt_link.document_id),
+        review_card_next_receipt_url: (next_link && monthly_review_receipt_text_path(@monthly_review, entry_id: next_entry.id, receipt_link_id: next_link.id, variant: "wide"))
+      }
+    ) do %>
+  <%= render "monthly_reviews/cards/header", card: card, position: current_index + 1, total: entries.size %>
+
+  <div class="@7xl/page:hidden">
+    <%= render "monthly_reviews/cards/receipt_pane", card: card, frame_id: "receipt_text_narrow", scroll_class: "max-h-48" %>
+  </div>
+
+  <% unless card.reviewed? %>
+    <%= render "monthly_reviews/cards/hint", card: card %>
+    <%= render "monthly_reviews/cards/receipt_search", card: card %>
+  <% end %>
+
+  <%= render "monthly_reviews/cards/state", card: card, form_id: form_id %>
+
+  <%= form_with url: monthly_review_card_path(@monthly_review), method: :patch, id: form_id, html: { hidden: true } do %>
+    <%= hidden_field_tag :entry_id, entry.id, id: nil %>
+    <%= hidden_field_tag :suggestion_id, card.suggestion&.id, id: nil %>
+    <%= hidden_field_tag :include_transfers, "1", id: nil if include_transfers? %>
+  <% end %>
+
+  <%= render "monthly_reviews/cards/fields", card: card, form_id: form_id %>
+  <%= render "monthly_reviews/cards/split", card: card, form_id: form_id %>
+  <%= render "monthly_reviews/cards/badges", card: card %>
+
+  <% unless card.reviewed? %>
+    <%= render "monthly_reviews/cards/edit", card: card %>
+  <% end %>
+
+  <p class="text-xs text-secondary" data-review-card-target="feedback" aria-live="polite"></p>
+  <%= render "monthly_reviews/cards/shortcuts" %>
+  <%= render "monthly_reviews/cards/actions", card: card, form_id: form_id, first: current_index.zero? %>
+<% end %>

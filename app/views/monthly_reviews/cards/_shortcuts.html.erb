@@ -1,0 +1,6 @@
+<% keys = [ [ "/ h", "hint" ], [ "⏎", "accept" ], [ "Ctrl+⏎", "reviewed" ], [ "Esc", "skip" ], [ "Alt+←", "back" ], [ "1–5", "fields" ], [ "x", "split" ], [ "f", "find" ], [ "o", "open" ], [ "e", "edit" ], [ "u", "undo" ], [ "⇧↑↓", "scroll" ] ] %>
+<div class="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary md:flex" aria-label="<%= t(".label") %>">
+  <% keys.each do |key, action| %>
+    <span class="inline-flex items-center gap-1"><%= render "monthly_reviews/cards/kbd", key: key %><%= t(".#{action}") %></span>
+  <% end %>
+</div>

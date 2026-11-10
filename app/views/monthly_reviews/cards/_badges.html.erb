@@ -1,0 +1,23 @@
+<%# Where the proposal came from, how sure the AI is, and the receipt total
+    warning (Q20), below the rows so they never shift. %>
+<%# locals: (card:) %>
+<% if card.receipt_mismatch? %>
+  <%= render DS::Alert.new(variant: :warning, message: t(".mismatch")) %>
+<% end %>
+<% if card.suggestion && (card.proposal? || card.reviewed?) %>
+  <div class="flex min-w-0 items-center gap-2">
+    <% if card.learned? %>
+      <%= render DS::Pill.new(label: t(".learned"), tone: :indigo, icon: "sparkles", marker: false) %>
+    <% else %>
+      <% confidence = review_confidence_label(card) %>
+      <%= render DS::Pill.new(
+            label: [ t(".sources.#{card.suggestion.source}"), confidence ].compact.join(" · "),
+            tone: card.confidence.to_f >= 0.8 ? :success : :warning,
+            marker: false
+          ) %>
+    <% end %>
+    <% if card.rationale %>
+      <span class="truncate text-xs text-subdued" title="<%= card.rationale %>"><%= card.rationale %></span>
+    <% end %>
+  </div>
+<% end %>

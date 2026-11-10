@@ -1,0 +1,17 @@
+<%# The month's transactions beside the card. It sits outside the card's frame,
+    so it keeps its scroll position; the review-card controller repaints the
+    status dots after each card. %>
+<%# locals: (entries:, current_entry:, current_index:) %>
+<div class="hidden @3xl/page:block sticky top-4">
+  <%= render DS::Card.new(class: "gap-2") do %>
+    <div class="flex items-center justify-between text-xs text-secondary">
+      <span class="font-medium text-primary"><%= t(".title") %></span>
+      <span><%= t(".progress_html", reviewed: tag.span(entries.count(&:reviewed?), data: { review_reviewed_count: true }), total: entries.size) %></span>
+    </div>
+    <ol class="-mx-5 -mb-5 max-h-[75vh] overflow-y-auto divide-y divide-subdued border-t border-primary" data-review-card-target="list">
+      <% entries.each_with_index do |entry, index| %>
+        <%= render "monthly_reviews/cards/list_row", entry: entry, status: review_list_status(entry, current_entry, index, current_index) %>
+      <% end %>
+    </ol>
+  <% end %>
+</div>

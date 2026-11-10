@@ -1,0 +1,44 @@
+<%# Edit mode (e): the drawer's own widgets, saved as the user's edit, and the
+    card is marked reviewed. %>
+<%# locals: (card:) %>
+<% entry = card.entry %>
+<% editable = card.editable_fields %>
+<%= render DS::Disclosure.new(title: t(".title"), align: :left, data: { review_card_target: "edit" }) do %>
+  <%= styled_form_with model: entry, url: monthly_review_card_path(@monthly_review), method: :patch, class: "flex flex-col gap-2" do |f| %>
+    <%= hidden_field_tag :decision, "edit", id: nil %>
+    <%= hidden_field_tag :entry_id, entry.id, id: nil %>
+    <%= hidden_field_tag :include_transfers, "1", id: nil if include_transfers? %>
+    <%= f.text_field :name, label: t(".name"), disabled: !editable.include?("name") %>
+    <%= f.fields_for :entryable do |ef| %>
+      <% if entry.transaction.category_editable? %>
+        <%= render DS::CategorySelect.new(
+              form: ef,
+              categories: Current.family.categories.alphabetically_by_hierarchy,
+              selected_id: entry.transaction.category_id,
+              disabled: !editable.include?("category"),
+              blank_label: t(".uncategorized"),
+              locked: Current.family.categories_locked?
+            ) %>
+      <% end %>
+      <%= render DS::MerchantSelect.new(
+            form: ef,
+            method: :merchant_id,
+            merchants: Current.family.available_merchants_for(Current.user).with_attached_logo.alphabetically,
+            selected_id: entry.transaction.merchant_id,
+            include_blank: t(".none"),
+            label: t(".merchant"),
+            disabled: !editable.include?("merchant")
+          ) %>
+      <%= render DS::TagSelect.new(
+            form: ef,
+            tags: Current.family.tags.alphabetically,
+            selected_ids: entry.transaction.tag_ids,
+            disabled: !editable.include?("tags")
+          ) %>
+    <% end %>
+    <%= f.text_area :notes, label: t(".notes"), rows: 2, disabled: !editable.include?("notes") %>
+    <div class="flex justify-end">
+      <%= render DS::Button.new(text: t(".save"), type: :submit) %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,98 @@
+# The monthly review card: one transaction at a time with its proposal, the
+# month's list beside it, and the decisions that move through the queue.
+# The card lives in the "monthly_review_card" Turbo frame; every decision
+# redirects to the card to show next.
+class MonthlyReviews::CardsController < ApplicationController
+  include MonthlyReviewScoped
+
+  before_action :set_entry, only: :update
+
+  def show
+    @monthly_review.prefetch_suggestions_later(Current.user, include_transfers: include_transfers?) unless turbo_frame_request?
+
+    @entries = review_entries.preload(:account, entryable: [ :merchant, :receipt_links ]).to_a
+    @entry = current_entry
+    @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id]) if @entry
+    @next_entry = next_entry_in_list
+  end
+
+  def update
+    case params[:decision]
+    when "accept" then accept!
+    when "reviewed_only" then reviewed_only!
+    when "skip" then redirect_to_next
+    when "back" then back!
+    when "undo" then undo!
+    when "suggest" then suggest!
+    when "edit" then edit!
+    else head :unprocessable_entity
+    end
+  rescue TransactionAnnotationSuggestion::Applier::Error, ActiveRecord::RecordInvalid
+    redirect_to review_card_path(@entry), alert: t(".failed")
+  end
+
+  private
+    def current_entry
+      if params[:entry_id].present?
+        @entries.find { |entry| entry.id == params[:entry_id] } || raise(ActiveRecord::RecordNotFound)
+      elsif params[:finished].blank?
+        @entries.find { |entry| !entry.reviewed? }
+      end
+    end
+
+    def next_entry_in_list
+      return nil unless @entry
+
+      @entries.drop(@entries.index(@entry) + 1).find { |entry| !entry.reviewed? }
+    end
+
+    def accept!
+      suggestion = @entry.annotation_suggestions.find_by(id: params[:suggestion_id]) if params[:suggestion_id].present?
+
+      if suggestion&.applicable?
+        suggestion.apply!(user: Current.user, fields: Array(params[:fields]), split: params[:split] == "1")
+      else
+        @entry.mark_reviewed!(Current.user)
+      end
+      redirect_to_next
+    end
+
+    def reviewed_only!
+      @entry.mark_reviewed!(Current.user)
+      redirect_to_next
+    end
+
+    def back!
+      previous = @monthly_review.previous_entry_before(@entry, Current.annotatable_entries, include_transfers: include_transfers?)
+      redirect_to review_card_path(previous || @entry)
+    end
+
+    def undo!
+      redirect_to review_card_path(@monthly_review.undo_review!(@entry, Current.user))
+    end
+
+    # Reads a receipt of the entry on request: the unread or failed one, or a
+    # close candidate the user picked.
+    def suggest!
+      link = @entry.transaction.receipt_links.where.not(status: "dismissed").find(params[:receipt_link_id])
+      input_hash = Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link)
+      suggestion = suggest_unless_in_flight(input_hash) { suggester.suggest_from_receipt(@entry, link) }
+
+      redirect_to review_card_path(@entry, suggestion_id: suggestion.id)
+    end
+
+    def edit!
+      MonthlyReview::ManualEdit.new(@entry, user: Current.user).save!(edit_params)
+      redirect_to_next
+    end
+
+    def redirect_to_next
+      next_entry = @monthly_review.next_entry_after(@entry, Current.annotatable_entries, include_transfers: include_transfers?)
+      redirect_to next_entry ? review_card_path(next_entry) : review_card_path(finished: 1)
+    end
+
+    def edit_params
+      permitted = params.require(:entry).permit(:name, :notes, entryable_attributes: [ :category_id, :merchant_id, { tag_ids: [] } ])
+      permitted.slice(:name, :notes).merge(permitted.fetch(:entryable_attributes, {}).to_h).to_h
+    end
+end

@@ -1,0 +1,21 @@
+<%# Inline Paperless search (f). Results load into their own frame; picking one
+    links it and reads it, replacing the whole card. %>
+<%# locals: (card:) %>
+<% if Current.family.paperless_configured? %>
+  <%= tag.div hidden: true, class: "flex flex-col gap-2 rounded-lg border border-primary p-3", data: { review_card_target: "search" } do %>
+    <%= form_with url: monthly_review_receipt_searches_path(@monthly_review), method: :get,
+          data: { turbo_frame: "review_receipt_search_results" } do %>
+      <%= hidden_field_tag :entry_id, card.entry.id, id: nil %>
+      <%= hidden_field_tag :include_transfers, "1", id: nil if include_transfers? %>
+      <%= render DS::SearchInput.new(
+            name: "q",
+            value: card.transaction.merchant&.name || card.entry.name,
+            placeholder: t(".placeholder"),
+            aria_label: t(".placeholder"),
+            data: { action: "input->review-card#searchEdited" }
+          ) %>
+    <% end %>
+    <%= turbo_frame_tag "review_receipt_search_results", class: "block max-h-64 overflow-y-auto", data: { action: "turbo:frame-load->review-card#searchLoaded" } %>
+    <p class="text-xs text-subdued"><%= t(".help") %></p>
+  <% end %>
+<% end %>

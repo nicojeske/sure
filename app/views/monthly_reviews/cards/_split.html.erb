@@ -1,0 +1,21 @@
+<%# locals: (card:, form_id:) %>
+<% if card.split_parts.any? %>
+  <div class="group/split flex flex-col gap-2" data-review-field-row="split">
+    <% if card.split_selectable? %>
+      <label class="flex cursor-pointer items-center gap-2 text-sm text-primary">
+        <%= check_box_tag "split", "1", card.split_checked?, id: "review_field_split", form: form_id, class: "checkbox checkbox--light", data: { review_field: "split" } %>
+        <%= render "monthly_reviews/cards/kbd", key: "x" %>
+        <%= t(".title", count: card.split_parts.size) %>
+      </label>
+    <% else %>
+      <p class="flex items-center gap-2 text-sm text-secondary"><%= icon "lock", size: "xs" %> <%= t(".not_allowed", count: card.split_parts.size) %></p>
+    <% end %>
+    <div class="<%= class_names("opacity-50", card.split_selectable? && "group-has-[:checked]/split:opacity-100") %>">
+      <%= render DS::Table.new(rows: card.split_parts, inset: true, label: t(".table_label")) do |table| %>
+        <% table.with_column(t(".part")) { |part| part.name } %>
+        <% table.with_column(t(".category")) { |part| part.category&.name || t(".uncategorized") } %>
+        <% table.with_column(t(".amount"), numeric: true, class: "privacy-sensitive") { |part| format_money(-part.amount) } %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
