@@ -57,6 +57,8 @@ de:
       list:
         progress_html: "%{reviewed}/%{total} geprüft"
         title: Buchungen
+      receipt_document:
+        open: "%{title} öffnen"
       receipt_pane:
         loading: Belegtext wird geladen…
         none_html: Kein Beleg · %{key} durchsucht Paperless
@@ -64,6 +66,8 @@ de:
         pick: Beleg auswählen
         pick_help: "↑↓ auswählen · ⏎ verknüpfen und lesen"
         scroll: scrollen
+        show_document: Dokument
+        show_text: Text
         untitled: 'Dokument #%{id}'
       receipt_search:
         help: "↑↓ auswählen · ⏎ verknüpfen und lesen · Esc schließt"
@@ -81,6 +85,7 @@ de:
         scroll: Beleg scrollen
         skip: überspringen
         split: aufteilen
+        text: Belegtext ⇄ Dokument
         undo: rückgängig
       show:
         heading: "%{month} prüfen"

@@ -1,0 +1,26 @@
+<%# The linked receipt's document, served through the Paperless proxy so the
+    API token stays on the server. The receipt column embeds it (a PDF in the
+    browser's viewer, an image as an image, falling back to a frame when the
+    cached type is stale); the card shows the thumbnail, which opens the full
+    preview, since embedded PDFs work poorly on small screens. %>
+<%# locals: (link:, variant:) %>
+<% title = link.document_title.presence || t("monthly_reviews.cards.receipt_pane.untitled", id: link.document_id) %>
+<% if variant == "wide" %>
+  <div class="h-[calc(100vh-12rem)] overflow-hidden rounded-lg bg-surface-inset" data-controller="paperless-document-preview">
+    <% if link.image? %>
+      <%= image_tag preview_paperless_document_path(link.document_id),
+            class: "h-full w-full object-contain",
+            alt: title,
+            data: { paperless_document_preview_target: "image", action: "error->paperless-document-preview#fallbackToFrame" } %>
+    <% else %>
+      <%= tag.iframe src: preview_paperless_document_path(link.document_id), class: "h-full w-full", title: title %>
+    <% end %>
+  </div>
+<% else %>
+  <%= link_to paperless_document_path(link.document_id),
+        class: "block w-fit overflow-hidden rounded-lg border border-secondary bg-surface-inset",
+        data: { turbo_frame: :modal },
+        aria: { label: t(".open", title: title) } do %>
+    <%= image_tag thumbnail_paperless_document_path(link.document_id), class: "h-auto max-h-48 w-32 object-contain object-top", alt: "" %>
+  <% end %>
+<% end %>
