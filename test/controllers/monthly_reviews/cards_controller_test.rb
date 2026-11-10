@@ -110,6 +110,31 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-review-field-row]", 5
   end
 
+  test "a linked PDF receipt shows as the document in the receipt column and as a thumbnail in the card" do
+    link = link_receipt(@first, document_id: 7, mime_type: "application/pdf")
+    ready_suggestion(@first, receipt_link: link, name: "Espresso beans")
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] iframe[src='#{preview_paperless_document_path(7)}']"
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] img", 0
+    assert_select "[data-receipt-variant='narrow'] [data-receipt-view='document'] a[href='#{paperless_document_path(7)}'][data-turbo-frame='modal'] img[src='#{thumbnail_paperless_document_path(7)}']"
+    assert_select "[data-receipt-variant='narrow'] iframe", 0
+    %w[wide narrow].each do |variant|
+      assert_select "[data-receipt-variant='#{variant}'] [data-receipt-view='text'] turbo-frame[src*='receipt_text']"
+    end
+  end
+
+  test "a linked image receipt shows as an image in the receipt column" do
+    link = link_receipt(@first, document_id: 8, mime_type: "image/jpeg")
+    ready_suggestion(@first, receipt_link: link, name: "Espresso beans")
+
+    get monthly_review_card_url(@review, entry_id: @first.id)
+
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] img[src='#{preview_paperless_document_path(8)}']"
+    assert_select "[data-receipt-variant='wide'] [data-receipt-view='document'] iframe", 0
+  end
+
   test "opening a review with nothing left goes to the summary" do
     [ @first, @second, @third ].each { |entry| entry.mark_reviewed!(@user) }
 
