@@ -164,6 +164,22 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_not @plain.reload.reviewed?
   end
 
+  test "b confirms a suggested bill and the card shows it as the bill" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Bakery", amount: 20, currency: "USD", expected_day_of_month: 6,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+
+    visit monthly_review_card_path(@review, entry_id: @bakery.id)
+    assert_selector "[data-review-bill='suggested']"
+
+    send_keys "b"
+
+    assert_selector "[data-review-bill='active']"
+    assert_card @bakery, state: "empty"
+    assert series.reload.active?
+  end
+
   PIXEL_PNG = Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
 
   private
