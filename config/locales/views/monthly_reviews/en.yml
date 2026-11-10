@@ -132,6 +132,9 @@ en:
     prefetches:
       create:
         started: Suggestions are being refreshed in the background.
+    progress:
+      none: No transactions to review
+      reviewed: "%{reviewed} of %{total} reviewed"
     receipt_searches:
       create:
         failed: Paperless couldn't be reached, so the document wasn't linked.
@@ -152,9 +155,12 @@ en:
       months: Months
       subtitle: Go through each month's transactions one at a time, then note what stood out and complete the month.
       title: Monthly review
-    month:
-      no_transactions: No transactions to review
-      progress: "%{reviewed} of %{total} reviewed"
+    cards_link:
+      continue:
+        one: Continue review (1 left)
+        other: Continue review (%{count} left)
+      open: Open review
+      start: Start review
     completion:
       complete: Complete review
       completed_on: Completed on %{date}.
@@ -167,9 +173,6 @@ en:
         one: 1 transaction is still unreviewed. Completing keeps it under the "unreviewed" filter.
         other: "%{count} transactions are still unreviewed. Completing keeps them under the \"unreviewed\" filter."
     show:
-      continue:
-        one: Continue review (1 left)
-        other: Continue review (%{count} left)
       heading: "%{month}"
       money:
         expense: Expenses
@@ -177,7 +180,6 @@ en:
         net: Net
         report: Open report
         title: Income and expenses
-      open_cards: Open review
       period: "%{from} – %{to}"
       review:
         in_transactions: Show unreviewed
@@ -185,7 +187,6 @@ en:
         progress: "%{reviewed} of %{total}"
         reviewed: Reviewed
         title: Review
-      start: Start review
       title: Monthly review %{month}
       open: Open transactions
     status:

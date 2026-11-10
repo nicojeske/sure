@@ -167,6 +167,17 @@ class MonthlyReview < ApplicationRecord
     completed_at.present?
   end
 
+  # :completed, :empty (nothing to review), :ready (all reviewed, not yet
+  # completed), :in_progress or :not_started.
+  def status(progress)
+    if completed? then :completed
+    elsif progress.total.zero? then :empty
+    elsif progress.done? then :ready
+    elsif progress.reviewed.positive? then :in_progress
+    else :not_started
+    end
+  end
+
   def complete!
     update!(completed_at: Time.current)
   end
@@ -181,6 +192,7 @@ class MonthlyReview < ApplicationRecord
     end
 
     def remaining = total - reviewed
+    def percent = total.zero? ? 0 : reviewed * 100 / total
     def done? = remaining.zero?
   end
 

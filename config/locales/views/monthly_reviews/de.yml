@@ -132,6 +132,9 @@ de:
     prefetches:
       create:
         started: Die Vorschläge werden im Hintergrund aktualisiert.
+    progress:
+      none: Keine Buchungen zu prüfen
+      reviewed: "%{reviewed} von %{total} geprüft"
     receipt_searches:
       create:
         failed: Paperless war nicht erreichbar, das Dokument wurde nicht verknüpft.
@@ -152,9 +155,12 @@ de:
       months: Monate
       subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.
       title: Monatsprüfung
-    month:
-      no_transactions: Keine Buchungen zu prüfen
-      progress: "%{reviewed} von %{total} geprüft"
+    cards_link:
+      continue:
+        one: Prüfung fortsetzen (noch 1)
+        other: Prüfung fortsetzen (noch %{count})
+      open: Prüfung öffnen
+      start: Prüfung starten
     completion:
       complete: Prüfung abschließen
       completed_on: Abgeschlossen am %{date}.
@@ -167,9 +173,6 @@ de:
         one: 1 Buchung ist noch ungeprüft. Sie bleibt nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar.
         other: "%{count} Buchungen sind noch ungeprüft. Sie bleiben nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar."
     show:
-      continue:
-        one: Prüfung fortsetzen (noch 1)
-        other: Prüfung fortsetzen (noch %{count})
       heading: "%{month}"
       money:
         expense: Ausgaben
@@ -177,7 +180,6 @@ de:
         net: Saldo
         report: Bericht öffnen
         title: Einnahmen und Ausgaben
-      open_cards: Prüfung öffnen
       period: "%{from} – %{to}"
       review:
         in_transactions: Ungeprüfte anzeigen
@@ -185,7 +187,6 @@ de:
         progress: "%{reviewed} von %{total}"
         reviewed: Geprüft
         title: Prüfung
-      start: Prüfung starten
       title: Monatsprüfung %{month}
       open: Offene Buchungen
     status:

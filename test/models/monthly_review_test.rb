@@ -80,6 +80,20 @@ class MonthlyReviewTest < ActiveSupport::TestCase
     assert_not progress.done?
   end
 
+  test "status follows completion and progress" do
+    progress = ->(total, reviewed) { MonthlyReview::Progress.new(total: total, reviewed: reviewed) }
+
+    assert_equal :empty, @review.status(progress.(0, 0))
+    assert_equal :not_started, @review.status(progress.(3, 0))
+    assert_equal :in_progress, @review.status(progress.(3, 1))
+    assert_equal :ready, @review.status(progress.(3, 3))
+    assert_equal 33, progress.(3, 1).percent
+    assert_equal 0, progress.(0, 0).percent
+
+    @review.complete!
+    assert_equal :completed, @review.status(progress.(3, 1))
+  end
+
   test "queue respects the caller's access scope" do
     create_transaction(account: accounts(:other_asset), date: Date.new(2026, 10, 1))
     member = users(:family_member)

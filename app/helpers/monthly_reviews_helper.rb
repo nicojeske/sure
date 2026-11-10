@@ -16,27 +16,31 @@ module MonthlyReviewsHelper
     l(review.start_date, format: :month_year)
   end
 
-  def review_status(review, progress)
-    if review.completed? then :completed
-    elsif progress.total.zero? then :empty
-    elsif progress.done? then :ready
-    elsif progress.reviewed.positive? then :in_progress
-    else :not_started
-    end
-  end
-
-  def review_status_pill(review, progress)
-    status = review_status(review, progress)
+  def review_status_pill(status)
     tone, icon = REVIEW_STATUS_PILLS.fetch(status)
     render DS::Pill.new(label: t("monthly_reviews.status.#{status}"), tone: tone, icon: icon, marker: false)
   end
 
-  def review_progress_percent(progress)
-    progress.total.zero? ? 0 : progress.reviewed * 100 / progress.total
-  end
-
   def review_progress_tone(progress)
     progress.total.positive? && progress.done? ? :success : :neutral
+  end
+
+  def review_progress_caption(progress)
+    return t("monthly_reviews.progress.none") if progress.total.zero?
+
+    t("monthly_reviews.progress.reviewed", reviewed: progress.reviewed, total: progress.total)
+  end
+
+  # The summary's way into the cards: start, continue with what is left, or
+  # reopen the cards once everything is reviewed.
+  def review_cards_link(progress)
+    text =
+      if progress.done? then t("monthly_reviews.cards_link.open")
+      elsif progress.reviewed.zero? then t("monthly_reviews.cards_link.start")
+      else t("monthly_reviews.cards_link.continue", count: progress.remaining)
+      end
+
+    render DS::Link.new(text: text, variant: progress.done? ? :outline : :primary, icon: "list-checks", href: review_card_path)
   end
 
   def review_confidence_label(card)

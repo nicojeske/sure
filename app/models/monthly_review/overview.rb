@@ -6,6 +6,8 @@ class MonthlyReview::Overview
 
   Month = Data.define(:review, :progress) do
     delegate :completed?, to: :review
+
+    def status = review.status(progress)
   end
 
   def initialize(family, entries, include_transfers: false, today: Date.current, months: MONTHS)
