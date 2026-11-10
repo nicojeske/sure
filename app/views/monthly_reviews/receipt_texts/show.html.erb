@@ -1,12 +1,11 @@
-<% scroll_class = review_receipt_scroll_class(@variant) %>
 <%= turbo_frame_tag review_receipt_frame_id(@variant, @receipt_link), data: { turbo_permanent: true } do %>
   <% if @failed %>
-    <p class="rounded-lg bg-container-inset p-3 text-xs text-secondary" data-review-receipt-error><%= t(".failed") %></p>
+    <%= render DS::Inset.new(tag: :p, text_size: :xs, data: { review_receipt_error: true }).with_content(t(".failed")) %>
   <% elsif @content.blank? %>
-    <p class="rounded-lg bg-container-inset p-3 text-xs text-secondary"><%= t(".empty") %></p>
+    <%= render DS::Inset.new(tag: :p, text_size: :xs).with_content(t(".empty")) %>
   <% else %>
-    <div class="<%= scroll_class %> overflow-auto rounded-lg bg-container-inset p-3" data-receipt-scroll tabindex="0" aria-label="<%= t(".label") %>">
+    <%= render DS::Inset.new(scroll_label: t(".label"), class: review_receipt_scroll_class(@variant), data: { receipt_scroll: true }) do %>
       <pre class="whitespace-pre-wrap break-words font-mono text-xs text-primary"><%= @content %></pre>
-    </div>
+    <% end %>
   <% end %>
 <% end %>

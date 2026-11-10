@@ -2,9 +2,9 @@
     while a hint, receipt or decision is being sent (Turbo marks the frame
     aria-busy). %>
 <%# locals: (card:, form_id:) %>
-<div class="hidden items-center gap-3 rounded-lg bg-container-inset p-3 text-sm text-secondary group-aria-busy/frame:flex" role="status">
+<%= render DS::Inset.new(class: "hidden items-center gap-3 group-aria-busy/frame:flex", role: "status") do %>
   <%= icon "loader-circle", class: "animate-spin" %> <%= t(".busy") %>
-</div>
+<% end %>
 
 <% retry_button = capture do %>
   <% if card.suggestion&.hint? %>
@@ -24,18 +24,18 @@
 
 <% case card.state %>
 <% when :loading %>
-  <div class="flex flex-col gap-2 rounded-lg bg-container-inset p-3 text-sm text-secondary group-aria-busy/frame:hidden" role="status">
+  <%= render DS::Inset.new(class: "flex flex-col gap-2 group-aria-busy/frame:hidden", role: "status") do %>
     <div class="flex items-center gap-3">
       <%= icon "loader-circle", class: "animate-spin" %>
       <span><%= card.suggestion.hint? ? t(".loading_hint") : t(".loading_receipt") %></span>
     </div>
     <p hidden data-review-card-target="stalled"><%= t(".stalled") %></p>
-  </div>
+  <% end %>
 <% when :unread %>
-  <div class="flex flex-wrap items-center gap-3 rounded-lg bg-container-inset p-3 text-sm text-secondary group-aria-busy/frame:hidden">
+  <%= render DS::Inset.new(class: "flex flex-wrap items-center gap-3 group-aria-busy/frame:hidden") do %>
     <span class="flex-1"><%= t(".unread") %></span>
     <%= retry_button %>
-  </div>
+  <% end %>
 <% when :failed %>
   <div class="flex flex-col gap-2 group-aria-busy/frame:hidden">
     <%= render DS::Alert.new(variant: :error, title: t(".failed_title"), message: t(".failed_message")) %>

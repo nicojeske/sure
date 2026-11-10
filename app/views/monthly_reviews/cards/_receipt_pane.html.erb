@@ -42,14 +42,14 @@
           src: monthly_review_receipt_text_path(@monthly_review, entry_id: card.entry.id, receipt_link_id: link.id, variant: variant),
           loading: :lazy,
           data: { turbo_permanent: true } do %>
-      <div class="<%= review_receipt_scroll_class(variant) %> flex items-center gap-2 rounded-lg bg-container-inset p-3 text-xs text-secondary">
+      <%= render DS::Inset.new(text_size: :xs, class: "#{review_receipt_scroll_class(variant)} flex items-center gap-2") do %>
         <%= icon "loader-circle", size: "sm", class: "animate-spin" %> <%= t(".loading") %>
-      </div>
+      <% end %>
     <% end %>
   </div>
 <% else %>
-  <p class="flex items-center gap-1 rounded-lg bg-container-inset p-3 text-sm text-secondary">
+  <%= render DS::Inset.new(tag: :p, class: "flex items-center gap-1") do %>
     <%= icon "receipt", size: "sm" %>
     <%= t(".none_html", key: render(DS::Kbd.new(key: "f"))) %>
-  </p>
+  <% end %>
 <% end %>
