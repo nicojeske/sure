@@ -24,10 +24,8 @@ class MonthlyReviewSummaryTest < ApplicationSystemTestCase
     visit monthly_review_card_path(@review, entry_id: @bakery.id)
     assert_selector "[data-review-card-entry-id='#{@bakery.id}']"
     find("body").send_keys([ :control, :enter ])
-    assert_selector "[data-review-card-state='finished']"
-
-    click_on I18n.t("monthly_reviews.cards.finished.summary_link")
-    assert_selector "h1", text: "October 2026"
+    assert_current_path monthly_review_path(@review, focus: "note")
+    assert_selector "h1", exact_text: "October 2026"
     assert_selector "[data-breadcrumbs]", text: "Monthly review"
     assert_selector "[data-review-entry-id='#{@plain.id}'][data-status='skipped']"
 
@@ -36,7 +34,8 @@ class MonthlyReviewSummaryTest < ApplicationSystemTestCase
     assert_selector "[data-review-card-entry-id='#{@plain.id}']"
     assert_current_path monthly_review_card_path(@review, entry_id: @plain.id)
 
-    visit monthly_review_path(@review)
+    visit monthly_review_path(@review, focus: "note")
+    assert_equal "monthly_review[notes]", evaluate_script("document.activeElement.name")
     fill_in "monthly_review[notes]", with: "Bakery prices went up"
     click_on I18n.t("monthly_reviews.completion.complete")
     assert_text I18n.t("monthly_reviews.update.completed")

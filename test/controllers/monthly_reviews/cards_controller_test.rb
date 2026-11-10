@@ -110,14 +110,12 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-review-field-row]", 5
   end
 
-  test "shows the finished panel when the queue is done" do
+  test "opening a review with nothing left goes to the summary" do
     [ @first, @second, @third ].each { |entry| entry.mark_reviewed!(@user) }
 
     get monthly_review_card_url(@review)
 
-    assert_response :success
-    assert_select "[data-review-card-state='finished']"
-    assert_select "[data-review-card-state='finished'] a[href=?][data-turbo-frame='_top']", monthly_review_path(@review)
+    assert_redirected_to monthly_review_path(@review, focus: "note")
   end
 
   test "the breadcrumbs lead back to the month's summary and the overview" do
@@ -151,13 +149,15 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert @first.reload.reviewed?
   end
 
-  test "accept on the last card redirects to the finished panel" do
+  test "accept on the last card ends on the summary with the note focused" do
     @first.mark_reviewed!(@user)
     @second.mark_reviewed!(@user)
 
-    patch monthly_review_card_url(@review), params: { decision: "accept", entry_id: @third.id }
+    patch monthly_review_card_url(@review, include_transfers: "1"), params: { decision: "accept", entry_id: @third.id }
 
-    assert_redirected_to monthly_review_card_path(@review, finished: 1)
+    assert_redirected_to monthly_review_path(@review, focus: "note", include_transfers: "1")
+    follow_redirect!
+    assert_select "textarea[name='monthly_review[notes]'][autofocus]"
   end
 
   test "accept and reviewed_only on a reviewed card only move on" do

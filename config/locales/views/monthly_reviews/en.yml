@@ -41,14 +41,6 @@ en:
           tags: Tags
         locked: You can't change this field on a shared account
         no_change: No change
-      finished:
-        restart: Go through skipped transactions
-        skipped:
-          one: 1 transaction was skipped and is still unreviewed.
-          other: "%{count} transactions were skipped and are still unreviewed."
-        summary: "%{reviewed} of %{total} transactions reviewed."
-        summary_link: Note and complete the month
-        title: Nothing left to review in %{month}
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
         original_name: 'Bank: %{name}'

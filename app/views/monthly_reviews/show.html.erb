@@ -75,7 +75,7 @@
     <% end %>
   </div>
 
-  <%= render "monthly_reviews/completion", review: @monthly_review, unreviewed_count: @summary.unreviewed_entries.size, editable: can_edit_review? %>
+  <%= render "monthly_reviews/completion", review: @monthly_review, unreviewed_count: @summary.unreviewed_entries.size, editable: can_edit_review?, focus_note: params[:focus] == "note" %>
 
   <% if @summary.unreviewed_entries.any? %>
     <%= render DS::Section.new(title: t(".unreviewed"), count: @summary.unreviewed_entries.size, divided: false) do |section| %>

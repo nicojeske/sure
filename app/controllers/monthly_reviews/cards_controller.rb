@@ -1,7 +1,8 @@
 # The monthly review card: one transaction at a time with its proposal, the
 # month's list beside it, and the decisions that move through the queue.
 # The card lives in the "monthly_review_card" Turbo frame; every decision
-# redirects to the card to show next.
+# redirects to the card to show next, and the end of the queue to the
+# month's summary.
 class MonthlyReviews::CardsController < ApplicationController
   include MonthlyReviewScoped
 
@@ -12,8 +13,8 @@ class MonthlyReviews::CardsController < ApplicationController
     set_review_breadcrumbs([ t("breadcrumbs.monthly_review_cards"), nil ])
 
     @list = @monthly_review.card_list(Current.annotatable_entries, include_transfers: include_transfers?)
-    @entry = @list.current_entry(entry_id: params[:entry_id], finished: params[:finished].present?)
-    return unless @entry
+    @entry = @list.current_entry(entry_id: params[:entry_id])
+    return redirect_to(month_summary_path) unless @entry
 
     @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id])
     @card.read_receipt_later!
@@ -88,7 +89,12 @@ class MonthlyReviews::CardsController < ApplicationController
 
     def redirect_to_next
       next_entry = @monthly_review.next_entry_after(@entry, Current.annotatable_entries, include_transfers: include_transfers?)
-      redirect_to next_entry ? review_card_path(next_entry) : review_card_path(finished: 1)
+      redirect_to next_entry ? review_card_path(next_entry) : month_summary_path
+    end
+
+    # The queue ends on the month's summary, with the note ready to write.
+    def month_summary_path
+      monthly_review_path(@monthly_review, { focus: "note", **transfers_param })
     end
 
     def edit_params

@@ -233,8 +233,6 @@ export default class extends Controller {
         return this.choices()[this.choiceIndex]?.click();
       case "reviewed":
         return this.decide("skip");
-      case "finished":
-        return;
       default:
         return this.decide("accept");
     }
@@ -356,6 +354,14 @@ export default class extends Controller {
     this.choices().forEach((choice, index) => {
       choice.dataset.active = String(index === this.choiceIndex);
     });
+  }
+
+  // The end of the queue redirects to the month's summary, which has no card
+  // frame: show it as a full page instead of "Content missing".
+  // turbo:frame-missing->review-card#leaveFrame
+  leaveFrame(event) {
+    event.preventDefault();
+    event.detail.visit(event.detail.response);
   }
 
   // ---- list and polling -----------------------------------------------------

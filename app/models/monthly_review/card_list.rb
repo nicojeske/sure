@@ -17,12 +17,12 @@ class MonthlyReview::CardList
     entries.size
   end
 
-  # The entry named by the URL, else the first unreviewed one; nil once the
-  # queue is finished.
-  def current_entry(entry_id: nil, finished: false)
+  # The entry named by the URL, else the first unreviewed one; nil when
+  # everything is reviewed.
+  def current_entry(entry_id: nil)
     return entries.find { |entry| entry.id == entry_id } || raise(ActiveRecord::RecordNotFound) if entry_id.present?
 
-    first_unreviewed unless finished
+    first_unreviewed
   end
 
   def first_unreviewed

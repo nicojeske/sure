@@ -2,7 +2,7 @@ require "application_system_test_case"
 
 # Steps through three review cards with the keyboard only: accept a receipt
 # proposal, go back and undo it, accept it again, skip a card without a
-# proposal and accept the last one into the finished panel.
+# proposal and accept the last one, which ends on the month's summary.
 class MonthlyReviewCardTest < ApplicationSystemTestCase
   include MonthlyReviewTestHelper
 
@@ -60,9 +60,11 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_not @plain.reload.reviewed?
 
     send_keys :enter
-    assert_selector "[data-review-card-state='finished']"
+    assert_current_path monthly_review_path(@review, focus: "note")
+    assert_selector "h1", exact_text: "October 2026"
     assert @bakery.reload.reviewed?
-    assert_text I18n.t("monthly_reviews.cards.finished.skipped", count: 1)
+    assert_equal "monthly_review[notes]", evaluate_script("document.activeElement.name")
+    assert_selector "[data-review-entry-id='#{@plain.id}']"
   end
 
   test "edit mode starts with the proposal, its summary does not accept, and undo restores" do

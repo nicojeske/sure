@@ -54,6 +54,7 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", monthly_review_card_path(@review), text: /Continue review \(3 left\)/
     assert_select "[data-breadcrumbs] a[href=?]", monthly_reviews_path, text: I18n.t("breadcrumbs.monthly_reviews")
     assert_select "[data-breadcrumbs] > span:last-child", text: "October 2026"
+    assert_select "textarea[name='monthly_review[notes]']:not([autofocus])"
   end
 
   test "summary 404s for an unknown month" do

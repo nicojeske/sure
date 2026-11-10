@@ -41,14 +41,6 @@ de:
           tags: Tags
         locked: Dieses Feld kannst du in einem geteilten Konto nicht ändern
         no_change: Keine Änderung
-      finished:
-        restart: Übersprungene Buchungen durchgehen
-        skipped:
-          one: 1 Buchung wurde übersprungen und ist noch ungeprüft.
-          other: "%{count} Buchungen wurden übersprungen und sind noch ungeprüft."
-        summary: "%{reviewed} von %{total} Buchungen geprüft."
-        summary_link: Notiz schreiben und Monat abschließen
-        title: Im %{month} gibt es nichts mehr zu prüfen
       header:
         meta: "%{date} · %{account} · %{position}/%{total}"
         original_name: 'Bank: %{name}'
