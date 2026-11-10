@@ -85,4 +85,31 @@ class MonthlyReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not @review.reload.completed?
     assert_equal "All fine", @review.notes
   end
+
+  test "guests can't change the review" do
+    @user.update!(role: :guest)
+
+    patch monthly_review_url(@review), params: { monthly_review: { notes: "Guest note" }, completion: "complete" }
+
+    assert_redirected_to accounts_path
+    assert_nil @review.reload.notes
+    assert_not @review.completed?
+  end
+
+  test "a member with only read-only shares can't change the review and sees no form" do
+    viewer = users(:family_member)
+    viewer.update!(preferences: (viewer.preferences || {}).merge("preview_features_enabled" => true))
+    account_shares(:depository_shared_with_member).update!(permission: "read_only")
+    sign_in viewer
+
+    get monthly_review_url(@review)
+    assert_response :success
+    assert_select "form textarea[name='monthly_review[notes]']", count: 0
+
+    patch monthly_review_url(@review), params: { monthly_review: { notes: "Viewer note" }, completion: "complete" }
+
+    assert_redirected_to monthly_review_path(@review)
+    assert_nil @review.reload.notes
+    assert_not @review.completed?
+  end
 end

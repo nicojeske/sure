@@ -75,26 +75,7 @@
     <% end %>
   </div>
 
-  <%= render DS::Card.new(class: "gap-4") do %>
-    <h2 class="text-sm font-medium text-primary"><%= t(".note.title") %></h2>
-    <%= styled_form_with model: @monthly_review, url: monthly_review_path(@monthly_review, transfers_param), method: :patch, class: "space-y-4" do |f| %>
-      <%= f.text_area :notes, label: t(".note.label"), rows: 4, placeholder: t(".note.placeholder") %>
-      <% if @monthly_review.completed? %>
-        <p class="text-sm text-secondary"><%= t(".completed_on", date: l(@monthly_review.completed_at.to_date, format: :long)) %></p>
-      <% elsif @summary.unreviewed_entries.any? %>
-        <p class="text-sm text-secondary"><%= t(".unreviewed_hint", count: @summary.unreviewed_entries.size) %></p>
-      <% end %>
-      <div class="flex flex-wrap justify-end gap-2">
-        <% if @monthly_review.completed? %>
-          <%= render DS::Button.new(text: t(".reopen"), variant: :ghost, type: :submit, name: "completion", value: "reopen") %>
-          <%= render DS::Button.new(text: t(".note.save"), type: :submit) %>
-        <% else %>
-          <%= render DS::Button.new(text: t(".note.save"), variant: :secondary, type: :submit) %>
-          <%= render DS::Button.new(text: t(".complete"), icon: "circle-check", type: :submit, name: "completion", value: "complete") %>
-        <% end %>
-      </div>
-    <% end %>
-  <% end %>
+  <%= render "monthly_reviews/completion", review: @monthly_review, unreviewed_count: @summary.unreviewed_entries.size, editable: can_edit_review? %>
 
   <% if @summary.unreviewed_entries.any? %>
     <%= render DS::Section.new(title: t(".unreviewed"), count: @summary.unreviewed_entries.size, divided: false) do |section| %>

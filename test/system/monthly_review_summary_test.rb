@@ -38,7 +38,7 @@ class MonthlyReviewSummaryTest < ApplicationSystemTestCase
 
     visit monthly_review_path(@review)
     fill_in "monthly_review[notes]", with: "Bakery prices went up"
-    click_on I18n.t("monthly_reviews.show.complete")
+    click_on I18n.t("monthly_reviews.completion.complete")
     assert_text I18n.t("monthly_reviews.update.completed")
     assert @review.reload.completed?
     assert_equal "Bakery prices went up", @review.notes

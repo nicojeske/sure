@@ -163,9 +163,18 @@ en:
     month:
       no_transactions: No transactions to review
       progress: "%{reviewed} of %{total} reviewed"
-    show:
+    completion:
       complete: Complete review
       completed_on: Completed on %{date}.
+      label: Note
+      placeholder: What stood out this month?
+      reopen: Reopen
+      save: Save note
+      title: Complete the month
+      unreviewed_hint:
+        one: 1 transaction is still unreviewed. Completing keeps it under the "unreviewed" filter.
+        other: "%{count} transactions are still unreviewed. Completing keeps them under the \"unreviewed\" filter."
+    show:
       continue:
         one: Continue review (1 left)
         other: Continue review (%{count} left)
@@ -179,14 +188,8 @@ en:
         net: Net
         report: Open report
         title: Income and expenses
-      note:
-        label: Note
-        placeholder: What stood out this month?
-        save: Save note
-        title: Complete the month
       open_cards: Open review
       period: "%{from} – %{to}"
-      reopen: Reopen
       review:
         in_transactions: Show unreviewed
         open: Not reached yet
@@ -197,9 +200,6 @@ en:
       start: Start review
       title: Monthly review %{month}
       unreviewed: Unreviewed
-      unreviewed_hint:
-        one: 1 transaction is still unreviewed. Completing keeps it under the "unreviewed" filter.
-        other: "%{count} transactions are still unreviewed. Completing keeps them under the \"unreviewed\" filter."
     status:
       completed: Completed
       empty: Nothing to review
@@ -210,6 +210,7 @@ en:
       hide: Hide transfers
       include: Include transfers
     update:
+      not_allowed: You can only read this month's transactions, so you can't change its review.
       completed: The month is completed.
       reopened: The month is open again.
       saved: The note was saved.

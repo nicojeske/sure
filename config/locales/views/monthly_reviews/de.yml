@@ -163,9 +163,18 @@ de:
     month:
       no_transactions: Keine Buchungen zu prüfen
       progress: "%{reviewed} von %{total} geprüft"
-    show:
+    completion:
       complete: Prüfung abschließen
       completed_on: Abgeschlossen am %{date}.
+      label: Notiz
+      placeholder: Was ist dir in diesem Monat aufgefallen?
+      reopen: Wieder öffnen
+      save: Notiz speichern
+      title: Monat abschließen
+      unreviewed_hint:
+        one: 1 Buchung ist noch ungeprüft. Sie bleibt nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar.
+        other: "%{count} Buchungen sind noch ungeprüft. Sie bleiben nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar."
+    show:
       continue:
         one: Prüfung fortsetzen (noch 1)
         other: Prüfung fortsetzen (noch %{count})
@@ -179,14 +188,8 @@ de:
         net: Saldo
         report: Bericht öffnen
         title: Einnahmen und Ausgaben
-      note:
-        label: Notiz
-        placeholder: Was ist dir in diesem Monat aufgefallen?
-        save: Notiz speichern
-        title: Monat abschließen
       open_cards: Prüfung öffnen
       period: "%{from} – %{to}"
-      reopen: Wieder öffnen
       review:
         in_transactions: Ungeprüfte anzeigen
         open: Noch nicht erreicht
@@ -197,9 +200,6 @@ de:
       start: Prüfung starten
       title: Monatsprüfung %{month}
       unreviewed: Ungeprüft
-      unreviewed_hint:
-        one: 1 Buchung ist noch ungeprüft. Sie bleibt nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar.
-        other: "%{count} Buchungen sind noch ungeprüft. Sie bleiben nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar."
     status:
       completed: Abgeschlossen
       empty: Nichts zu prüfen
@@ -210,6 +210,7 @@ de:
       hide: Überweisungen ausblenden
       include: Überweisungen einbeziehen
     update:
+      not_allowed: Du kannst die Buchungen dieses Monats nur ansehen und deshalb die Prüfung nicht ändern.
       completed: Der Monat ist abgeschlossen.
       reopened: Der Monat ist wieder offen.
       saved: Die Notiz wurde gespeichert.
