@@ -23,11 +23,14 @@ class MonthlyReview::Card
 
   attr_reader :review, :entry, :user, :suggestion
 
-  def initialize(review, entry, user:, suggestion_id: nil)
+  # rule_provenance: the month's MonthlyReview::RuleProvenance when the
+  # caller has one, so the card doesn't load its own.
+  def initialize(review, entry, user:, suggestion_id: nil, rule_provenance: nil)
     @review = review
     @entry = entry
     @user = user
     @suggestion_id = suggestion_id
+    @rule_provenance = rule_provenance
     resolve
   end
 
@@ -157,7 +160,37 @@ class MonthlyReview::Card
     Array(applied["fields"]).size + (applied["split"] ? 1 : 0)
   end
 
+  # A rule set at least one field, and the field still holds that value.
+  def rule_handled?
+    rule_provenance.rule_handled?(entry)
+  end
+
+  # Keys of the rule-set fields, in field order (a subset of name, merchant,
+  # category and tags).
+  def rule_set_fields
+    rule_provenance.rule_set_fields(entry).keys
+  end
+
+  def rule_set?(key)
+    rule_provenance.rule_set_fields(entry).key?(key)
+  end
+
+  # The rule that set the field, nil when it isn't rule-set, the enrichment
+  # predates rule ids or the rule was deleted.
+  def rule_for(key)
+    rule_provenance.rule_set_fields(entry)[key]
+  end
+
+  # The rule the card's badge links to: the first known one.
+  def rule
+    rule_provenance.rule_set_fields(entry).values.compact.first
+  end
+
   private
+    def rule_provenance
+      @rule_provenance ||= MonthlyReview::RuleProvenance.new(review.family, [ entry ])
+    end
+
     def resolve
       if entry.reviewed?
         @suggestion = TransactionAnnotationSuggestion.applied_in_review_of(entry)

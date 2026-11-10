@@ -5,8 +5,9 @@ class MonthlyReview::CardList
 
   attr_reader :entries
 
-  def initialize(entries)
+  def initialize(entries, family:)
     @entries = entries.to_a
+    @family = family
   end
 
   def each(&block)
@@ -56,6 +57,16 @@ class MonthlyReview::CardList
     return "current" if entry == current
 
     entry.reviewed? ? "reviewed" : "open"
+  end
+
+  # Which fields rules set, loaded for every row at once; the card on the
+  # page reuses it.
+  def rule_provenance
+    @rule_provenance ||= MonthlyReview::RuleProvenance.new(@family, entries)
+  end
+
+  def rule_handled?(entry)
+    rule_provenance.rule_handled?(entry)
   end
 
   private

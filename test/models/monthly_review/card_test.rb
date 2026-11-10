@@ -136,8 +136,94 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_equal [ own_category, nil ], card.split_parts.map(&:category)
   end
 
+  test "a field a rule set is rule-set and names the rule" do
+    rule = run_rule(category: categories(:food_and_drink))
+
+    card = card_for(@entry.reload)
+
+    assert card.rule_handled?
+    assert_equal %w[category], card.rule_set_fields
+    assert_equal rule, card.rule_for("category")
+    assert_nil card.rule_for("name")
+  end
+
+  test "a field changed after the rule set it is no longer rule-set; changing them all ends rule-handled" do
+    run_rule(name: "EDEKA", category: categories(:food_and_drink))
+    assert_equal %w[name category], card_for(@entry.reload).rule_set_fields
+
+    @entry.transaction.update!(category: categories(:income))
+    assert_equal %w[name], card_for(@entry.reload).rule_set_fields
+
+    @entry.update!(name: "Edeka Markt")
+    card = card_for(@entry.reload)
+    assert_not card.rule_handled?
+    assert_empty card.rule_set_fields
+  end
+
+  test "tags a rule set are compared as a set" do
+    first = @family.tags.create!(name: "First")
+    second = @family.tags.create!(name: "Second")
+    @entry.transaction.update!(tag_ids: [ second.id ])
+    run_rule(tags: [ first ])
+
+    assert_equal %w[tags], card_for(@entry.reload).rule_set_fields
+
+    @entry.transaction.update!(tag_ids: [ second.id, first.id ])
+    assert_equal %w[tags], card_for(@entry.reload).rule_set_fields
+
+    @entry.transaction.update!(tag_ids: [ first.id ])
+    assert_not card_for(@entry.reload).rule_handled?
+  end
+
+  test "a rule enrichment without a rule id is rule-set without a rule" do
+    merchant = @family.merchants.create!(name: "Edeka")
+    @entry.transaction.enrich_attribute(:merchant_id, merchant.id, source: "rule")
+
+    card = card_for(@entry.reload)
+
+    assert_equal %w[merchant], card.rule_set_fields
+    assert_nil card.rule_for("merchant")
+    assert_nil card.rule
+  end
+
+  test "a deleted rule's field stays rule-set without a rule" do
+    run_rule(category: categories(:food_and_drink)).destroy!
+
+    card = card_for(@entry.reload)
+
+    assert card.rule_set?("category")
+    assert_nil card.rule_for("category")
+  end
+
+  test "another family's rule is not named" do
+    foreign = families(:empty).rules.create!(
+      name: "Foreign", resource_type: "transaction",
+      actions: [ Rule::Action.new(action_type: "set_transaction_name", value: "x") ]
+    )
+    Rule::Provenance.set(rule_id: foreign.id) { @entry.enrich_attribute(:name, "Edeka", source: "rule") }
+
+    card = card_for(@entry.reload)
+
+    assert card.rule_set?("name")
+    assert_nil card.rule_for("name")
+  end
+
   private
     def card_for(entry, suggestion_id: nil)
       MonthlyReview::Card.new(@review, entry, user: @user, suggestion_id: suggestion_id)
+    end
+
+    def run_rule(name: nil, category: nil, tags: nil)
+      actions = []
+      actions << Rule::Action.new(action_type: "set_transaction_name", value: name) if name
+      actions << Rule::Action.new(action_type: "set_transaction_category", value: category.id) if category
+      actions << Rule::Action.new(action_type: "set_transaction_tags", value: tags.map(&:id)) if tags
+      rule = @family.rules.create!(
+        name: "EDEKA", resource_type: "transaction", active: true,
+        conditions: [ Rule::Condition.new(condition_type: "transaction_name", operator: "like", value: "EDEKA") ],
+        actions: actions
+      )
+      Rule::Runner.new(@family, rules: [ rule ], execution_type: "manual").run
+      rule
     end
 end

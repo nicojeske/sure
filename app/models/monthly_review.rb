@@ -151,7 +151,7 @@ class MonthlyReview < ApplicationRecord
 
   # The month's entries for the card page, loaded once.
   def card_list(entries, include_transfers: false)
-    CardList.new(month_entries(entries, include_transfers: include_transfers).preload(:account, entryable: [ :merchant, :receipt_links ]))
+    CardList.new(month_entries(entries, include_transfers: include_transfers).preload(:account, entryable: [ :merchant, :receipt_links ]), family: family)
   end
 
   # Undoes a card's review: reverts the proposal that marked it reviewed,
