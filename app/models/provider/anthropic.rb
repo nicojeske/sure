@@ -130,7 +130,7 @@ class Provider::Anthropic < Provider
     end
   end
 
-  def suggest_bill_setup(charges: [], categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges: [], categories: [], current_config: nil, model: "", family: nil, content_locale: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -146,7 +146,8 @@ class Provider::Anthropic < Provider
         categories: categories,
         current_config: current_config,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        content_locale: content_locale
       ).suggest
 
       finish_langfuse_trace(trace: trace, output: result.to_h)

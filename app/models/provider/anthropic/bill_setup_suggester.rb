@@ -4,9 +4,9 @@ class Provider::Anthropic::BillSetupSuggester
 
   TOOL_NAME = "report_bill_setup".freeze
 
-  attr_reader :client, :model, :charges, :categories, :current_config, :langfuse_trace, :family
+  attr_reader :client, :model, :charges, :categories, :current_config, :langfuse_trace, :family, :content_locale
 
-  def initialize(client, model:, charges: [], categories: [], current_config: nil, langfuse_trace: nil, family: nil)
+  def initialize(client, model:, charges: [], categories: [], current_config: nil, langfuse_trace: nil, family: nil, content_locale: nil)
     @client = client
     @model = model
     @charges = charges
@@ -14,6 +14,7 @@ class Provider::Anthropic::BillSetupSuggester
     @current_config = current_config
     @langfuse_trace = langfuse_trace
     @family = family
+    @content_locale = content_locale
   end
 
   def suggest
@@ -109,7 +110,7 @@ class Provider::Anthropic::BillSetupSuggester
           for finite payment plans, otherwise "bill".
         - autopay true only when the history shows automatic-payment markers.
         - Set any field the history cannot support to null. Never guess.
-        - confidence is 0 to 1 for the proposal overall; rationale is one short sentence.
+        - confidence is 0 to 1 for the proposal overall; rationale is one short sentence.#{name_language_rule}
       INSTRUCTIONS
 
       return base if current_config.blank?
@@ -119,6 +120,13 @@ class Provider::Anthropic::BillSetupSuggester
         A current configuration is provided. Propose ONLY fields where the charge history
         contradicts it; set every field that is already right to null.
       CONFIGURE
+    end
+
+    # Bill names are stored, so they follow the family's AI content language.
+    def name_language_rule
+      return "" if content_locale.blank?
+
+      "\n- name: in the language of locale \"#{content_locale}\"; brand names stay as they are."
     end
 
     def user_message

@@ -32,7 +32,7 @@ module Provider::LlmConcept
     :category_name, :bill_type, :autopay, :confidence, :rationale
   )
 
-  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil, content_locale: nil)
     raise NotImplementedError, "Subclasses must implement #suggest_bill_setup"
   end
 
