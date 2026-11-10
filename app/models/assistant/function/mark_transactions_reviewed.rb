@@ -37,7 +37,7 @@ class Assistant::Function::MarkTransactionsReviewed < Assistant::Function
       properties: {
         month: {
           type: "string",
-          description: "The review month the transactions belong to, in #{MONTH_FORMAT_HINT}."
+          description: "The review month the transactions belong to, in #{MONTH_FORMAT}."
         },
         transaction_ids: {
           type: "array",
@@ -49,7 +49,7 @@ class Assistant::Function::MarkTransactionsReviewed < Assistant::Function
   end
 
   def call(params = {})
-    return error("invalid_month", "month is required (#{MONTH_FORMAT_HINT}).") if params["month"].blank?
+    return error("invalid_month", "month is required (#{MONTH_FORMAT}).") if params["month"].blank?
 
     ids = Array(params["transaction_ids"]).map(&:to_s).compact_blank.uniq
     return error("invalid_arguments", "Pass at least one transaction id.") if ids.empty?

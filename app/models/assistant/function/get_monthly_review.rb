@@ -43,7 +43,7 @@ class Assistant::Function::GetMonthlyReview < Assistant::Function
       properties: {
         month: {
           type: "string",
-          description: "Month in #{MONTH_FORMAT_HINT}. Defaults to the current month. Families with a custom month start use the budget month that starts in it."
+          description: "Month in #{MONTH_FORMAT}. Defaults to the current month. Families with a custom month start use the budget month that starts in it."
         },
         include_transfers: {
           type: "boolean",
@@ -59,7 +59,7 @@ class Assistant::Function::GetMonthlyReview < Assistant::Function
 
     summary = MonthlyReview::Summary.new(review, review_entries, user: user, include_transfers: ActiveModel::Type::Boolean.new.cast(params["include_transfers"]) == true)
     open_entries = summary.open_entries.first(MAX_OPEN_TRANSACTIONS)
-    ActiveRecord::Associations::Preloader.new(records: open_entries.map(&:transaction), associations: :category).call
+    ActiveRecord::Associations::Preloader.new(records: open_entries.map(&:transaction), associations: %i[category tags]).call
 
     result = {
       month: review.to_param,
@@ -72,7 +72,7 @@ class Assistant::Function::GetMonthlyReview < Assistant::Function
       income: summary.income.format,
       expense: summary.expense.format,
       net: summary.net.format,
-      open_transactions: open_entries.map { |entry| serialize_review_entry(entry) }
+      open_transactions: open_entries.map { |entry| serialize_transaction(entry) }
     }
     result[:open_transactions_truncated] = true if summary.open_count > open_entries.size
     result

@@ -36,7 +36,7 @@ class Assistant::Function::UpdateMonthlyReview < Assistant::Function
       properties: {
         month: {
           type: "string",
-          description: "The review month, in #{MONTH_FORMAT_HINT}."
+          description: "The review month, in #{MONTH_FORMAT}."
         },
         notes: {
           type: [ "string", "null" ],
@@ -53,7 +53,7 @@ class Assistant::Function::UpdateMonthlyReview < Assistant::Function
 
   def call(params = {})
     return error("not_authorized", "You can't change monthly reviews: guests and members with only read-only shares can only read them.") unless MonthlyReview.editable_by?(user)
-    return error("invalid_month", "month is required (#{MONTH_FORMAT_HINT}).") if params["month"].blank?
+    return error("invalid_month", "month is required (#{MONTH_FORMAT}).") if params["month"].blank?
     return error("no_changes", "Provide notes, completion or both.") unless params.key?("notes") || params.key?("completion")
 
     completion = params["completion"]

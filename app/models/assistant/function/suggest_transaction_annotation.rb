@@ -64,7 +64,7 @@ class Assistant::Function::SuggestTransactionAnnotation < Assistant::Function
   def call(params = {})
     entry, failure = find_review_entry(params["id"])
     return failure if failure
-    return error("already_reviewed", "This transaction is already reviewed. Undo its review on the review card first to change it.") if entry.reviewed?
+    return already_reviewed_error if entry.reviewed?
 
     hint = params["hint"].to_s.strip
     return error("invalid_hint", "The hint is longer than #{MAX_HINT_LENGTH} characters.") if hint.length > MAX_HINT_LENGTH
@@ -119,7 +119,7 @@ class Assistant::Function::SuggestTransactionAnnotation < Assistant::Function
       result = {
         success: true,
         status: status_for(card),
-        transaction: serialize_review_entry(entry)
+        transaction: serialize_transaction(entry)
       }
 
       if (suggestion = card.suggestion) && result[:status] != "no_proposal"

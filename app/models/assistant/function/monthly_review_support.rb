@@ -9,8 +9,6 @@
 module Assistant::Function::MonthlyReviewSupport
   include Assistant::Function::MonthResolvable
 
-  MONTH_FORMAT_HINT = "YYYY-MM or MMM-YYYY (e.g. 2026-10 or oct-2026)"
-
   private
     def review_entries
       family.entries.joins(:account).merge(Account.annotatable_by(user))
@@ -54,6 +52,10 @@ module Assistant::Function::MonthlyReviewSupport
       [ entry, nil ]
     end
 
+    def already_reviewed_error
+      error("already_reviewed", "This transaction is already reviewed. Undo its review on the review card first to change it.")
+    end
+
     def read_only_error
       error("not_authorized", "This transaction is on an account shared with you read-only, so it can't be reviewed or changed.")
     end
@@ -62,7 +64,9 @@ module Assistant::Function::MonthlyReviewSupport
       { total: progress.total, reviewed: progress.reviewed, open: progress.remaining }
     end
 
-    def serialize_review_entry(entry)
+    # Sparse: keys without a value are left out, and `reviewed` and
+    # `receipt` appear only when true.
+    def serialize_transaction(entry)
       transaction = entry.transaction
       row = {
         id: transaction.id,
@@ -72,8 +76,11 @@ module Assistant::Function::MonthlyReviewSupport
         classification: entry.amount.negative? ? "income" : "expense",
         account: entry.account.name,
         merchant: transaction.merchant&.name,
-        category: transaction.category&.name
+        category: transaction.category&.name,
+        tags: transaction.tags.map(&:name).presence,
+        notes: entry.notes.presence
       }.compact
+      row[:reviewed] = true if entry.reviewed?
       row[:receipt] = true if transaction.receipt_links.any? { |link| link.linked? || link.suggested? }
       row
     end
