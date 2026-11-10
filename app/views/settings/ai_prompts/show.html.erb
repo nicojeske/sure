@@ -13,6 +13,10 @@
   </div>
 <% end %>
 
+<div class="mb-4">
+  <%= render "settings/ai_content_languages/form", family: Current.family %>
+</div>
+
 <div data-controller="ai-prompt-form"
      data-ai-prompt-form-storage-key-value="ai_prompts_dismiss_safety_warning"
      data-ai-prompt-form-max-length-value="<%= Family::AiPromptable::MAX_LENGTH %>">

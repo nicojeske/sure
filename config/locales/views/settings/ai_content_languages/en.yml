@@ -1,0 +1,12 @@
+---
+en:
+  settings:
+    ai_content_languages:
+      form:
+        title: AI content language
+        subtitle: The language AI writes stored data in, such as transaction names, notes, new merchants and bill names. Explanations and chat replies stay in each member's interface language.
+        label: Language
+        same_as_interface: Same as interface language
+      update:
+        success: AI content language updated.
+        invalid: That language is not available.
