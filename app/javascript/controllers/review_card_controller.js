@@ -5,11 +5,11 @@ const FRAME_ID = "monthly_review_card";
 const TYPING_INPUT_TYPES = ["checkbox", "radio", "button", "submit", "reset"];
 // Focused elements whose own Enter must not accept the card.
 const INTERACTIVE_TAGS = ["A", "BUTTON", "SUMMARY", "SELECT"];
-// A card waiting for a background run refreshes itself in case the live
-// update over the cable is missed, for at most POLL_LIMIT rounds.
-const POLL_INTERVAL = 8000;
-const POLL_LIMIT = 15;
-const WARM_DELAY = 1500;
+// A card waiting for a background read updates over the cable. In case that
+// update is missed it reloads its own frame every POLL_INTERVAL, at most
+// POLL_LIMIT times; after that it says it is taking longer than usual.
+const POLL_INTERVAL = 6000;
+const POLL_LIMIT = 20;
 const FEEDBACK_DURATION = 4000;
 
 // Keyboard map of the monthly review card. The hint input is not autofocused:
@@ -20,12 +20,19 @@ const FEEDBACK_DURATION = 4000;
 //
 // Connects to data-controller="review-card"
 export default class extends Controller {
-  static targets = ["card", "list", "hint", "search", "edit", "feedback"];
+  static targets = [
+    "card",
+    "list",
+    "hint",
+    "search",
+    "edit",
+    "feedback",
+    "stalled",
+  ];
   static values = { messages: Object };
 
   disconnect() {
     clearTimeout(this.pollTimer);
-    clearTimeout(this.warmTimer);
     clearTimeout(this.feedbackTimer);
   }
 
@@ -39,7 +46,6 @@ export default class extends Controller {
       this.hintTarget.blur();
     }
     this.schedulePoll(card);
-    this.warmNextReceipt(card);
   }
 
   cardTargetDisconnected() {
@@ -223,9 +229,6 @@ export default class extends Controller {
     switch (this.state()) {
       case "loading":
         return this.flash("still_reading");
-      case "unread":
-      case "failed":
-        return this.clickVisible("[data-review-action='suggest']");
       case "receipt_choice":
         return this.choices()[this.choiceIndex]?.click();
       case "reviewed":
@@ -355,7 +358,7 @@ export default class extends Controller {
     });
   }
 
-  // ---- list, polling and warming ---------------------------------------------
+  // ---- list and polling -----------------------------------------------------
 
   paintList(card) {
     if (!this.hasListTarget) return;
@@ -402,42 +405,31 @@ export default class extends Controller {
     }
   }
 
+  // A card waiting for its background read polls its own frame (never the
+  // whole page, which would start a prefetch). The poll count restarts for
+  // each entry; past POLL_LIMIT the card says it is taking longer than usual.
   schedulePoll(card) {
     clearTimeout(this.pollTimer);
-    const waiting =
-      card.dataset.reviewCardState === "loading" ||
-      card.dataset.reviewCardQueued === "true";
-    if (!waiting) {
+    const entryId = card.dataset.reviewCardEntryId;
+    if (entryId !== this.pollEntryId) {
+      this.pollEntryId = entryId;
       this.polls = 0;
-      return;
     }
-    if (this.polls >= POLL_LIMIT) return;
+    if (card.dataset.reviewCardState !== "loading") return;
+    if (this.polls >= POLL_LIMIT) return this.showStalled();
 
     this.pollTimer = setTimeout(() => {
-      this.polls = (this.polls || 0) + 1;
-      this.refreshPage();
+      this.polls += 1;
+      Turbo.visit(window.location.href, { frame: FRAME_ID, action: "replace" });
     }, POLL_INTERVAL);
+  }
+
+  showStalled() {
+    for (const element of this.stalledTargets) element.hidden = false;
   }
 
   refreshPage() {
     Turbo.renderStreamMessage('<turbo-stream action="refresh"></turbo-stream>');
-  }
-
-  // Loads the next card's receipt text once, so the server has it cached when
-  // that card opens.
-  warmNextReceipt(card) {
-    clearTimeout(this.warmTimer);
-    const url = card.dataset.reviewCardNextReceiptUrl;
-    this.warmed ||= new Set();
-    if (!url || this.warmed.has(url)) return;
-
-    this.warmTimer = setTimeout(() => {
-      this.warmed.add(url);
-      fetch(url, {
-        headers: { Accept: "text/html" },
-        credentials: "same-origin",
-      }).catch(() => {});
-    }, WARM_DELAY);
   }
 
   // ---- helpers ---------------------------------------------------------------
@@ -448,13 +440,6 @@ export default class extends Controller {
 
   busy() {
     return document.getElementById(FRAME_ID)?.hasAttribute("aria-busy");
-  }
-
-  clickVisible(selector) {
-    const element =
-      this.visible(this.cardTarget.querySelectorAll(selector))[0] ||
-      this.cardTarget.querySelector(selector);
-    element?.click();
   }
 
   visible(elements) {

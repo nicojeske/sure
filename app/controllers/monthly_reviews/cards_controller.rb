@@ -15,7 +15,10 @@ class MonthlyReviews::CardsController < ApplicationController
     return unless @entry
 
     @card = MonthlyReview::Card.new(@monthly_review, @entry, user: Current.user, suggestion_id: params[:suggestion_id])
+    @card.read_receipt_later!
+
     @next_entry = @list.next_unreviewed_after(@entry)
+    @monthly_review.read_receipt_later(@next_entry, Current.user) if @next_entry
   end
 
   def update
@@ -63,7 +66,7 @@ class MonthlyReviews::CardsController < ApplicationController
       redirect_to review_card_path(@monthly_review.undo_review!(@entry, Current.user))
     end
 
-    # Reads a receipt of the entry on request: the unread or failed one, or a
+    # Reads a receipt of the entry on request: a failed or stale one, or a
     # close candidate the user picked.
     def suggest!
       link = @entry.transaction.receipt_links.where.not(status: "dismissed").find(params[:receipt_link_id])

@@ -8,7 +8,8 @@
 # TransactionAnnotationSuggestion.claim_for, which skips ready, applied,
 # reverted and in-flight rows. A stale pending row (its run died) is taken
 # over, and a failed one is retried only when `retry_failed` (the refresh
-# button). The card can still re-run a pending or failed row itself.
+# button; a Time retries only rows that failed before it). The card can
+# still re-run a stale pending or failed row itself.
 class MonthlyReview::SuggestionPrefetch
   LIMIT = 200
   # LLM failures in a row after which the provider is most likely down or
@@ -65,7 +66,7 @@ class MonthlyReview::SuggestionPrefetch
     end
 
     def runnable?
-      connection&.configured? && Provider::Registry.preferred_llm_provider.present?
+      review.suggestions_available?
     end
 
     # [entry, receipt_link] pairs whose receipt has no suggestion yet or one

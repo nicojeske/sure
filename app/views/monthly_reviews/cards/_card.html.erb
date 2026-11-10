@@ -1,10 +1,9 @@
 <%# One transaction with its proposal. The data-review-card-* attributes tell
     the review-card controller (on the page, outside this frame) which card is
     showing and what its keys should do. %>
-<%# locals: (card:, list:, next_entry:) %>
+<%# locals: (card:, list:) %>
 <% entry = card.entry %>
 <% form_id = "review_card_decision" %>
-<% next_link = next_entry && Transaction::AnnotationSuggester.receipt_choice(next_entry.transaction).link %>
 <%= render DS::Card.new(
       class: "@container/card min-w-0 gap-4 @3xl/page:col-start-2 @3xl/page:sticky @3xl/page:top-4",
       aria: { label: t(".label", name: entry.name) },
@@ -12,11 +11,9 @@
         review_card_target: "card",
         review_card_entry_id: entry.id,
         review_card_state: card.state,
-        review_card_queued: card.queued?,
         review_card_reviewed_ids: list.reviewed_ids.to_json,
         review_card_total: list.size,
-        review_card_paperless_url: card.receipt_link&.paperless_connection&.document_url(card.receipt_link.document_id),
-        review_card_next_receipt_url: (next_link && monthly_review_receipt_text_path(@monthly_review, entry_id: next_entry.id, receipt_link_id: next_link.id, variant: "wide"))
+        review_card_paperless_url: card.receipt_link&.paperless_connection&.document_url(card.receipt_link.document_id)
       }
     ) do %>
   <%= render "monthly_reviews/cards/header", card: card, position: list.position(entry), total: list.size %>

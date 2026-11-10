@@ -122,14 +122,15 @@ de:
         failed_title: Es konnte kein Vorschlag erstellt werden
         loading_hint: Dein Hinweis wird gelesen… Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
         loading_receipt: Der Beleg wird gelesen… Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
-        queued: Der Beleg wartet darauf, im Hintergrund gelesen zu werden.
-        read_now: Beleg jetzt lesen (⏎)
+        read_now: Beleg lesen
         receipt_choice: Mehrere Belege passen etwa gleich gut. Wähle einen aus, dann liest die KI ihn, oder tippe stattdessen einen Hinweis.
-        retry: Erneut versuchen (⏎)
+        retry: Erneut versuchen
         reviewed:
           one: Geprüft · 1 Änderung übernommen
           other: Geprüft · %{count} Änderungen übernommen
           zero: Ohne Änderungen geprüft
+        stalled: Das Lesen dauert länger als üblich. Die Karte aktualisiert sich, sobald es fertig ist; bis dahin kannst du einen Hinweis tippen oder von Hand bearbeiten.
+        unavailable: Dieser Beleg kann nicht gelesen werden, weil kein KI-Anbieter oder keine Paperless-Verbindung eingerichtet ist.
         undo: Rückgängig
         unread: Der Beleg wurde noch nicht gelesen.
       strip:

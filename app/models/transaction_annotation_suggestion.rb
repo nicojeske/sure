@@ -53,14 +53,18 @@ class TransactionAnnotationSuggestion < ApplicationRecord
 
   # Claims the right to run this input in the background: creates its pending
   # row, or takes over a stale pending one (and a failed one when
-  # `retry_failed`). Returns nil when the input already has a result or
-  # another run owns it.
+  # `retry_failed`: true for any, a Time for those that failed before it).
+  # Returns nil when the input already has a result or another run owns it.
   def self.claim_for(entry, input_hash:, retry_failed: false, **attributes)
     suggestion = find_or_create_for!(entry, input_hash: input_hash, status: "pending", **attributes)
     return suggestion if suggestion.previously_new_record?
 
     reclaimable = where(status: "pending", updated_at: ...PENDING_STALE_AFTER.ago)
-    reclaimable = reclaimable.or(where(status: "failed")) if retry_failed
+    if retry_failed
+      failed = where(status: "failed")
+      failed = failed.where(updated_at: ...retry_failed) if retry_failed.is_a?(Time)
+      reclaimable = reclaimable.or(failed)
+    end
     claimed = where(id: suggestion.id).and(reclaimable).update_all(status: "pending", error: nil, updated_at: Time.current)
     claimed == 1 ? suggestion.reload : nil
   end
@@ -88,7 +92,10 @@ class TransactionAnnotationSuggestion < ApplicationRecord
 
   # Whether a background run may claim this row (see claim_for).
   def reclaimable?(retry_failed: false)
-    (pending? && !in_flight?) || (failed? && retry_failed)
+    return true if pending? && !in_flight?
+    return false unless failed? && retry_failed
+
+    !retry_failed.is_a?(Time) || updated_at < retry_failed
   end
 
   def split

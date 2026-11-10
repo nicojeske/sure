@@ -156,4 +156,35 @@ class MonthlyReviewTest < ActiveSupport::TestCase
     assert_not entry.reload.split_parent?
     assert_not entry.reviewed?
   end
+
+  test "read_receipt_later claims an unread receipt once and skips reviewed or hinted entries" do
+    user = users(:family_admin)
+    Provider::Registry.stubs(:preferred_llm_provider).returns(mock("llm"))
+    entry = create_transaction(account: @account, date: Date.new(2026, 10, 5), amount: 20)
+    link = entry.transaction.receipt_links.create!(paperless_connection: paperless_connections(:one), document_id: 5, status: "linked", score: 0.9)
+
+    suggestion = nil
+    assert_enqueued_with(job: MonthlyReview::ReadReceiptJob) { suggestion = @review.read_receipt_later(entry, user) }
+    assert suggestion.pending?
+    assert_equal link, suggestion.receipt_link
+    assert_nil @review.read_receipt_later(entry, user)
+
+    hinted = create_transaction(account: @account, date: Date.new(2026, 10, 6), amount: 20)
+    hinted.transaction.receipt_links.create!(paperless_connection: paperless_connections(:one), document_id: 6, status: "linked", score: 0.9)
+    TransactionAnnotationSuggestion.create!(entry: hinted, family: @family, source: "hint", status: "ready", hint_text: "milk", input_hash: "hinted", payload: {})
+    assert_nil @review.read_receipt_later(hinted, user)
+
+    reviewed = create_transaction(account: @account, date: Date.new(2026, 10, 7), amount: 20)
+    reviewed.transaction.receipt_links.create!(paperless_connection: paperless_connections(:one), document_id: 7, status: "linked", score: 0.9)
+    reviewed.mark_reviewed!(user)
+    assert_nil @review.read_receipt_later(reviewed, user)
+  end
+
+  test "read_receipt_later does nothing without an LLM provider" do
+    Provider::Registry.stubs(:preferred_llm_provider).returns(nil)
+    entry = create_transaction(account: @account, date: Date.new(2026, 10, 5), amount: 20)
+    entry.transaction.receipt_links.create!(paperless_connection: paperless_connections(:one), document_id: 5, status: "linked", score: 0.9)
+
+    assert_no_enqueued_jobs { assert_nil @review.read_receipt_later(entry, users(:family_admin)) }
+  end
 end

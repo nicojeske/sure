@@ -57,14 +57,9 @@ class ReceiptLink < ApplicationRecord
     document_currency != entry.currency || (document_amount.round(2) - entry.amount.abs.round(2)).abs > tolerance
   end
 
-  # The document's OCR text, read from Paperless (never the file). Cached
-  # briefly so the review card can warm the next card's receipt ahead of time.
+  # The document's OCR text, read from Paperless (never the file).
   # Raises Provider::Paperless::Error.
   def document_content
-    Rails.cache.fetch([ "paperless/document_content", paperless_connection_id, document_id ], expires_in: CONTENT_CACHE_TTL) do
-      paperless_connection.provider.document(document_id)["content"].to_s
-    end
+    paperless_connection.provider.document(document_id)["content"].to_s
   end
-
-  CONTENT_CACHE_TTL = 10.minutes
 end

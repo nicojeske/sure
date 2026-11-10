@@ -7,7 +7,8 @@
 # for the receipt the card reads (linked or clear-cut suggested), the latest
 # one for a close receipt candidate, and the learned category when there is
 # no receipt at all. Building a card never calls the LLM; the learned
-# proposal is stored because applying needs a record.
+# proposal is stored because applying needs a record, and
+# read_receipt_later! starts the background read of an unread receipt.
 class MonthlyReview::Card
   OPEN_STATUSES = %w[pending ready failed reverted].freeze
 
@@ -40,10 +41,19 @@ class MonthlyReview::Card
 
   def reviewed? = state == :reviewed
 
-  # Background prefetch began recently, so an unread receipt is probably next
-  # in its queue.
-  def queued?
-    state == :unread && review.prefetched_at.present? && review.prefetched_at > MonthlyReview::PREFETCH_INTERVAL.ago
+  # Starts reading an unread receipt in the background; the card then waits
+  # for it (state :loading).
+  def read_receipt_later!
+    return unless state == :unread && review.read_receipt_later(entry, user)
+
+    @suggestions = nil
+    resolve
+  end
+
+  # The card has a receipt to read, but no LLM provider or Paperless
+  # connection to read it with.
+  def reading_unavailable?
+    state == :empty && suggestion.nil? && receipt_choice.link.present? && !review.suggestions_available?
   end
 
   def edited?
@@ -164,7 +174,7 @@ class MonthlyReview::Card
 
     def state_for(suggestion)
       if suggestion.nil?
-        return :unread if receipt_choice.link
+        return :unread if receipt_choice.link && review.suggestions_available?
         return :receipt_choice if receipt_choice.candidates.any?
         return :empty
       end

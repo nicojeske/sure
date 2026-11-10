@@ -122,14 +122,15 @@ en:
         failed_title: Couldn't build a proposal
         loading_hint: Reading your hint… The card updates when the proposal is ready.
         loading_receipt: Reading the receipt… The card updates when the proposal is ready.
-        queued: The receipt is queued for reading in the background.
-        read_now: Read receipt now (⏎)
+        read_now: Read receipt
         receipt_choice: Several receipts match about equally well. Pick one and the AI reads it, or type a hint instead.
-        retry: Retry (⏎)
+        retry: Retry
         reviewed:
           one: Reviewed · 1 change applied
           other: Reviewed · %{count} changes applied
           zero: Reviewed without changes
+        stalled: Reading takes longer than usual. The card updates when it's done; meanwhile you can type a hint or edit by hand.
+        unavailable: This receipt can't be read because no AI provider or Paperless connection is set up.
         undo: Undo
         unread: The receipt hasn't been read yet.
       strip:

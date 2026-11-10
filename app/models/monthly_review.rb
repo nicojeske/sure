@@ -78,8 +78,33 @@ class MonthlyReview < ApplicationRecord
     true
   end
 
-  def prefetch_suggestions(user, include_transfers: false, retry_failed: false, &block)
-    SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers, retry_failed: retry_failed).run(&block)
+  def prefetch_suggestions(user, include_transfers: false, retry_failed: false, limit: SuggestionPrefetch::LIMIT, &block)
+    SuggestionPrefetch.new(self, user: user, include_transfers: include_transfers, retry_failed: retry_failed, limit: limit).run(&block)
+  end
+
+  # Whether proposals can be built at all: a Paperless connection to read
+  # receipts from and an LLM provider to read them.
+  def suggestions_available?
+    family.paperless_configured? && Provider::Registry.preferred_llm_provider.present?
+  end
+
+  # Starts reading the entry's receipt in the background when the card has a
+  # usable receipt and nothing else to show. The claim keeps it from running
+  # twice alongside the prefetch. Returns the claimed pending suggestion, or
+  # nil when there was nothing to start.
+  def read_receipt_later(entry, user)
+    return nil if entry.reviewed? || !suggestions_available?
+
+    link = Transaction::AnnotationSuggester.receipt_choice(entry.transaction).link
+    return nil if link.nil? || link.paperless_connection_id != family.paperless_connection.id
+    return nil if entry.annotation_suggestions.hint.not_edited.where(status: MonthlyReview::Card::OPEN_STATUSES).exists?
+
+    suggestion = TransactionAnnotationSuggestion.claim_for(
+      entry, input_hash: Transaction::AnnotationSuggester.input_hash(:receipt, receipt_link: link),
+      family: family, source: "receipt", receipt_link: link
+    )
+    ReadReceiptJob.perform_later(suggestion, user) if suggestion
+    suggestion
   end
 
   # The month's entries for the card page, loaded once.

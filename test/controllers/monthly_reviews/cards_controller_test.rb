@@ -50,6 +50,35 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "opening a card starts reading its unread receipt and the next card's" do
+    link_receipt(@first, document_id: 1)
+    link_receipt(@second, document_id: 2)
+    forbid_llm
+
+    assert_enqueued_jobs 2, only: MonthlyReview::ReadReceiptJob do
+      get monthly_review_card_url(@review, entry_id: @first.id), headers: { "Turbo-Frame" => "monthly_review_card" }
+    end
+
+    assert_select "[data-review-card-entry-id='#{@first.id}'][data-review-card-state='loading']"
+    assert @second.annotation_suggestions.sole.in_flight?
+
+    assert_no_enqueued_jobs(only: MonthlyReview::ReadReceiptJob) do
+      get monthly_review_card_url(@review, entry_id: @first.id), headers: { "Turbo-Frame" => "monthly_review_card" }
+    end
+  end
+
+  test "without an LLM provider an unread receipt says it can't be read instead of waiting" do
+    link_receipt(@first, document_id: 1)
+    Provider::Registry.stubs(:preferred_llm_provider).returns(nil)
+
+    assert_no_enqueued_jobs(only: MonthlyReview::ReadReceiptJob) do
+      get monthly_review_card_url(@review, entry_id: @first.id)
+    end
+
+    assert_select "[data-review-card-state='empty']"
+    assert_select "p", text: I18n.t("monthly_reviews.cards.state.unavailable")
+  end
+
   test "shows the requested entry and 404s for an entry outside the month" do
     get monthly_review_card_url(@review, entry_id: @third.id)
     assert_select "[data-review-card-entry-id='#{@third.id}']"

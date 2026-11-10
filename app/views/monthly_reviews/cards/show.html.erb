@@ -44,7 +44,7 @@
       <% if @card %>
         <%= turbo_stream_from Current.family, :monthly_review, @entry, hidden: true %>
         <%= render "monthly_reviews/cards/strip", list: @list, current_entry: @entry %>
-        <%= render "monthly_reviews/cards/card", card: @card, list: @list, next_entry: @next_entry %>
+        <%= render "monthly_reviews/cards/card", card: @card, list: @list %>
         <aside class="hidden @7xl/page:col-start-3 @7xl/page:block sticky top-4" aria-label="<%= t(".receipt_column") %>">
           <%= render DS::Card.new do %>
             <%= render "monthly_reviews/cards/receipt_pane", card: @card, variant: "wide" %>

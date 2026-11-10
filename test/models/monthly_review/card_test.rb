@@ -2,6 +2,7 @@ require "test_helper"
 
 class MonthlyReview::CardTest < ActiveSupport::TestCase
   include MonthlyReviewTestHelper
+  include ActiveJob::TestHelper
 
   setup do
     setup_monthly_review
@@ -18,15 +19,39 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert card.fields.all? { |field| field.status == :unchanged }
   end
 
-  test "a linked receipt without a suggestion is unread, queued while a prefetch runs" do
+  test "an unread receipt starts reading in the background and the card waits for it" do
     link_receipt(@entry, document_id: 1)
+    forbid_llm
 
     card = card_for(@entry)
     assert_equal :unread, card.state
-    assert_not card.queued?
 
-    @review.update_columns(prefetched_at: 1.minute.ago)
-    assert card_for(@entry).queued?
+    assert_enqueued_with(job: MonthlyReview::ReadReceiptJob) { card.read_receipt_later! }
+    assert_equal :loading, card.state
+    assert card.suggestion.in_flight?
+
+    assert_no_enqueued_jobs(only: MonthlyReview::ReadReceiptJob) { card_for(@entry).read_receipt_later! }
+    assert_equal :loading, card_for(@entry).state
+  end
+
+  test "a receipt run that stopped answering ends as failed, not loading" do
+    link = link_receipt(@entry, document_id: 1)
+    stale = ready_suggestion(@entry, receipt_link: link, status: "pending")
+    stale.update_columns(updated_at: (TransactionAnnotationSuggestion::PENDING_STALE_AFTER + 1.minute).ago)
+    forbid_llm
+
+    assert_equal :failed, card_for(@entry).state
+  end
+
+  test "without an LLM provider an unread receipt shows no proposal and does not wait" do
+    link_receipt(@entry, document_id: 1)
+    Provider::Registry.stubs(:preferred_llm_provider).returns(nil)
+
+    card = card_for(@entry)
+
+    assert_no_enqueued_jobs { card.read_receipt_later! }
+    assert_equal :empty, card.state
+    assert card.reading_unavailable?
   end
 
   test "close suggested receipts ask for a choice" do
