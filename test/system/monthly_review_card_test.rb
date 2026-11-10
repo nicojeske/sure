@@ -236,6 +236,27 @@ class MonthlyReviewCardTest < ApplicationSystemTestCase
     assert_no_selector "[data-review-rule-suggestion]"
   end
 
+  test "n dismisses the suggested rule for good" do
+    shop = @family.merchants.create!(name: "Unknown Shop GmbH")
+    @plain.transaction.update!(merchant: shop)
+    [ Date.new(2026, 8, 4), Date.new(2026, 9, 4), Date.new(2026, 9, 18) ].each do |date|
+      past = create_transaction(account: @account, date: date, name: "Unknown shop", amount: 20, merchant: shop, category: @category)
+      past.update_columns(reviewed_at: date.to_time)
+    end
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_selector "[data-review-rule-suggestion]"
+
+    send_keys "n"
+
+    assert_no_selector "[data-review-rule-suggestion]"
+    assert_selector "[data-review-card-entry-id='#{@plain.id}']"
+    assert @family.rule_suggestion_dismissals.exists?(pattern_key: "merchant:#{shop.id}")
+
+    visit monthly_review_card_path(@review, entry_id: @plain.id)
+    assert_no_selector "[data-review-rule-suggestion]"
+  end
+
   PIXEL_PNG =Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
 
   private

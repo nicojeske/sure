@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -2398,6 +2398,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
     t.index ["rule_id"], name: "index_rule_runs_on_rule_id"
   end
 
+  create_table "rule_suggestion_dismissals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.string "pattern_key", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["family_id", "pattern_key"], name: "index_rule_suggestion_dismissals_on_family_id_and_pattern_key", unique: true
+    t.index ["family_id"], name: "index_rule_suggestion_dismissals_on_family_id"
+    t.index ["user_id"], name: "index_rule_suggestion_dismissals_on_user_id"
+  end
+
   create_table "rules", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "active", default: false, null: false
     t.datetime "created_at", null: false
@@ -3364,6 +3375,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
   add_foreign_key "rule_conditions", "rules"
   add_foreign_key "rule_groups", "families"
   add_foreign_key "rule_runs", "rules"
+  add_foreign_key "rule_suggestion_dismissals", "families"
+  add_foreign_key "rule_suggestion_dismissals", "users"
   add_foreign_key "rules", "families"
   add_foreign_key "rules", "rule_groups", on_delete: :nullify
   add_foreign_key "security_prices", "securities"

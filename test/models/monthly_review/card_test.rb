@@ -321,6 +321,38 @@ class MonthlyReview::CardTest < ActiveSupport::TestCase
     assert_nil card_for(@entry.reload).rule_suggestion
   end
 
+  test "a dismissed pattern gets no rule suggestion in any month" do
+    eon = @family.merchants.create!(name: "EON")
+    @entry.transaction.update!(merchant: eon)
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3), Date.new(2026, 9, 20) ])
+    assert card_for(@entry).rule_suggestion
+
+    RuleSuggestionDismissal.create!(family: @family, user: @user, pattern_key: "merchant:#{eon.id}")
+
+    assert_nil card_for(@entry).rule_suggestion
+    later = create_transaction(account: @account, date: Date.new(2026, 10, 20), name: "EON", amount: 85, merchant: eon)
+    assert_nil card_for(later).rule_suggestion
+  end
+
+  test "another family's dismissal does not hide the suggestion" do
+    eon = @family.merchants.create!(name: "EON")
+    @entry.transaction.update!(merchant: eon)
+    reviewed_history("EON", merchant: eon, category: categories(:food_and_drink), dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3), Date.new(2026, 9, 20) ])
+
+    RuleSuggestionDismissal.create!(family: families(:empty), user: users(:empty), pattern_key: "merchant:#{eon.id}")
+
+    assert card_for(@entry).rule_suggestion
+  end
+
+  test "users with rule prompts disabled get no automatic rule suggestion" do
+    reviewed_history("EDEKA SAGT DANKE", category: categories(:food_and_drink), dates: [ Date.new(2026, 8, 3), Date.new(2026, 9, 3), Date.new(2026, 9, 20) ])
+    assert card_for(@entry).rule_suggestion
+
+    @user.update!(rule_prompts_disabled: true)
+
+    assert_nil card_for(@entry).rule_suggestion
+  end
+
   private
     # Reviewed transactions before the review month, one per date.
     def reviewed_history(name, dates:, category: nil, merchant: nil, tags: [])

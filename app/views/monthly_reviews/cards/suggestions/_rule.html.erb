@@ -1,7 +1,8 @@
 <%# A rule suggested for this transaction (MonthlyReview::RuleSuggestion).
     Accepting opens the new-rule form prefilled in the modal; "Not now" only
-    hides the row until the card renders again. %>
-<%# locals: (suggestion:) %>
+    hides the row until the card renders again, "Never for this pattern"
+    dismisses it for the family for good. %>
+<%# locals: (suggestion:, card: nil) %>
 <%= render DS::Inset.new(class: "flex flex-wrap items-center gap-x-3 gap-y-2", data: { review_rule_suggestion: suggestion.pattern_key }) do %>
   <%= icon "git-branch", size: "sm" %>
   <p class="min-w-0 flex-1 text-primary">
@@ -22,6 +23,14 @@
           size: :sm,
           type: "button",
           data: { review_suggestion: "rule", review_suggestion_action: "dismiss", action: "review-card#hideSuggestion" }
+        ) %>
+    <%= render DS::Button.new(
+          text: t(".never"),
+          variant: :ghost,
+          size: :sm,
+          href: monthly_review_rule_suggestion_dismissals_path(card.review, entry_id: card.entry.id, pattern_key: suggestion.pattern_key, **transfers_param),
+          method: :post,
+          data: { review_suggestion: "rule", review_suggestion_action: "never" }
         ) %>
   </div>
 <% end %>

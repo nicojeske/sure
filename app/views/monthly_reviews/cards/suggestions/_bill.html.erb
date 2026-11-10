@@ -1,7 +1,7 @@
 <%# The bill this entry belongs to, or a detected series to confirm or
     dismiss. The buttons post to the recurring series' own confirm and
     dismiss, which redirect back to this card. %>
-<%# locals: (suggestion:) %>
+<%# locals: (suggestion:, card: nil) %>
 <% series = suggestion.series %>
 <% amount = tag.span(format_money(series.amount_money.abs), class: "privacy-sensitive") %>
 <%= render DS::Inset.new(class: "flex flex-wrap items-center gap-x-3 gap-y-2", data: { review_bill: series.status }) do %>

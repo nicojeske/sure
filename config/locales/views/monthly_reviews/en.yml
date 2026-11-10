@@ -93,6 +93,7 @@ en:
         reviewed: reviewed
         rule: create rule
         rule_dismiss: not now
+        rule_never: never for this pattern
         scroll: scroll receipt
         skip: skip
         split: split
@@ -154,6 +155,7 @@ en:
         label: Suggestions
         rule:
           create: Create rule
+          never: Never for this pattern
           not_now: Not now
           summary_html: 'Make this a rule? %{summary}'
       update:

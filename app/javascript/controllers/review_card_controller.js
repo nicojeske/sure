@@ -201,6 +201,7 @@ export default class extends Controller {
         this.pressSuggestion("bill", event.shiftKey ? "dismiss" : "accept"),
       r: () =>
         this.pressSuggestion("rule", event.shiftKey ? "dismiss" : "accept"),
+      n: () => this.pressSuggestion("rule", "never"),
     };
     if (handlers[key]) {
       event.preventDefault();

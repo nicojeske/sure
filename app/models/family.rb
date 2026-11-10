@@ -147,6 +147,7 @@ class Family < ApplicationRecord
   has_many :recurring_occurrences, dependent: :destroy
   has_many :insights, dependent: :destroy
   has_many :monthly_reviews, dependent: :destroy
+  has_many :rule_suggestion_dismissals, dependent: :destroy
 
   # Families with at least one opted-in member. Lets a job filter in one
   # indexed query rather than loading every family and asking each in Ruby.
