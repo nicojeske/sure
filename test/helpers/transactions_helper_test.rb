@@ -151,6 +151,13 @@ class TransactionsHelperTest < ActionView::TestCase
     assert_equal({ "someprovider" => { "a" => 1 } }, JSON.parse(details[:raw]))
   end
 
+  test "leaves the saved bank name out of the provider details" do
+    assert_nil build_transaction_extra_details(transaction_with({ "original_name" => "CARD 4711 COFFEE" }))
+
+    details = build_transaction_extra_details(transaction_with({ "original_name" => "CARD 4711", "someprovider" => { "a" => 1 } }))
+    assert_equal({ "someprovider" => { "a" => 1 } }, JSON.parse(details[:raw]))
+  end
+
   test "investment_activity_label_name translates the stored label" do
     I18n.with_locale(:ru) do
       assert_equal "Перевод", investment_activity_label_name("Transfer")

@@ -118,6 +118,7 @@ en:
       tab_upcoming: Upcoming
       uncategorized: "(uncategorized)"
       additional_details: "Additional details"
+      original_name: "Bank name"
       payee: "Payee"
       description: "Description"
       memo: "Memo"
@@ -224,6 +225,7 @@ en:
       import: Import
     index:
       title: "Transactions"
+      review_month: Review month
       transaction: transaction
       transactions: transactions
       import: Import
@@ -368,6 +370,8 @@ en:
           ai_history: AI history
           attachment_with: With attachment
           attachment_without: Without attachment
+          review_reviewed: Reviewed
+          review_unreviewed: Not reviewed
         attachment_filter:
           with: With attachment
           without: Without attachment

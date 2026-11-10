@@ -10,6 +10,7 @@ class AssistantTest < ActiveSupport::TestCase
     assert_includes default_classes, Assistant::Function::GetRecurringTransactions
     assert_not_includes default_classes, Assistant::Function::GetInsights
     assert_not_includes default_classes, Assistant::Function::GetValuations
+    assert_not_includes default_classes, Assistant::Function::GetMonthlyReview
 
     preview_user = users(:family_admin)
     preview_user.update!(preferences: (preview_user.preferences || {}).merge("preview_features_enabled" => true))
@@ -17,6 +18,7 @@ class AssistantTest < ActiveSupport::TestCase
 
     assert_includes preview_classes, Assistant::Function::GetInsights
     assert_includes preview_classes, Assistant::Function::GetValuations
+    assert_includes preview_classes, Assistant::Function::GetMonthlyReview
   end
 
   test "guest registry leaves out the tools that change categories and tags" do

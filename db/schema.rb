@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_120200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -732,12 +732,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
     t.string "plaid_id"
     t.datetime "reconciled_at"
     t.uuid "reconciled_by_statement_id"
+    t.datetime "reviewed_at"
+    t.uuid "reviewed_by_id"
     t.string "source"
     t.datetime "updated_at", null: false
     t.boolean "user_modified", default: false, null: false
     t.index "lower((name)::text)", name: "index_entries_on_lower_name"
     t.index ["account_id", "date", "entryable_id"], name: "index_entries_on_investment_totals_lookup", where: "(((entryable_type)::text = 'Trade'::text) AND (excluded = false))"
     t.index ["account_id", "date"], name: "index_entries_on_account_id_and_date"
+    t.index ["account_id", "date"], name: "index_entries_unreviewed_on_account_and_date", where: "(reviewed_at IS NULL)"
     t.index ["account_id", "idempotency_key"], name: "index_entries_on_account_and_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["account_id", "reconciled_at"], name: "index_entries_on_account_and_reconciled_at", where: "(reconciled_at IS NOT NULL)"
     t.index ["account_id", "source", "external_id"], name: "index_entries_on_account_source_and_external_id", unique: true, where: "((external_id IS NOT NULL) AND (source IS NOT NULL))"
@@ -749,6 +752,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
     t.index ["import_locked"], name: "index_entries_on_import_locked_true", where: "(import_locked = true)"
     t.index ["parent_entry_id"], name: "index_entries_on_parent_entry_id"
     t.index ["reconciled_by_statement_id"], name: "index_entries_on_reconciled_by_statement", where: "(reconciled_by_statement_id IS NOT NULL)"
+    t.index ["reviewed_by_id"], name: "index_entries_on_reviewed_by_id"
     t.index ["user_modified"], name: "index_entries_on_user_modified_true", where: "(user_modified = true)"
     t.check_constraint "reconciled_by_statement_id IS NULL OR reconciled_at IS NOT NULL", name: "chk_entries_reconciled_at_present_when_statement_set"
   end
@@ -1795,6 +1799,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
     t.datetime "updated_at", null: false
     t.index ["family_id"], name: "index_monobank_items_on_family_id"
     t.index ["status"], name: "index_monobank_items_on_status"
+  end
+
+  create_table "monthly_reviews", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.date "end_date", null: false
+    t.uuid "family_id", null: false
+    t.text "notes"
+    t.datetime "prefetched_at"
+    t.date "start_date", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "start_date"], name: "index_monthly_reviews_on_family_id_and_start_date", unique: true
   end
 
   create_table "notification_deliveries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2921,6 +2937,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
     t.index ["status"], name: "index_trading212_items_on_status"
   end
 
+  create_table "transaction_annotation_suggestions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.jsonb "applied_fields"
+    t.datetime "created_at", null: false
+    t.uuid "entry_id", null: false
+    t.text "error"
+    t.uuid "family_id", null: false
+    t.text "hint_text"
+    t.string "input_hash", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.uuid "receipt_link_id"
+    t.jsonb "snapshot"
+    t.string "source", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entry_id", "input_hash"], name: "index_annotation_suggestions_on_entry_and_input_hash", unique: true
+    t.index ["family_id"], name: "index_transaction_annotation_suggestions_on_family_id"
+    t.index ["receipt_link_id"], name: "index_transaction_annotation_suggestions_on_receipt_link_id"
+    t.check_constraint "source::text = ANY (ARRAY['receipt'::character varying, 'hint'::character varying, 'learned'::character varying]::text[])", name: "chk_annotation_suggestions_source"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'ready'::character varying, 'failed'::character varying, 'applied'::character varying, 'reverted'::character varying]::text[])", name: "chk_annotation_suggestions_status"
+  end
+
   create_table "transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "category_id"
     t.datetime "created_at", null: false
@@ -3213,6 +3250,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
   add_foreign_key "entries", "accounts", on_delete: :cascade
   add_foreign_key "entries", "entries", column: "parent_entry_id", on_delete: :cascade
   add_foreign_key "entries", "imports"
+  add_foreign_key "entries", "users", column: "reviewed_by_id", on_delete: :nullify
   add_foreign_key "eval_results", "eval_runs"
   add_foreign_key "eval_results", "eval_samples"
   add_foreign_key "eval_runs", "eval_datasets"
@@ -3281,6 +3319,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
   add_foreign_key "mobile_devices", "users"
   add_foreign_key "monobank_accounts", "monobank_items"
   add_foreign_key "monobank_items", "families"
+  add_foreign_key "monthly_reviews", "families", on_delete: :cascade
   add_foreign_key "notification_deliveries", "rules", on_delete: :cascade
   add_foreign_key "notification_deliveries", "transactions", on_delete: :cascade
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
@@ -3352,6 +3391,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
   add_foreign_key "trades", "securities"
   add_foreign_key "trading212_accounts", "trading212_items"
   add_foreign_key "trading212_items", "families"
+  add_foreign_key "transaction_annotation_suggestions", "entries", on_delete: :cascade
+  add_foreign_key "transaction_annotation_suggestions", "families", on_delete: :cascade
+  add_foreign_key "transaction_annotation_suggestions", "receipt_links", on_delete: :nullify
   add_foreign_key "transactions", "categories", on_delete: :nullify
   add_foreign_key "transactions", "merchants"
   add_foreign_key "transactions", "transfers"

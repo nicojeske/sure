@@ -1,0 +1,35 @@
+<%# The month's note and its completion. Members who can't review see the
+    note without the form. %>
+<%# locals: (review:, unreviewed_count:, editable:, focus_note: false) %>
+<% if editable %>
+  <%= render DS::Card.new(class: "gap-4") do %>
+    <h2 class="text-sm font-medium text-primary"><%= t(".title") %></h2>
+    <%= styled_form_with model: review, url: monthly_review_path(review, transfers_param), method: :patch, class: "space-y-4" do |f| %>
+      <%= f.text_area :notes, label: t(".label"), rows: 4, placeholder: t(".placeholder"), autofocus: focus_note %>
+      <% if review.completed? %>
+        <p class="text-sm text-secondary"><%= t(".completed_on", date: l(review.completed_at.to_date, format: :long)) %></p>
+      <% elsif unreviewed_count.positive? %>
+        <p class="text-sm text-secondary"><%= t(".unreviewed_hint", count: unreviewed_count) %></p>
+      <% end %>
+      <div class="flex flex-wrap justify-end gap-2">
+        <% if review.completed? %>
+          <%= render DS::Button.new(text: t(".reopen"), variant: :ghost, type: :submit, name: "completion", value: "reopen") %>
+          <%= render DS::Button.new(text: t(".save"), type: :submit) %>
+        <% else %>
+          <%= render DS::Button.new(text: t(".save"), variant: :secondary, type: :submit) %>
+          <%= render DS::Button.new(text: t(".complete"), icon: "circle-check", type: :submit, name: "completion", value: "complete") %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+<% elsif review.notes.present? || review.completed? %>
+  <%= render DS::Card.new(class: "gap-2") do %>
+    <h2 class="text-sm font-medium text-primary"><%= t(".label") %></h2>
+    <% if review.notes.present? %>
+      <p class="whitespace-pre-line text-sm text-primary"><%= review.notes %></p>
+    <% end %>
+    <% if review.completed? %>
+      <p class="text-sm text-secondary"><%= t(".completed_on", date: l(review.completed_at.to_date, format: :long)) %></p>
+    <% end %>
+  <% end %>
+<% end %>

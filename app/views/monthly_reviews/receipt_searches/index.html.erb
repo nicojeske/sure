@@ -1,0 +1,38 @@
+<%= turbo_frame_tag "review_receipt_search_results", class: "block max-h-64 overflow-y-auto" do %>
+  <p class="mb-1 flex flex-wrap items-center gap-x-2 text-xs text-subdued">
+    <% if @any_date %>
+      <%= t(".any_date") %>
+    <% else %>
+      <%= t(".window", from: l(@date_window.begin, format: :short), to: l(@date_window.end, format: :short)) %>
+      <%= link_to t(".search_any_date"), monthly_review_receipt_searches_path(@monthly_review, entry_id: @entry.id, q: @query, any_date: "1", include_transfers: ("1" if include_transfers?)), class: "underline" %>
+    <% end %>
+  </p>
+
+  <% if @search_failed %>
+    <p class="py-2 text-sm text-destructive" data-review-search-error><%= t(".failed") %></p>
+  <% elsif @result.documents.empty? %>
+    <p class="py-2 text-sm text-secondary"><%= t(".no_results") %></p>
+  <% else %>
+    <ul class="flex flex-col gap-0.5">
+      <% @result.documents.each do |document| %>
+        <% total = @result.facts[document["id"]]&.total %>
+        <li>
+          <%= button_to monthly_review_receipt_searches_path(@monthly_review),
+                params: { entry_id: @entry.id, document_id: document["id"], include_transfers: ("1" if include_transfers?) }.compact,
+                form: { data: { turbo_frame: "monthly_review_card" } },
+                class: "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-container-inset data-[active=true]:bg-container-inset",
+                data: { review_search_result: document["id"] } do %>
+            <span class="min-w-0">
+              <span class="block truncate text-primary"><%= document["title"] %></span>
+              <span class="block truncate text-xs text-secondary"><%= [ @result.correspondents[document["correspondent"]], (l(ReceiptLink.parse_document_date(document["created"]), format: :short) if ReceiptLink.parse_document_date(document["created"])) ].compact.join(" · ") %></span>
+            </span>
+            <span class="shrink-0 text-xs text-secondary privacy-sensitive"><%= total ? format_money(total) : t(".no_amount") %></span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+    <% if @result.next_page %>
+      <%= link_to t(".more"), monthly_review_receipt_searches_path(@monthly_review, entry_id: @entry.id, q: @query, page: @result.next_page, any_date: ("1" if @any_date), include_transfers: ("1" if include_transfers?)), class: "mt-1 inline-block text-xs underline text-secondary" %>
+    <% end %>
+  <% end %>
+<% end %>

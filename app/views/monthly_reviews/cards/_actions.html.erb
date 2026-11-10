@@ -1,0 +1,20 @@
+<%# The decisions as buttons: a row on desktop, big buttons pinned to the
+    bottom on phones. Both submit the card's decision form. A reviewed card
+    only moves on: its "Next" is a skip. %>
+<%# locals: (card:, form_id:, first:) %>
+<% buttons = if card.reviewed?
+     [ ([ "back", t(".back"), :ghost ] unless first), [ "skip", t(".next"), :primary ] ]
+   else
+     [ ([ "back", t(".back"), :ghost ] unless first), [ "skip", t(".skip"), :ghost ], [ "reviewed_only", t(".reviewed"), :outline ], [ "accept", t(".accept"), :primary ] ]
+   end.compact %>
+<div class="hidden justify-end gap-2 md:flex">
+  <% buttons.each do |decision, text, variant| %>
+    <%= render DS::Button.new(text: text, variant: variant, type: :submit, form: form_id, name: "decision", value: decision, data: { review_decision: decision }) %>
+  <% end %>
+</div>
+<div class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-primary bg-container p-3 md:hidden">
+  <% buttons.each do |decision, text, variant| %>
+    <%= render DS::Button.new(text: text, variant: (variant == :ghost ? :outline : variant), size: :lg, full_width: true, type: :submit,
+          form: form_id, name: "decision", value: decision, data: { review_decision: decision }) %>
+  <% end %>
+</div>

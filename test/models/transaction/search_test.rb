@@ -1191,6 +1191,20 @@ class Transaction::SearchTest < ActiveSupport::TestCase
     assert_empty current_ids
   end
 
+  test "review_status filters by reviewed state and ignores both or unknown values" do
+    reviewed = create_transaction(account: @checking_account, amount: 100, kind: "standard")
+    unreviewed = create_transaction(account: @checking_account, amount: 50, kind: "standard")
+    reviewed.mark_reviewed!(users(:family_admin))
+
+    ids_for = ->(statuses) { Transaction::Search.new(@family, filters: { review_status: statuses }).transactions_scope.pluck(:id).sort }
+
+    assert_equal [ reviewed.entryable_id ], ids_for.call([ "reviewed" ])
+    assert_equal [ unreviewed.entryable_id ], ids_for.call([ "unreviewed" ])
+    expected = [ reviewed.entryable_id, unreviewed.entryable_id ].sort
+    assert_equal expected, ids_for.call([ "reviewed", "unreviewed" ])
+    assert_equal expected, ids_for.call([ "bogus" ])
+  end
+
   test "attachment_status with returns only transactions that have a file" do
     with_file = create_transaction(account: @checking_account, amount: 100, kind: "standard").entryable
     attach_file(with_file)

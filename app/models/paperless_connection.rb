@@ -59,6 +59,11 @@ class PaperlessConnection < ApplicationRecord
       )
   end
 
+  # A client for this connection's Paperless-ngx API.
+  def provider
+    Provider::Paperless.new(base_url: base_url, api_token: api_token, verify_ssl: verify_ssl)
+  end
+
   def document_url(document_id)
     "#{base_url}/documents/#{document_id}/details"
   end

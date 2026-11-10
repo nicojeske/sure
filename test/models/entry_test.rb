@@ -279,4 +279,43 @@ class EntryTest < ActiveSupport::TestCase
     entry.update!(entryable_attributes: { id: entry.entryable_id, exchange_rate: 1.2 })
     assert entry.saved_changes_affect_balances?
   end
+
+  test "marking reviewed records the reviewer without touching edit state" do
+    entry = create_transaction
+    user = users(:family_admin)
+
+    entry.mark_reviewed!(user)
+    entry.reload
+
+    assert entry.reviewed?
+    assert_equal user, entry.reviewed_by
+    assert_not entry.user_modified?
+    assert_includes Entry.reviewed, entry
+
+    entry.unmark_reviewed!
+
+    assert_not entry.reload.reviewed?
+    assert_includes Entry.unreviewed, entry
+  end
+
+  test "changing amount or date clears the review" do
+    entry = create_transaction(amount: 10, date: Date.new(2026, 10, 1))
+    entry.mark_reviewed!(users(:family_admin))
+
+    entry.update!(amount: 12)
+    assert_not entry.reload.reviewed?
+
+    entry.mark_reviewed!(users(:family_admin))
+    entry.update!(date: Date.new(2026, 10, 2))
+    assert_not entry.reload.reviewed?
+  end
+
+  test "other edits keep the review" do
+    entry = create_transaction
+    entry.mark_reviewed!(users(:family_admin))
+
+    entry.update!(notes: "checked", name: "Renamed")
+
+    assert entry.reload.reviewed?
+  end
 end

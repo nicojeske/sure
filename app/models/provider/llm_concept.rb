@@ -36,6 +36,21 @@ module Provider::LlmConcept
     raise NotImplementedError, "Subclasses must implement #suggest_bill_setup"
   end
 
+  # A proposed annotation for one transaction, from receipt OCR text and/or a
+  # typed hint. Names are raw model output; callers resolve them to records.
+  # split is nil or an array of TransactionAnnotationSplit.
+  TransactionAnnotation = Data.define(
+    :name, :merchant_name, :category_name, :tag_names, :notes,
+    :receipt_total, :split, :confidence, :rationale
+  )
+  TransactionAnnotationSplit = Data.define(:name, :amount, :category_name, :tag_names, :notes)
+
+  # transaction: { date:, amount:, currency:, name:, merchant:, category: }
+  # examples: [{ name:, merchant:, category:, tags: [], notes: }]
+  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", model: "", family: nil)
+    raise NotImplementedError, "Subclasses must implement #suggest_transaction_annotation"
+  end
+
   PdfProcessingResult = Data.define(:summary, :document_type, :extracted_data)
 
   def supports_pdf_processing?

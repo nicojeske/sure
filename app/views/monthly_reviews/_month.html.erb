@@ -1,0 +1,23 @@
+<%# One month on the overview, linking to its summary. %>
+<%# locals: (month:) %>
+<% review = month.review %>
+<% progress = month.progress %>
+<%= link_to monthly_review_path(review, transfers_param),
+      class: "flex items-center gap-3 px-4 py-3 hover:bg-container-hover focus-ring",
+      data: { review_month: review.to_param } do %>
+  <%= render DS::ProgressRing.new(
+        percent: progress.percent,
+        size: 36,
+        stroke_width: 4,
+        tone: review_progress_tone(progress),
+        show_percent: false
+      ) %>
+  <div class="min-w-0 flex-1">
+    <p class="truncate text-sm font-medium text-primary"><%= review_month_label(review) %></p>
+    <p class="truncate text-xs text-secondary">
+      <%= review_progress_caption(progress) %>
+    </p>
+  </div>
+  <%= review_status_pill(month.status) %>
+  <%= icon("chevron-right", size: "sm") %>
+<% end %>

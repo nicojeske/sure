@@ -1,0 +1,15 @@
+<% content_for :title, t(".title") %>
+
+<div class="@container/page space-y-6 pb-6 lg:pb-12">
+  <%= render DS::PageHeader.new(title: t(".title"), subtitle: t(".subtitle"), preview: true) do |header| %>
+    <% header.with_action do %>
+      <%= render "monthly_reviews/transfers_toggle", href: monthly_reviews_path(include_transfers: (include_transfers? ? nil : "1")) %>
+    <% end %>
+  <% end %>
+
+  <%= render DS::Section.new(title: t(".months"), count: @overview.months.size) do %>
+    <% @overview.months.each do |month| %>
+      <%= render "monthly_reviews/month", month: month %>
+    <% end %>
+  <% end %>
+</div>

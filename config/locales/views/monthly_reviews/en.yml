@@ -1,0 +1,205 @@
+---
+en:
+  monthly_reviews:
+    cards:
+      actions:
+        accept: Accept
+        back: Back
+        next: Next
+        reviewed: Reviewed
+        skip: Skip
+      badges:
+        edited: Edited by you
+        learned: Learned
+        mismatch: The receipt total doesn't match this transaction, so no split is proposed.
+        sources:
+          hint: From your hint
+          learned: Learned
+          receipt: From the receipt
+      card:
+        label: Review %{name}
+      edit:
+        merchant: Merchant
+        name: Name
+        none: None
+        notes: Notes
+        save: Save and mark reviewed
+        title: Edit by hand (e)
+        uncategorized: Uncategorized
+      field_value:
+        empty: Empty
+        new: New
+        uncategorized: Uncategorized
+      fields:
+        applied: Applied
+        apply: Apply %{field}
+        labels:
+          category: Category
+          merchant: Merchant
+          name: Name
+          notes: Notes
+          tags: Tags
+        locked: You can't change this field on a shared account
+        no_change: No change
+      header:
+        meta: "%{date} · %{account} · %{position}/%{total}"
+        original_name: 'Bank: %{name}'
+      hint:
+        help_html: "%{focus} or h to type · %{send} asks the AI · %{leave} leaves the field"
+        label: Hint for the AI
+        placeholder: e.g. “Apple corer 12 + hand warmers 8”
+      keys:
+        alt: Alt
+        ctrl: Ctrl
+        esc: Esc
+        reviewed: Ctrl+⏎
+        scroll: "⇧↑↓"
+      list:
+        progress_html: "%{reviewed}/%{total} reviewed"
+        title: Transactions
+      receipt_pane:
+        loading: Loading the receipt text…
+        none_html: No receipt · %{key} searches Paperless
+        open: open
+        pick: Pick a receipt
+        pick_help: "↑↓ choose · ⏎ link and read"
+        scroll: scroll
+        untitled: 'Document #%{id}'
+      receipt_search:
+        help: "↑↓ choose · ⏎ link and read · Esc closes"
+        placeholder: Search Paperless
+      shortcuts:
+        accept: accept
+        back: back
+        edit: edit
+        fields: fields
+        find: find receipt
+        hint: hint
+        label: Keyboard shortcuts
+        open: open receipt
+        reviewed: reviewed
+        scroll: scroll receipt
+        skip: skip
+        split: split
+        undo: undo
+      show:
+        heading: Review %{month}
+        messages:
+          first_card: This is the first transaction.
+          no_receipt: This transaction has no receipt. Press f to search Paperless.
+          nothing_proposed: Nothing is proposed for this field.
+          nothing_to_undo: This transaction isn't reviewed, so there is nothing to undo.
+          still_reading: Still reading. The card updates when the proposal is ready.
+        receipt_column: Receipt
+        refresh: Refresh suggestions
+        refresh_hint: Reads the receipts of this month again in the background and retries failed ones
+        summary: Summary
+        title: Review %{month}
+      split:
+        amount: Amount
+        category: Category
+        not_allowed:
+          one: Split into 1 part (needs full control of the account)
+          other: Split into %{count} parts (needs full control of the account)
+        part: Part
+        table_label: Proposed split
+        title:
+          one: Split into 1 part
+          other: Split into %{count} parts
+        uncategorized: Uncategorized
+      state:
+        busy: Working on it…
+        empty: 'No proposal: no receipt, no hint and nothing learned. Type a hint, edit by hand, or press %{reviewed_key} to mark it reviewed.'
+        failed_message: Retry, type a hint, or edit it by hand.
+        failed_title: Couldn't build a proposal
+        loading_hint: Reading your hint… The card updates when the proposal is ready.
+        loading_receipt: Reading the receipt… The card updates when the proposal is ready.
+        read_now: Read receipt
+        receipt_choice: Several receipts match about equally well. Pick one and the AI reads it, or type a hint instead.
+        retry: Retry
+        reviewed:
+          one: Reviewed · 1 change applied
+          other: Reviewed · %{count} changes applied
+          zero: Reviewed without changes
+        stalled: Reading takes longer than usual. The card updates when it's done; meanwhile you can type a hint or edit by hand.
+        unavailable: This receipt can't be read because no AI provider or Paperless connection is set up.
+        undo: Undo
+        unread: The receipt hasn't been read yet.
+      strip:
+        label: Nearby transactions
+      update:
+        failed: The transaction couldn't be updated. Reload the card and try again.
+    prefetches:
+      create:
+        started: Suggestions are being refreshed in the background.
+    progress:
+      none: No transactions to review
+      reviewed: "%{reviewed} of %{total} reviewed"
+    receipt_searches:
+      create:
+        failed: Paperless couldn't be reached, so the document wasn't linked.
+      index:
+        any_date: Any date
+        failed: Paperless couldn't be reached. Try again in a moment.
+        more: Load more
+        no_amount: No amount
+        no_results: No matching documents.
+        search_any_date: Search any date
+        window: "%{from} – %{to}"
+    receipt_texts:
+      show:
+        empty: This document has no OCR text.
+        failed: The receipt text couldn't be loaded from Paperless.
+        label: Receipt text
+    index:
+      months: Months
+      subtitle: Go through each month's transactions one at a time, then note what stood out and complete the month.
+      title: Monthly review
+    cards_link:
+      continue:
+        one: Continue review (1 left)
+        other: Continue review (%{count} left)
+      open: Open review
+      start: Start review
+    completion:
+      complete: Complete review
+      completed_on: Completed on %{date}.
+      label: Note
+      placeholder: What stood out this month?
+      reopen: Reopen
+      save: Save note
+      title: Complete the month
+      unreviewed_hint:
+        one: 1 transaction is still unreviewed. Completing keeps it under the "unreviewed" filter.
+        other: "%{count} transactions are still unreviewed. Completing keeps them under the \"unreviewed\" filter."
+    show:
+      heading: "%{month}"
+      money:
+        expense: Expenses
+        income: Income
+        net: Net
+        report: Open report
+        title: Income and expenses
+      period: "%{from} – %{to}"
+      review:
+        in_transactions: Show unreviewed
+        open: Open
+        progress: "%{reviewed} of %{total}"
+        reviewed: Reviewed
+        title: Review
+      title: Monthly review %{month}
+      open: Open transactions
+    status:
+      completed: Completed
+      empty: Nothing to review
+      in_progress: In progress
+      not_started: Not started
+      ready: Ready to complete
+    transfers_toggle:
+      hide: Hide transfers
+      include: Include transfers
+    update:
+      not_allowed: You can only read this month's transactions, so you can't change its review.
+      completed: The month is completed.
+      reopened: The month is open again.
+      saved: The note was saved.

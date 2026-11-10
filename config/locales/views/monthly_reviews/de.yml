@@ -1,0 +1,205 @@
+---
+de:
+  monthly_reviews:
+    cards:
+      actions:
+        accept: Übernehmen
+        back: Zurück
+        next: Weiter
+        reviewed: Geprüft
+        skip: Überspringen
+      badges:
+        edited: Von dir bearbeitet
+        learned: Gelernt
+        mismatch: Die Summe des Belegs passt nicht zu dieser Buchung, deshalb wird keine Aufteilung vorgeschlagen.
+        sources:
+          hint: Aus deinem Hinweis
+          learned: Gelernt
+          receipt: Aus dem Beleg
+      card:
+        label: "%{name} prüfen"
+      edit:
+        merchant: Händler
+        name: Name
+        none: Keiner
+        notes: Notizen
+        save: Speichern und als geprüft markieren
+        title: Von Hand bearbeiten (e)
+        uncategorized: Ohne Kategorie
+      field_value:
+        empty: Leer
+        new: Neu
+        uncategorized: Ohne Kategorie
+      fields:
+        applied: Übernommen
+        apply: "%{field} übernehmen"
+        labels:
+          category: Kategorie
+          merchant: Händler
+          name: Name
+          notes: Notizen
+          tags: Tags
+        locked: Dieses Feld kannst du in einem geteilten Konto nicht ändern
+        no_change: Keine Änderung
+      header:
+        meta: "%{date} · %{account} · %{position}/%{total}"
+        original_name: 'Bank: %{name}'
+      hint:
+        help_html: "%{focus} oder h zum Tippen · %{send} fragt die KI · %{leave} verlässt das Feld"
+        label: Hinweis für die KI
+        placeholder: z. B. „Apfelentkerner 12 + Handwärmer 8“
+      keys:
+        alt: Alt
+        ctrl: Strg
+        esc: Esc
+        reviewed: Strg+⏎
+        scroll: "⇧↑↓"
+      list:
+        progress_html: "%{reviewed}/%{total} geprüft"
+        title: Buchungen
+      receipt_pane:
+        loading: Belegtext wird geladen…
+        none_html: Kein Beleg · %{key} durchsucht Paperless
+        open: öffnen
+        pick: Beleg auswählen
+        pick_help: "↑↓ auswählen · ⏎ verknüpfen und lesen"
+        scroll: scrollen
+        untitled: 'Dokument #%{id}'
+      receipt_search:
+        help: "↑↓ auswählen · ⏎ verknüpfen und lesen · Esc schließt"
+        placeholder: Paperless durchsuchen
+      shortcuts:
+        accept: übernehmen
+        back: zurück
+        edit: bearbeiten
+        fields: Felder
+        find: Beleg suchen
+        hint: Hinweis
+        label: Tastenkürzel
+        open: Beleg öffnen
+        reviewed: geprüft
+        scroll: Beleg scrollen
+        skip: überspringen
+        split: aufteilen
+        undo: rückgängig
+      show:
+        heading: "%{month} prüfen"
+        messages:
+          first_card: Das ist die erste Buchung.
+          no_receipt: Diese Buchung hat keinen Beleg. Mit f durchsuchst du Paperless.
+          nothing_proposed: Für dieses Feld gibt es keinen Vorschlag.
+          nothing_to_undo: Diese Buchung ist nicht geprüft, es gibt nichts rückgängig zu machen.
+          still_reading: Wird noch gelesen. Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
+        receipt_column: Beleg
+        refresh: Vorschläge aktualisieren
+        refresh_hint: Liest die Belege dieses Monats im Hintergrund neu und wiederholt fehlgeschlagene
+        summary: Zusammenfassung
+        title: "%{month} prüfen"
+      split:
+        amount: Betrag
+        category: Kategorie
+        not_allowed:
+          one: In 1 Teil aufteilen (erfordert volle Kontrolle über das Konto)
+          other: In %{count} Teile aufteilen (erfordert volle Kontrolle über das Konto)
+        part: Teil
+        table_label: Vorgeschlagene Aufteilung
+        title:
+          one: In 1 Teil aufteilen
+          other: In %{count} Teile aufteilen
+        uncategorized: Ohne Kategorie
+      state:
+        busy: Wird bearbeitet…
+        empty: 'Kein Vorschlag: kein Beleg, kein Hinweis und nichts gelernt. Tippe einen Hinweis, bearbeite von Hand oder markiere mit %{reviewed_key} als geprüft.'
+        failed_message: Versuche es erneut, tippe einen Hinweis oder bearbeite von Hand.
+        failed_title: Es konnte kein Vorschlag erstellt werden
+        loading_hint: Dein Hinweis wird gelesen… Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
+        loading_receipt: Der Beleg wird gelesen… Die Karte aktualisiert sich, sobald der Vorschlag fertig ist.
+        read_now: Beleg lesen
+        receipt_choice: Mehrere Belege passen etwa gleich gut. Wähle einen aus, dann liest die KI ihn, oder tippe stattdessen einen Hinweis.
+        retry: Erneut versuchen
+        reviewed:
+          one: Geprüft · 1 Änderung übernommen
+          other: Geprüft · %{count} Änderungen übernommen
+          zero: Ohne Änderungen geprüft
+        stalled: Das Lesen dauert länger als üblich. Die Karte aktualisiert sich, sobald es fertig ist; bis dahin kannst du einen Hinweis tippen oder von Hand bearbeiten.
+        unavailable: Dieser Beleg kann nicht gelesen werden, weil kein KI-Anbieter oder keine Paperless-Verbindung eingerichtet ist.
+        undo: Rückgängig
+        unread: Der Beleg wurde noch nicht gelesen.
+      strip:
+        label: Benachbarte Buchungen
+      update:
+        failed: Die Buchung konnte nicht aktualisiert werden. Lade die Karte neu und versuche es erneut.
+    prefetches:
+      create:
+        started: Die Vorschläge werden im Hintergrund aktualisiert.
+    progress:
+      none: Keine Buchungen zu prüfen
+      reviewed: "%{reviewed} von %{total} geprüft"
+    receipt_searches:
+      create:
+        failed: Paperless war nicht erreichbar, das Dokument wurde nicht verknüpft.
+      index:
+        any_date: Beliebiges Datum
+        failed: Paperless ist nicht erreichbar. Versuche es gleich noch einmal.
+        more: Mehr laden
+        no_amount: Kein Betrag
+        no_results: Keine passenden Dokumente.
+        search_any_date: Ohne Datumsfilter suchen
+        window: "%{from} – %{to}"
+    receipt_texts:
+      show:
+        empty: Dieses Dokument hat keinen OCR-Text.
+        failed: Der Belegtext konnte nicht aus Paperless geladen werden.
+        label: Belegtext
+    index:
+      months: Monate
+      subtitle: Geh die Buchungen jedes Monats einzeln durch, notier, was auffiel, und schließ den Monat ab.
+      title: Monatsprüfung
+    cards_link:
+      continue:
+        one: Prüfung fortsetzen (noch 1)
+        other: Prüfung fortsetzen (noch %{count})
+      open: Prüfung öffnen
+      start: Prüfung starten
+    completion:
+      complete: Prüfung abschließen
+      completed_on: Abgeschlossen am %{date}.
+      label: Notiz
+      placeholder: Was ist dir in diesem Monat aufgefallen?
+      reopen: Wieder öffnen
+      save: Notiz speichern
+      title: Monat abschließen
+      unreviewed_hint:
+        one: 1 Buchung ist noch ungeprüft. Sie bleibt nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar.
+        other: "%{count} Buchungen sind noch ungeprüft. Sie bleiben nach dem Abschluss unter dem Filter „ungeprüft“ sichtbar."
+    show:
+      heading: "%{month}"
+      money:
+        expense: Ausgaben
+        income: Einnahmen
+        net: Saldo
+        report: Bericht öffnen
+        title: Einnahmen und Ausgaben
+      period: "%{from} – %{to}"
+      review:
+        in_transactions: Ungeprüfte anzeigen
+        open: Offen
+        progress: "%{reviewed} von %{total}"
+        reviewed: Geprüft
+        title: Prüfung
+      title: Monatsprüfung %{month}
+      open: Offene Buchungen
+    status:
+      completed: Abgeschlossen
+      empty: Nichts zu prüfen
+      in_progress: In Arbeit
+      not_started: Nicht begonnen
+      ready: Bereit zum Abschluss
+    transfers_toggle:
+      hide: Überweisungen ausblenden
+      include: Überweisungen einbeziehen
+    update:
+      not_allowed: Du kannst die Buchungen dieses Monats nur ansehen und deshalb die Prüfung nicht ändern.
+      completed: Der Monat ist abgeschlossen.
+      reopened: Der Monat ist wieder offen.
+      saved: Die Notiz wurde gespeichert.

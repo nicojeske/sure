@@ -13,7 +13,8 @@ module Assistant
   # read pair for RecordValuation; GetInsights reads the Insights feed, which is
   # itself preview-gated app-wide.
   #
-  # The bills tools back the preview-gated Bills subsystem.
+  # The bills tools back the preview-gated Bills subsystem, and the monthly
+  # review tools the preview-gated monthly review.
   PREVIEW_FUNCTION_CLASSES = [
     Function::UploadAccountStatement,
     Function::ListAccountStatements,
@@ -32,7 +33,12 @@ module Assistant
     Function::GetBillAudit,
     Function::CreateBill,
     Function::UpdateBill,
-    Function::RecordBillPayment
+    Function::RecordBillPayment,
+    Function::GetMonthlyReview,
+    Function::SuggestTransactionAnnotation,
+    Function::ApplyTransactionAnnotation,
+    Function::MarkTransactionsReviewed,
+    Function::UpdateMonthlyReview
   ].freeze
 
   # Guests may view family configuration but not change it, so these tools are

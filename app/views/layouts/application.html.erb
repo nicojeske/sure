@@ -11,6 +11,7 @@ else
   [
     { name: t(".nav.home"), path: root_path, icon: "pie-chart", icon_custom: false, active: page_active?(root_path) },
     { name: t(".nav.transactions"), path: transactions_path, icon: "credit-card", icon_custom: false, active: page_active?(transactions_path) },
+    preview_gated_nav_item({ name: t(".nav.monthly_review"), path: monthly_reviews_path, icon: "list-checks", icon_custom: false, active: page_active?(monthly_reviews_path) }),
     bills_nav_item,
     { name: t(".nav.reports"), path: reports_path, icon: "chart-bar", icon_custom: false, active: page_active?(reports_path) },
     plan_nav_item,

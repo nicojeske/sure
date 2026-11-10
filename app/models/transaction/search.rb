@@ -148,6 +148,8 @@ class Transaction::Search
 
   ATTACHMENT_STATUSES = %w[with without].freeze
 
+  REVIEW_STATUSES = %w[reviewed unreviewed].freeze
+
   attribute :search, :string
   attribute :amount, :string
   attribute :amount_operator, :string
@@ -163,6 +165,7 @@ class Transaction::Search
   attribute :receipt, array: true
   attribute :ai_status, array: true
   attribute :attachment_status, array: true
+  attribute :review_status, array: true
   attribute :active_accounts_only, :boolean, default: true
 
   attr_reader :family, :accessible_account_ids
@@ -192,6 +195,7 @@ class Transaction::Search
       query = self.class.apply_tag_filter(query, tags)
       query = apply_ai_status_filter(query, ai_status)
       query = apply_attachment_status_filter(query, attachment_status)
+      query = apply_review_status_filter(query, review_status)
       query = EntrySearch.apply_search_filter(query, search)
       query = EntrySearch.apply_date_filters(query, start_date, end_date)
       query = EntrySearch.apply_amount_filter(query, amount, amount_operator)
@@ -349,6 +353,13 @@ class Transaction::Search
       SQL
 
       wanted == [ "with" ] ? query.where(attached_sql) : query.where.not(attached_sql)
+    end
+
+    def apply_review_status_filter(query, statuses)
+      wanted = Array(statuses) & REVIEW_STATUSES
+      return query unless wanted.one?
+
+      wanted == [ "reviewed" ] ? query.where.not(entries: { reviewed_at: nil }) : query.where(entries: { reviewed_at: nil })
     end
 
     # Filter transactions by status (pending or confirmed)

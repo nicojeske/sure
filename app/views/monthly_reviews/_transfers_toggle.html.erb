@@ -1,0 +1,9 @@
+<%# The "include transfers" toggle, shared by the overview, summary and card pages. %>
+<%# locals: (href:) %>
+<%= render DS::Link.new(
+      text: include_transfers? ? t("monthly_reviews.transfers_toggle.hide") : t("monthly_reviews.transfers_toggle.include"),
+      variant: :ghost,
+      size: :sm,
+      icon: "arrow-right-left",
+      href: href
+    ) %>

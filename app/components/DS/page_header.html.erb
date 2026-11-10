@@ -1,0 +1,21 @@
+<%= tag.header class: container_classes, **container_opts do %>
+  <div class="min-w-0">
+    <div class="flex flex-wrap items-center gap-2">
+      <h1 class="<%= title_classes %>"><%= title %></h1>
+      <% if preview %>
+        <%= render DS::Pill.new(label: t("shared.preview"), size: :md) %>
+      <% end %>
+      <%= status %>
+    </div>
+    <% if subtitle.present? %>
+      <p class="mt-1 text-sm text-secondary"><%= subtitle %></p>
+    <% end %>
+  </div>
+  <% if actions? %>
+    <div class="flex flex-wrap items-center gap-2">
+      <% actions.each do |action| %>
+        <%= action %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

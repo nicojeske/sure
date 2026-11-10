@@ -256,6 +256,39 @@ class Provider::Openai < Provider
     end
   end
 
+  def suggest_transaction_annotation(transaction:, receipt_text: nil, hint: nil, examples: [], categories: [], merchants: [], tags: [], locale: "en", model: "", family: nil)
+    with_provider_response do
+      effective_model = model.presence || @default_model
+
+      # Metadata only: receipt text and hints are user data and stay out of traces.
+      trace = create_langfuse_trace(
+        name: "openai.suggest_transaction_annotation",
+        input: { receipt: receipt_text.present?, hint: hint.present?, example_count: examples.size }
+      )
+
+      prompt = Provider::TransactionAnnotationPrompt.new(
+        transaction: transaction, receipt_text: receipt_text, hint: hint, examples: examples,
+        categories: categories, merchants: merchants, tags: tags, locale: locale
+      )
+
+      result = AnnotationSuggester.new(
+        client,
+        model: effective_model,
+        prompt: prompt,
+        custom_provider: custom_provider?,
+        langfuse_trace: trace,
+        family: family
+      ).suggest
+
+      finish_langfuse_trace(trace: trace, output: result.to_h)
+
+      result
+    rescue => error
+      finish_langfuse_trace(trace: trace, output: { error: error.message }, level: "ERROR")
+      raise
+    end
+  end
+
   def auto_detect_merchants(transactions: [], user_merchants: [], model: "", family: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model

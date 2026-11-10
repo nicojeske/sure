@@ -1,0 +1,8 @@
+<%# Correspondent, date and amount of a receipt, as far as they are known. %>
+<%# locals: (link:, entry:) %>
+<% amount = link.document_amount && Money.new(link.document_amount, link.document_currency || entry.currency) %>
+<%= safe_join([
+      link.document_correspondent.presence,
+      (l(link.document_created_on, format: :short) if link.document_created_on),
+      (tag.span(format_money(amount), class: "privacy-sensitive") if amount)
+    ].compact, " · ") %>

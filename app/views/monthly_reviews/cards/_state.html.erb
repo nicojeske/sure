@@ -1,0 +1,58 @@
+<%# What the card is waiting for or what happened to it. The busy line shows
+    while a hint, receipt or decision is being sent (Turbo marks the frame
+    aria-busy). %>
+<%# locals: (card:, form_id:) %>
+<%= render DS::Inset.new(class: "hidden items-center gap-3 group-aria-busy/frame:flex", role: "status") do %>
+  <%= icon "loader-circle", class: "animate-spin" %> <%= t(".busy") %>
+<% end %>
+
+<% retry_button = capture do %>
+  <% if card.suggestion&.hint? %>
+    <%= render DS::Button.new(
+          text: t(".retry"), variant: :outline, size: :sm, icon: "refresh-cw",
+          href: monthly_review_hints_path(@monthly_review), method: :post,
+          params: { entry_id: card.entry.id, hint: card.suggestion.hint_text, include_transfers: ("1" if include_transfers?) }.compact
+        ) %>
+  <% elsif (link = card.suggestion&.receipt_link || card.receipt_link) %>
+    <%= render DS::Button.new(
+          text: card.state == :unread ? t(".read_now") : t(".retry"), variant: :outline, size: :sm, icon: "refresh-cw",
+          href: monthly_review_card_path(@monthly_review), method: :patch,
+          params: { decision: "suggest", entry_id: card.entry.id, receipt_link_id: link.id, include_transfers: ("1" if include_transfers?) }.compact
+        ) %>
+  <% end %>
+<% end %>
+
+<% case card.state %>
+<% when :loading %>
+  <%= render DS::Inset.new(class: "flex flex-col gap-2 group-aria-busy/frame:hidden", role: "status") do %>
+    <div class="flex items-center gap-3">
+      <%= icon "loader-circle", class: "animate-spin" %>
+      <span><%= card.suggestion.hint? ? t(".loading_hint") : t(".loading_receipt") %></span>
+    </div>
+    <p hidden data-review-card-target="stalled"><%= t(".stalled") %></p>
+  <% end %>
+<% when :unread %>
+  <%= render DS::Inset.new(class: "flex flex-wrap items-center gap-3 group-aria-busy/frame:hidden") do %>
+    <span class="flex-1"><%= t(".unread") %></span>
+    <%= retry_button %>
+  <% end %>
+<% when :failed %>
+  <div class="flex flex-col gap-2 group-aria-busy/frame:hidden">
+    <%= render DS::Alert.new(variant: :error, title: t(".failed_title"), message: t(".failed_message")) %>
+    <div><%= retry_button %></div>
+  </div>
+<% when :receipt_choice %>
+  <p class="text-sm text-secondary"><%= t(".receipt_choice") %></p>
+<% when :reviewed %>
+  <div class="flex flex-wrap items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-primary">
+    <%= icon "circle-check", size: "sm", color: "success" %>
+    <span class="flex-1"><%= t(".reviewed", count: card.applied_change_count) %></span>
+    <span class="inline-flex items-center gap-1 text-secondary"><%= render DS::Kbd.new(key: "u") %></span>
+    <%= render DS::Button.new(
+          text: t(".undo"), variant: :ghost, size: :sm, icon: "undo-2", type: :submit,
+          form: form_id, name: "decision", value: "undo", data: { review_decision: "undo" }
+        ) %>
+  </div>
+<% when :empty %>
+  <p class="text-sm text-secondary"><%= card.reading_unavailable? ? t(".unavailable") : t(".empty", reviewed_key: t("monthly_reviews.cards.keys.reviewed")) %></p>
+<% end %>

@@ -1,0 +1,12 @@
+<%# The merchant's logo, else the first-letter circle the transaction list and
+    merchant picker fall back to. `merchant` may be nil or a proposed merchant
+    that does not exist yet (no logo); `name` is then the fallback letter. %>
+<%# locals: (merchant:, name:, size: :md) %>
+<% logo_url = merchant.respond_to?(:logo_url) ? merchant.logo_url.presence : nil %>
+<% if logo_url %>
+  <%= image_tag Setting.transform_brand_fetch_url(logo_url),
+        class: class_names("shrink-0 rounded-full border border-secondary", size == :sm ? "w-6 h-6" : "w-8 h-8"),
+        alt: "", loading: "lazy" %>
+<% else %>
+  <%= render DS::FilledIcon.new(variant: :text, text: merchant.respond_to?(:name) ? merchant.name : name, size: size.to_s, rounded: true) %>
+<% end %>
