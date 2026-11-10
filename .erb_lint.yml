@@ -75,3 +75,5 @@ linters:
           - 'tab-item-active\/\d+'
           - 'tab-item-hover\/\d+'
           - 'tab-bg-group\/\d+'
+  DesignSystemGuard:
+    enabled: true
