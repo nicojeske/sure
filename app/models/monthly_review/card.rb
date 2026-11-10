@@ -157,6 +157,12 @@ class MonthlyReview::Card
     Array(applied["fields"]).size + (applied["split"] ? 1 : 0)
   end
 
+  # The suggestions strip's rows by kind, in display order. Each kind renders
+  # monthly_reviews/cards/suggestions/_<kind>.
+  def strip_suggestions
+    { bill: bill_suggestion }.compact
+  end
+
   def bill_suggestion
     return @bill_suggestion if defined?(@bill_suggestion)
 

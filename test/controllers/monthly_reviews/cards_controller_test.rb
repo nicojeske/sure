@@ -341,6 +341,46 @@ class MonthlyReviews::CardsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to monthly_review_card_path(@review, entry_id: @second.id, include_transfers: "1")
   end
 
+  test "confirming a suggested bill from the card makes it a bill and refreshes the card" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Coffee shop", amount: 20, currency: "USD", expected_day_of_month: 3,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+    card_url = monthly_review_card_url(@review, entry_id: @first.id)
+    frame = { "Turbo-Frame" => "monthly_review_card" }
+
+    get card_url, headers: frame
+    assert_select "[data-review-suggestion='bill'][data-review-suggestion-action='accept']"
+    assert_select "form[action='#{confirm_recurring_transaction_path(series)}']"
+    assert_select "form[action='#{dismiss_recurring_transaction_path(series)}']"
+
+    post confirm_recurring_transaction_url(series), headers: frame.merge("Referer" => card_url)
+
+    assert_redirected_to card_url
+    assert series.reload.active?
+
+    follow_redirect!(headers: frame)
+    assert_select "[data-review-card-entry-id='#{@first.id}']"
+    assert_select "[data-review-bill='active']", text: /Coffee shop/
+    assert_select "[data-review-suggestion='bill']", count: 0
+  end
+
+  test "dismissing a suggested bill from the card removes the suggestion" do
+    series = @family.recurring_transactions.create!(
+      account: @account, name: "Coffee shop", amount: 20, currency: "USD", expected_day_of_month: 3,
+      last_occurrence_date: 1.month.ago.to_date, next_expected_date: Date.current, status: "suggested", occurrence_count: 3
+    )
+    card_url = monthly_review_card_url(@review, entry_id: @first.id)
+
+    post dismiss_recurring_transaction_url(series), headers: { "Referer" => card_url }
+
+    assert_redirected_to card_url
+    assert series.reload.ended?
+    follow_redirect!
+    assert_select "[data-review-bill]", count: 0
+    assert_select "[data-review-suggestion='bill']", count: 0
+  end
+
   test "rejects an unknown decision" do
     patch monthly_review_card_url(@review), params: { decision: "explode", entry_id: @first.id }
 

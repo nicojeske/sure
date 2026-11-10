@@ -1,0 +1,14 @@
+<%# The suggestions strip below the fields: one row per suggestion the card
+    has, from MonthlyReview::Card#strip_suggestions, each drawn by
+    monthly_reviews/cards/suggestions/_<kind>. A row's buttons carry
+    data-review-suggestion="<kind>" and data-review-suggestion-action
+    ("accept" or "dismiss") so the review-card controller's keys press them. %>
+<%# locals: (card:) %>
+<% suggestions = card.strip_suggestions %>
+<% if suggestions.any? %>
+  <div class="flex flex-col gap-2" role="group" aria-label="<%= t(".label") %>">
+    <% suggestions.each do |kind, suggestion| %>
+      <%= render "monthly_reviews/cards/suggestions/#{kind}", suggestion: suggestion %>
+    <% end %>
+  </div>
+<% end %>

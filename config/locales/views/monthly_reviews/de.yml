@@ -127,6 +127,13 @@ de:
         unread: Der Beleg wurde noch nicht gelesen.
       strip:
         label: Benachbarte Buchungen
+      suggestions:
+        bill:
+          active_html: Gehört zur Rechnung <strong>%{name}</strong>, erwartet %{amount}
+          confirm: Als Rechnung bestätigen
+          dismiss: Verwerfen
+          suggested_html: 'Sieht nach einer wiederkehrenden Rechnung aus: <strong>%{name}</strong>, etwa %{amount}'
+        label: Vorschläge
       update:
         failed: Die Buchung konnte nicht aktualisiert werden. Lade die Karte neu und versuche es erneut.
     prefetches:
