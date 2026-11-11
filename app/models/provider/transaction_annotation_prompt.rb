@@ -131,11 +131,13 @@ class Provider::TransactionAnnotationPrompt
       - receipt_total: the total printed on the receipt as a positive number; null without a
         receipt or when it cannot be read.
       - split: only when every item's amount is known from the receipt or the hint AND the items
-        belong to at least two different categories. Amounts are positive and must add up exactly
-        to the absolute transaction amount; spread shipping, discounts or a small difference
-        across the items in proportion. Never guess a price. Otherwise split is null: pick the
-        main category and list the items in notes. Each split item's name and notes are in the
-        language of locale "#{content_locale}".
+        belong to at least two different categories. Then give exactly one part per category, never
+        one per item: its amount is the sum of that category's items, its name says what the
+        group is (e.g. "Groceries") and its notes list the items. Amounts are positive and must
+        add up exactly to the absolute transaction amount; spread shipping, discounts or a small
+        difference across the parts in proportion. Never guess a price. Otherwise split is null:
+        pick the main category and list the items in notes. Each split part's name and notes are
+        in the language of locale "#{content_locale}".
       - Follow the style of the examples (naming, categories, tags, notes).
       - confidence is 0 to 1 for the proposal overall; rationale is one short sentence in the
         language of locale "#{locale}".

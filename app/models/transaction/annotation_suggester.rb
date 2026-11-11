@@ -304,19 +304,40 @@ class Transaction::AnnotationSuggester
         {
           "name" => part.name,
           "amount" => part.amount && BigDecimal(part.amount.to_s),
-          "category_id" => resolve_category(part.category_name)&.id,
+          "category" => resolve_category(part.category_name),
           "tag_ids" => resolve_tag_ids(part.tag_names),
           "notes" => part.notes
         }
       end
-      return nil if rows.size < 2 || rows.any? { |row| row["name"].blank? || row["amount"].nil? || !row["amount"].positive? }
-      return nil if rows.filter_map { |row| row["category_id"] }.uniq.size < 2
+      return nil if rows.any? { |row| row["name"].blank? || row["amount"].nil? || !row["amount"].positive? }
+
+      rows = merge_split_rows_by_category(rows)
+      return nil if rows.size < 2 || rows.filter_map { |row| row["category_id"] }.uniq.size < 2
 
       amounts = fit_amounts(rows.map { |row| row["amount"] }, entry.amount.abs, self.class.amount_tolerance(entry))
       return nil unless amounts
 
       sign = entry.amount.negative? ? -1 : 1
       rows.zip(amounts).map { |row, amount| row.merge("amount" => (amount * sign).to_s("F")) }
+    end
+
+    # One part per category: a receipt split item by item becomes a part per
+    # category named after it, with the items listed in its notes.
+    def merge_split_rows_by_category(rows)
+      rows.group_by { |row| row["category"]&.id }.map do |category_id, group|
+        row = group.first
+        merged = if group.one?
+          row
+        else
+          {
+            "name" => row["category"]&.name || group.map { |item| item["name"] }.join(", "),
+            "amount" => group.sum { |item| item["amount"] },
+            "tag_ids" => group.flat_map { |item| item["tag_ids"] }.uniq,
+            "notes" => group.map { |item| item["name"] }.join(", ")
+          }
+        end
+        merged.except("category").merge("category_id" => category_id)
+      end
     end
 
     # Scales the parts to add up exactly to the target when they are off by no

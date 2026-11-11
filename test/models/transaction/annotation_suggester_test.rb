@@ -49,6 +49,19 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal [ @kitchen.id, @outdoor.id ], split.map { |row| row["category_id"] }
   end
 
+  test "merges split items of the same category into one part" do
+    stub_annotation(annotation(split: [
+      part("Corer", 7, "Kitchen"), part("Hand warmer", 8, "Outdoor"), part("Peeler", 5, "Kitchen")
+    ]))
+
+    split = suggester.suggest_from_hint(@entry, "Corer 7, Hand warmer 8, Peeler 5").payload["split"]
+
+    assert_equal [ @kitchen.id, @outdoor.id ], split.map { |row| row["category_id"] }
+    assert_equal [ "12.0", "8.0" ], split.map { |row| row["amount"] }
+    assert_equal [ "Kitchen", "Hand warmer" ], split.map { |row| row["name"] }
+    assert_equal "Corer, Peeler", split.first["notes"]
+  end
+
   test "spreads a small difference across split parts in proportion" do
     stub_annotation(annotation(split: [ part("Corer", 12, "Kitchen"), part("Hand warmer", 7.6, "Outdoor") ]))
 

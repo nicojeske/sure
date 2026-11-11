@@ -7,7 +7,7 @@ class Provider::TransactionAnnotationPromptTest < ActiveSupport::TestCase
     assert_match(/- name: [^-]*in the language of locale "de"/, rules)
     assert_match(/- merchant_name: [^-]*in the language of locale "de"/, rules)
     assert_match(/- notes: [^-]*in the language of locale "de"/, rules)
-    assert_match(/split item's name and notes are in the language of locale "de"/, rules)
+    assert_match(/split part's name and notes are in the language of locale "de"/, rules)
     assert_match(/rationale is one short sentence in the language of locale "en"/, rules)
   end
 
