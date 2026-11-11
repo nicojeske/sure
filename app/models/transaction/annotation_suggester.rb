@@ -322,21 +322,23 @@ class Transaction::AnnotationSuggester
     end
 
     # One part per category: a receipt split item by item becomes a part per
-    # category named after it, with the items listed in its notes.
+    # category named after it, with the items listed in its notes. Parts
+    # without a known category stay separate so each can still get one.
     def merge_split_rows_by_category(rows)
-      rows.group_by { |row| row["category"]&.id }.map do |category_id, group|
-        row = group.first
+      rows.each_with_index.group_by { |row, index| row["category"]&.id || "uncategorized-#{index}" }.values.map do |pairs|
+        group = pairs.map(&:first)
+        category = group.first["category"]
         merged = if group.one?
-          row
+          group.first
         else
           {
-            "name" => row["category"]&.name || group.map { |item| item["name"] }.join(", "),
+            "name" => category.name,
             "amount" => group.sum { |item| item["amount"] },
             "tag_ids" => group.flat_map { |item| item["tag_ids"] }.uniq,
-            "notes" => group.map { |item| item["name"] }.join(", ")
+            "notes" => group.map { |item| [ item["name"], item["notes"].presence&.then { |notes| "(#{notes})" } ].compact.join(" ") }.join(", ")
           }
         end
-        merged.except("category").merge("category_id" => category_id)
+        merged.except("category").merge("category_id" => category&.id)
       end
     end
 

@@ -62,6 +62,19 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
     assert_equal "Corer, Peeler", split.first["notes"]
   end
 
+  test "keeps each item's notes when merging and leaves uncategorized parts separate" do
+    stub_annotation(annotation(split: [
+      part("Corer", 5, "Kitchen", notes: "2 pack"), part("Peeler", 3, "Kitchen"),
+      part("Gift wrap", 2, "Invented"), part("Batteries", 2, "Invented"), part("Hand warmer", 8, "Outdoor")
+    ]))
+
+    split = suggester.suggest_from_hint(@entry, "five items").payload["split"]
+
+    assert_equal [ "Kitchen", "Gift wrap", "Batteries", "Hand warmer" ], split.map { |row| row["name"] }
+    assert_equal [ @kitchen.id, nil, nil, @outdoor.id ], split.map { |row| row["category_id"] }
+    assert_equal "Corer (2 pack), Peeler", split.first["notes"]
+  end
+
   test "spreads a small difference across split parts in proportion" do
     stub_annotation(annotation(split: [ part("Corer", 12, "Kitchen"), part("Hand warmer", 7.6, "Outdoor") ]))
 
@@ -481,7 +494,7 @@ class Transaction::AnnotationSuggesterTest < ActiveSupport::TestCase
       { "field" => field, "value" => value }
     end
 
-    def part(name, amount, category_name)
-      Part.new(name: name, amount: amount, category_name: category_name, tag_names: [], notes: nil)
+    def part(name, amount, category_name, notes: nil)
+      Part.new(name: name, amount: amount, category_name: category_name, tag_names: [], notes: notes)
     end
 end
