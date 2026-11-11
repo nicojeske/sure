@@ -37,5 +37,14 @@
     </dl>
   <% end %>
 
+  <%= render UI::Transactions::Chart.new(
+    search: @search,
+    period: @chart_period,
+    view: @chart_view,
+    granularity: @chart_granularity,
+    url: merchant_path(@merchant),
+    frame: "merchant_chart"
+  ) %>
+
   <%= render "transactions/list", transactions: @transactions, projected_recurring: @projected_recurring, q: @q, pagy: @pagy, toolbar: false %>
 </div>
