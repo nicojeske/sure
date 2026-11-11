@@ -2,7 +2,7 @@ class UI::Transactions::Chart < ApplicationComponent
   VIEWS = %w[cumulative periodic].freeze
   GRANULARITIES = Transaction::ChartSeriesBuilder::GRANULARITIES
 
-  attr_reader :search, :period, :link_params
+  attr_reader :search, :period, :frame, :link_params
 
   # `q`, `per_page`, `tab`, `granularity` carry the page's current state so the period
   # picker and the cumulative/periodic toggle never lose the user's active filters —
@@ -11,9 +11,15 @@ class UI::Transactions::Chart < ApplicationComponent
   # `granularity` is only ever set here when the user explicitly picked one (the
   # controller passes nil otherwise), so an auto-derived granularity never gets
   # forced into the URL and keeps re-deriving as the period changes.
-  def initialize(search:, period:, view: nil, granularity: nil, q: {}, per_page: nil, tab: nil)
+  #
+  # `url` is the page the chart's controls link back to (a path without a query
+  # string). Given a `frame`, the chart renders inside that Turbo Frame so its
+  # controls re-render only the chart, while still advancing the address bar.
+  def initialize(search:, period:, view: nil, granularity: nil, q: {}, per_page: nil, tab: nil, url: nil, frame: nil)
     @search = search
     @period = period
+    @url = url
+    @frame = frame
     @view = view
     @explicit_granularity = granularity
     @link_params = { q: q, per_page: per_page, tab: tab, granularity: granularity }.compact_blank
@@ -70,6 +76,23 @@ class UI::Transactions::Chart < ApplicationComponent
 
   def link_params_for(overrides)
     link_params.merge(overrides).compact_blank
+  end
+
+  def url
+    @url || transactions_path
+  end
+
+  def path_for(overrides)
+    "#{url}?#{link_params_for(overrides).to_query}"
+  end
+
+  def segment_data
+    frame ? { turbo_action: "advance" } : {}
+  end
+
+  def wrap_in_frame(&block)
+    content = capture(&block)
+    frame ? content_tag("turbo-frame", content, id: frame) : content
   end
 
   # Absolute I18n keys throughout this component — ViewComponent (4.12.0, this repo)

@@ -78,4 +78,40 @@ class MerchantsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "charts the merchant's spending as monthly bars over the last year" do
+    create_transaction(account: accounts(:depository), name: "Netflix checking", merchant: @merchant)
+
+    get merchant_url(@merchant)
+
+    assert_select "turbo-frame#merchant_chart" do
+      assert_select "[data-controller='bar-chart']"
+      assert_select "a.segmented-control__segment--active[href=?]", merchant_path(@merchant, chart_view: "periodic", granularity: "month")
+      assert_select "button[aria-label=?]", I18n.t("UI.period_picker.aria_label", period: Period.from_key("last_365_days").label_short)
+    end
+  end
+
+  test "switches the chart to the running net flow" do
+    create_transaction(account: accounts(:depository), name: "Netflix checking", merchant: @merchant)
+
+    get merchant_url(@merchant, chart_view: "cumulative")
+
+    assert_select "turbo-frame#merchant_chart [data-controller='time-series-chart']"
+  end
+
+  test "charts the chosen period without saving it as the user's default" do
+    @user.update!(default_period: "last_30_days")
+
+    get merchant_url(@merchant, period: "last_90_days")
+
+    assert_select "turbo-frame#merchant_chart button[aria-label=?]", I18n.t("UI.period_picker.aria_label", period: Period.from_key("last_90_days").label_short)
+    assert_equal "last_30_days", @user.reload.default_period
+  end
+
+  test "falls back to the last year for an unknown period" do
+    get merchant_url(@merchant, period: "bogus")
+
+    assert_response :success
+    assert_select "turbo-frame#merchant_chart button[aria-label=?]", I18n.t("UI.period_picker.aria_label", period: Period.from_key("last_365_days").label_short)
+  end
 end

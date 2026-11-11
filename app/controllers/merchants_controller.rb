@@ -13,6 +13,9 @@ class MerchantsController < ApplicationController
     @expense_totals = merchant_search(types: [ "expense" ]).totals
     @average_expense_money = @expense_totals.expense_money / @expense_totals.count if @expense_totals.count.positive?
     @first_date, @last_date = @search.transactions_scope.pick(Arel.sql("MIN(entries.date)"), Arel.sql("MAX(entries.date)"))
+    @chart_period = chart_period
+    @chart_view = params[:chart_view].presence_in(UI::Transactions::Chart::VIEWS) || "periodic"
+    @chart_granularity = params[:granularity].presence_in(Transaction::ChartSeriesBuilder::GRANULARITIES)
 
     @pagy, @transactions = pagy(
       @search.transactions_scope.reverse_chronological.includes(
@@ -41,6 +44,16 @@ class MerchantsController < ApplicationController
         filters: { merchants: [ @merchant.name ], **filters },
         accessible_account_ids: @accessible_account_ids
       )
+    end
+
+    # Unlike Periodable, a period picked here only scopes this chart: it is never
+    # saved as the user's default, and the default is a year, not that setting.
+    def chart_period
+      case params[:period]
+      when "current_month" then Period.current_month_for(Current.family)
+      when "last_month" then Period.last_month_for(Current.family)
+      else Period.from_key(Period.valid_key?(params[:period]) ? params[:period] : "last_365_days")
+      end
     end
 
     def load_split_parents
