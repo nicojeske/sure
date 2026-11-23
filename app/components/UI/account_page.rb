@@ -1,6 +1,6 @@
 class UI::AccountPage < ApplicationComponent
   attr_reader :account, :chart_view, :chart_period, :loan_chart, :as_of, :statement_coverage, :statements,
-              :reconciliation_statuses, :can_manage_statements, :paperless_configured
+              :reconciliation_statuses, :reconciliation_indicator, :can_manage_statements, :paperless_configured
 
   renders_one :activity_feed, ->(feed_data:, pagy:, q:, selected_year: nil, selected_month: nil) {
     UI::Account::ActivityFeed.new(
@@ -21,8 +21,9 @@ class UI::AccountPage < ApplicationComponent
   # `loan_extra_projection` the projection with it applied, on the same
   # `as_of`; nil when no extra applies.
   def initialize(account:, chart_view: nil, chart_period: nil, loan_chart: nil, as_of: Date.current, active_tab: nil,
-                 statement_coverage: nil, statements: [], reconciliation_statuses: {}, can_manage_statements: false,
-                 loan_projection: nil, loan_extra_projection: nil, extra_repayment: nil, paperless_configured: false)
+                 statement_coverage: nil, statements: [], reconciliation_statuses: {}, reconciliation_indicator: nil,
+                 can_manage_statements: false, loan_projection: nil, loan_extra_projection: nil, extra_repayment: nil,
+                 paperless_configured: false)
     @account = account
     @chart_view = chart_view
     @chart_period = chart_period
@@ -35,6 +36,7 @@ class UI::AccountPage < ApplicationComponent
     @statement_coverage = statement_coverage
     @statements = statements
     @reconciliation_statuses = reconciliation_statuses
+    @reconciliation_indicator = reconciliation_indicator
     @can_manage_statements = can_manage_statements
     @paperless_configured = paperless_configured
   end
@@ -109,6 +111,12 @@ class UI::AccountPage < ApplicationComponent
   # is entered.
   def extra_repayment
     @extra_repayment ||= Loan::ExtraRepayment.new(amount: nil, currency: account.currency)
+  end
+
+  # The activity feed's filters. The feed follows a range dragged on the
+  # chart, so the chart needs them to carry through a period pick.
+  def activity_filters
+    activity_feed? ? activity_feed.q : {}
   end
 
   def tab_content_for(tab)

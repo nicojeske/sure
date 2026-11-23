@@ -13,11 +13,10 @@ class AccountStatementsController < ApplicationController
     account_statements = Current.family.account_statements
       .with_attached_original_file
       .includes(:account, :suggested_account)
-      .ordered
     visible_storage_scope = Current.family.account_statements
       .where(account_id: nil)
       .or(Current.family.account_statements.where(account_id: accessible_account_ids))
-    linked_statement_scope = account_statements.with_account.where(account_id: accessible_account_ids)
+    linked_statement_scope = account_statements.with_account.where(account_id: accessible_account_ids).by_period
 
     @linked_account = linked_filter_account
     @linked_month = @linked_account ? linked_filter_month : nil
@@ -34,7 +33,7 @@ class AccountStatementsController < ApplicationController
       end
     end
 
-    @unmatched_pagy, @unmatched_statements = pagy(account_statements.inbox, limit: safe_per_page, page_param: :unmatched_page)
+    @unmatched_pagy, @unmatched_statements = pagy(account_statements.inbox.ordered, limit: safe_per_page, page_param: :unmatched_page)
     @linked_pagy, @linked_statements = pagy(linked_statement_scope, limit: safe_per_page, page_param: :linked_page)
     @total_storage_bytes = visible_storage_scope.sum(:byte_size)
     @accounts = Current.user.accessible_accounts.visible.alphabetically

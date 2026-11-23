@@ -62,6 +62,8 @@
     </div>
   </header>
 
+  <%= render "shared/exchange_rate_notes", family: Current.family %>
+
   <%= render UI::Transactions::Chart.new(
     search: @search,
     period: @chart_period,

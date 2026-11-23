@@ -37,9 +37,13 @@ class Account::CurrentBalanceManager
   # as of a statement rather than of this moment. It only applies to a linked
   # account: a manual one has no statement, and its strategies reconcile against
   # today by design.
-  def set_current_balance(balance, date: nil)
+  def set_current_balance(balance, date: nil, reuse_explained_anchor: true)
     if account.linked?
-      set_current_balance_for_linked_account(balance, date || Date.current)
+      set_current_balance_for_linked_account(
+        balance,
+        date || Date.current,
+        reuse_explained_anchor: reuse_explained_anchor
+      )
     else
       result = set_current_balance_for_manual_account(balance)
 
@@ -98,12 +102,14 @@ class Account::CurrentBalanceManager
 
     # Linked accounts manage "current balance" via the special `current_anchor` valuation.
     # This is NOT a user-facing feature, and is primarily used in "processors" while syncing
-    # linked account data (e.g. via Plaid)
+    # linked account data (e.g. via Plaid).
     #
     # The anchor is simply moved forward in place on every sync (never left behind as a
     # reconciliation entry), so linked accounts accumulate a single current_anchor rather
     # than a growing trail of "Manual balance update" entries in the account log.
-    def set_current_balance_for_linked_account(balance, date)
+    # `reuse_explained_anchor` is accepted for provider callers but has no effect here:
+    # every stale anchor moves forward, explained by the ledger or not.
+    def set_current_balance_for_linked_account(balance, date, reuse_explained_anchor: true)
       changes_made = false
       error = nil
       historical = false
@@ -155,8 +161,11 @@ class Account::CurrentBalanceManager
       Result.new(success?: result.success?, changes_made?: result.success?, error: result.error_message)
     end
 
+    # Legacy data can still carry more than one anchor row, and the query has no ORDER BY,
+    # so pick the newest deterministically. Ids are random UUIDs: a last-resort tiebreak only.
     def current_anchor_valuation
-      @current_anchor_valuation ||= account.valuations.current_anchor.includes(:entry).first
+      @current_anchor_valuation ||=
+        account.valuations.current_anchor.includes(:entry).max_by { |v| [ v.entry.date, v.entry.created_at, v.entry.id ] }
     end
 
     def create_current_anchor(balance, date)
@@ -185,6 +194,12 @@ class Account::CurrentBalanceManager
 
       if entry.date != date
         entry.date = date
+        changes_made = true
+      end
+
+      # A provider can correct the account's currency between syncs; the reading is in the new one.
+      if entry.currency != account.currency
+        entry.currency = account.currency
         changes_made = true
       end
 
